@@ -70,3 +70,39 @@ class WhatsAppService:
         except requests.exceptions.RequestException as e:
             print(f"Error sending interactive message: {e}")
             return None
+
+    @staticmethod
+    def send_interactive_list(to_number, body_text, button_text, sections):
+        """
+        Send an interactive list message (for >3 options).
+        sections: list of dicts, e.g. [{ "title": "Section Title", "rows": [{"id": "1", "title": "Row 1"}] }]
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "interactive",
+            "interactive": {
+                "type": "list",
+                "body": {"text": body_text},
+                "action": {
+                    "button": button_text,
+                    "sections": sections
+                }
+            }
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending list message: {e}")
+            if e.response:
+                print(f"Response content: {e.response.text}")
+            return None

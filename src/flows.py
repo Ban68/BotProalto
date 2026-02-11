@@ -1,7 +1,8 @@
 from src.services import WhatsAppService
+from src.database import get_solicitud_status
 
 # Simple in-memory storage for MVP (Use DB in production)
-# Structure: { "phone_number": { "status": "pending_consent" | "active", "last_interaction": timestamp } }
+# Structure: { "phone_number": { "status": "pending_consent" | "active" | "waiting_for_cedula", "last_interaction": timestamp } }
 user_sessions = {}
 
 class FlowHandler:
@@ -32,7 +33,7 @@ class FlowHandler:
             
             # Handle Text Messages
             if msg_type == "text":
-                text_body = message["text"]["body"].lower().strip()
+                text_body = message["text"]["body"].strip() # Keep case for Cedula
                 FlowHandler.process_text_input(user_phone, text_body, user_state)
                 
             # Handle Interactive Button Replies
@@ -50,9 +51,49 @@ class FlowHandler:
         if state["status"] == "pending_consent":
             FlowHandler.send_habeas_data_prompt(user_phone)
             return
+        
+        # 2. Check if waiting for Cedula (Application Status)
+        if state["status"] == "waiting_for_cedula":
+            # Basic validation: ensure it's a number-like string
+            if not text.isdigit():
+                 WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
+                 return
 
-        # 2. Main Menu Logic
-        if text in ["hola", "menu", "inicio", "start"]:
+            # Query Database
+            result = get_solicitud_status(text)
+            
+            if result:
+                # Format Response
+                estado = result['estado_interno']
+                if not estado: # Handle None or empty string
+                    estado = "Pendiente / En Estudio"
+                elif estado.strip().upper() == "LISTO EN DOCUSIGN":
+                    estado = "En legalización de contratos para proceder a desembolso"
+                
+                monto = result['valor_preestudiado']
+                nombre = result['nombre_completo']
+                fecha = result['fecha_de_solicitud']
+                
+                response_msg = (
+                    f"🔍 *Resultado de Solicitud*\n\n"
+                    f"👤 *Cliente:* {nombre}\n"
+                    f"📅 *Fecha:* {fecha}\n"
+                    f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
+                    f"📋 *Estado Actual:* {estado}\n"
+                )
+                WhatsAppService.send_message(user_phone, response_msg)
+            else:
+                WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
+            
+            # Return to main menu state
+            state["status"] = "active"
+            WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            return
+
+        # 3. Main Menu Logic (Reset triggers)
+        norm_text = text.lower()
+        if norm_text in ["hola", "menu", "inicio", "start"]:
+            state["status"] = "active" # Reset any stuck state
             FlowHandler.send_main_menu(user_phone)
         else:
             # Fallback for unrecognized text
@@ -69,11 +110,12 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Entendemos. No podremos atenderte por este medio sin tu autorización. Si cambias de opinión, escribe 'Hola'.")
             state["status"] = "pending_consent"
 
+        elif btn_id == "menu_solicitud":
+            state["status"] = "waiting_for_cedula"
+            WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu solicitud:")
+
         elif btn_id == "menu_saldo":
-            WhatsAppService.send_message(user_phone, "Actualmente esta función está en desarrollo. Pronto podrás consultar tu saldo aquí.")
-        
-        elif btn_id == "menu_cert":
-            WhatsAppService.send_message(user_phone, "Para solicitar tu certificado, por favor envíanos tu número de cédula (Función en desarrollo).")
+            WhatsAppService.send_message(user_phone, "Esta función de Saldo está en desarrollo. Intenta 'Estado Solicitud'.")
             
         elif btn_id == "menu_support":
              WhatsAppService.send_message(user_phone, "Un asesor humano te atenderá pronto. Por favor espera...")
@@ -94,8 +136,8 @@ class FlowHandler:
     def send_main_menu(user_phone):
         menu_text = "Hola, ¿en qué podemos ayudarte hoy?"
         buttons = [
+            {"id": "menu_solicitud", "title": "Estado Solicitud"},
             {"id": "menu_saldo", "title": "Consultar Saldo"},
-            {"id": "menu_cert", "title": "Certificados"},
             {"id": "menu_support", "title": "Hablar con Asesor"}
         ]
         WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
