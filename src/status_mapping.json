@@ -1,0 +1,13 @@
+{
+    "ENVIADO A VB EMPRESA": "Tu solicitud está en manos de nuestro equipo de validación. Te avisaremos en cuanto tengamos una respuesta.",
+    "PENDIENTE POR ENVIAR A VB": "Estamos terminando de procesar tu información para enviarla al área de validación. ¡Ya falta poco!",
+    "REVISAR NUEVAMENTE": "Tu solicitud está pasando por una revisión detallada para intentar darte la mejor respuesta posible. Pronto te daremos respuesta.",
+    "FALTA ALGÚN DOCUMENTO": "Tu proceso está detenido porque falta algún documento. Para solucionarlo y continuar, por favor presiona el botón 'Comunicarme con un asesor' y allí te pediremos el faltante de documentos.",
+    "EMPRESA PAUSADA": "Te informamos que actualmente tu empresa se encuentra pausada por causas operativas internas. Te sugerimos esperar unos meses para retomar tu solicitud. ¡Estaremos listos para atenderte más adelante!",
+    "DENEGADO": "Lamentamos informarte que tu crédito no fue aprobado porque no se cumplen los requisitos mínimos de nuestras políticas de pago. Por ahora no podemos otorgarte este préstamo.",
+    "CANCELADO POR LA EMPRESA": "Lamentamos informarte que, por el momento, no podemos otorgarte el crédito de acuerdo con nuestras políticas de riesgo.",
+    "DESISTIÓ DEL CRÉDITO": "Confirmamos que tu solicitud ha sido cerrada a petición tuya. Estaremos aquí si decides retomar el proceso en el futuro; si es así, solo comunícate con un asesor para reactivarlo.",
+    "NO RESPONDIÓ": "Hemos cerrado tu solicitud debido a que no recibimos respuesta en los tiempos establecidos. ¡Puedes intentar de nuevo cuando gustes!",
+    "LISTO EN DOCUSIGN": "En legalización de contratos para proceder a desembolso",
+    "NULL": "Pendiente / En Estudio"
+}

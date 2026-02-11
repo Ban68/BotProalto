@@ -64,11 +64,25 @@ class FlowHandler:
             
             if result:
                 # Format Response
-                estado = result['estado_interno']
-                if not estado: # Handle None or empty string
-                    estado = "Pendiente / En Estudio"
-                elif estado.strip().upper() == "LISTO EN DOCUSIGN":
-                    estado = "En legalización de contratos para proceder a desembolso"
+                estado_interno = result['estado_interno']
+                
+                # Load Status Mapping
+                import json
+                import os
+                
+                mapping_path = os.path.join(os.path.dirname(__file__), 'status_mapping.json')
+                status_messages = {}
+                try:
+                    with open(mapping_path, 'r', encoding='utf-8') as f:
+                        status_messages = json.load(f)
+                except Exception as e:
+                    print(f"Error loading status mapping: {e}")
+
+                # Normalize and Map
+                clean_status = estado_interno.strip().upper() if estado_interno else "NULL"
+                
+                # Get user-friendly message or fallback to the internal status if allowed/generic
+                mensaje_cliente = status_messages.get(clean_status, estado_interno or "Pendiente / En Estudio")
                 
                 monto = result['valor_preestudiado']
                 nombre = result['nombre_completo']
@@ -79,7 +93,7 @@ class FlowHandler:
                     f"👤 *Cliente:* {nombre}\n"
                     f"📅 *Fecha:* {fecha}\n"
                     f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
-                    f"📋 *Estado Actual:* {estado}\n"
+                    f"📋 *Estado:* {mensaje_cliente}\n"
                 )
                 WhatsAppService.send_message(user_phone, response_msg)
             else:
