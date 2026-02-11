@@ -31,7 +31,7 @@ def get_solicitud_status(cedula):
             # We select the latest request based on nro_solicitud
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado, 
-                       estado_interno, nombre_completo 
+                       estado_interno, nombre_completo, plazo
                 FROM v_solicitudes_whatsapp 
                 WHERE cedula_nit = %s 
                 ORDER BY nro_solicitud DESC 

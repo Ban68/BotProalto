@@ -87,14 +87,20 @@ class FlowHandler:
                 monto = result['valor_preestudiado']
                 nombre = result['nombre_completo']
                 fecha = result['fecha_de_solicitud']
-                
+                plazo = result.get('plazo') # Safe get in case DB schema is old
+
                 response_msg = (
                     f"🔍 *Resultado de Solicitud*\n\n"
                     f"👤 *Cliente:* {nombre}\n"
                     f"📅 *Fecha:* {fecha}\n"
                     f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
-                    f"📋 *Estado:* {mensaje_cliente}\n"
                 )
+
+                # Add Term if status is 'APROBADO POR EL CLIENTE'
+                if clean_status == "APROBADO POR EL CLIENTE" and plazo:
+                    response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
+
+                response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                 WhatsAppService.send_message(user_phone, response_msg)
             else:
                 WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
