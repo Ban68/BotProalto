@@ -110,15 +110,25 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Entendemos. No podremos atenderte por este medio sin tu autorización. Si cambias de opinión, escribe 'Hola'.")
             state["status"] = "pending_consent"
 
+        # 3. Handle Client Menu Options
+        elif btn_id == "menu_cliente":
+            FlowHandler.send_client_menu(user_phone)
+
         elif btn_id == "menu_solicitud":
             state["status"] = "waiting_for_cedula"
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu solicitud:")
+
+        elif btn_id == "menu_credito":
+            WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id == "menu_saldo":
             WhatsAppService.send_message(user_phone, "Esta función de Saldo está en desarrollo. Intenta 'Estado Solicitud'.")
             
         elif btn_id == "menu_support":
              WhatsAppService.send_message(user_phone, "Un asesor humano te atenderá pronto. Por favor espera...")
+
+        elif btn_id == "menu_main":
+            FlowHandler.send_main_menu(user_phone)
 
     @staticmethod
     def send_habeas_data_prompt(user_phone):
@@ -136,8 +146,18 @@ class FlowHandler:
     def send_main_menu(user_phone):
         menu_text = "Hola, ¿en qué podemos ayudarte hoy?"
         buttons = [
+            {"id": "menu_cliente", "title": "Soy Cliente"},
             {"id": "menu_solicitud", "title": "Estado Solicitud"},
+            {"id": "menu_credito", "title": "Solicitar Crédito"}
+        ]
+        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
+
+    @staticmethod
+    def send_client_menu(user_phone):
+        menu_text = "¿Qué deseas hacer hoy?"
+        buttons = [
             {"id": "menu_saldo", "title": "Consultar Saldo"},
-            {"id": "menu_support", "title": "Hablar con Asesor"}
+            {"id": "menu_support", "title": "Hablar con Asesor"},
+            {"id": "menu_main", "title": "Volver al Inicio"}
         ]
         WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
