@@ -13,3 +13,6 @@ class Config:
     # App Config
     PORT = int(os.getenv("PORT", 5000))
     DEBUG = os.getenv("DEBUG", "True") == "True"
+    
+    # Emergency Maintenance Mode: Set to True to disable DB calls
+    MAINTENANCE_MODE = True

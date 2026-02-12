@@ -59,6 +59,12 @@ class FlowHandler:
                  WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
                  return
 
+            # 2. Check connections and Maintenance
+            from config import Config
+            if Config.MAINTENANCE_MODE:
+                WhatsAppService.send_message(user_phone, "⚠️ *Sistema en Mantenimiento*\n\nEstamos realizando mejoras en nuestros servidores. Por favor intenta consultar tu estado más tarde. Agradecemos tu paciencia.")
+                return
+
             # Query Database
             result = get_solicitud_status(text)
             
