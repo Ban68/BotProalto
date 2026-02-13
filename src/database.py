@@ -17,7 +17,8 @@ def init_db_pool():
             database=os.getenv('DB_NAME'),
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PASSWORD'),
-            port=os.getenv('DB_PORT', '5432')
+            port=os.getenv('DB_PORT', '5432'),
+            connect_timeout=int(os.getenv('DB_CONNECT_TIMEOUT', '5'))
         )
         print("✅ Database Connection Pool Created")
     except Exception as e:
@@ -34,13 +35,23 @@ def get_db_cursor():
         init_db_pool()
         
     conn = None
+    cursor = None
     try:
         conn = db_pool.getconn()
-        yield conn.cursor(cursor_factory=RealDictCursor)
+        conn.set_session(readonly=True, autocommit=True)
+
+        statement_timeout_ms = int(os.getenv('DB_STATEMENT_TIMEOUT_MS', '5000'))
+        with conn.cursor() as setup_cur:
+            setup_cur.execute("SET statement_timeout = %s", (statement_timeout_ms,))
+
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        yield cursor
     except Exception as e:
         print(f"Database Operation Error: {e}")
         raise e
     finally:
+        if cursor:
+            cursor.close()
         if conn:
             db_pool.putconn(conn)
 
