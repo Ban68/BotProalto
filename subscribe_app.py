@@ -6,7 +6,7 @@ load_dotenv()
 
 ACCESS_TOKEN = os.getenv('API_TOKEN')
 # The WABA ID identified by the user
-WABA_ID = "1196765072669065" 
+WABA_ID = "101178325958497" 
 API_VERSION = os.getenv('API_VERSION', 'v21.0')
 
 def subscribe_app_to_waba():
