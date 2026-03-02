@@ -33,6 +33,15 @@ def create_app():
         except Exception as e:
             return f"❌ Database Connection Error: {str(e)}", 500
 
+    @app.route('/whoami')
+    def whoami():
+        try:
+            import requests
+            ip = requests.get('https://api.ipify.org', timeout=5).text
+            return f"Render Outbound IP: {ip}", 200
+        except Exception as e:
+            return str(e), 500
+
     return app
 
 app = create_app()
