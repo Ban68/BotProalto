@@ -22,7 +22,8 @@ def init_db_pool():
         )
         print("✅ Database Connection Pool Created")
     except Exception as e:
-        print(f"❌ Error creating DB Pool: {e}")
+        print(f"Error creating DB Pool: {e}")
+        raise e
 
 @contextmanager
 def get_db_cursor():
