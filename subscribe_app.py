@@ -6,7 +6,7 @@ load_dotenv()
 
 ACCESS_TOKEN = os.getenv('API_TOKEN')
 # The WABA ID identified by the user
-WABA_ID = "101178325958497" 
+WABA_ID = "1196765072669065" 
 API_VERSION = os.getenv('API_VERSION', 'v21.0')
 
 def subscribe_app_to_waba():
@@ -27,10 +27,10 @@ def subscribe_app_to_waba():
     print(f"Response: {response.text}")
     
     if response.status_code == 200 and '"success":true' in response.text:
-        print("\n✅ SUCCESS! The App is now explicitly subscribed to the Proalto WABA.")
+        print("\n[SUCCESS] The App is now explicitly subscribed to the Proalto WABA.")
         print("Incoming messages should now start arriving.")
     else:
-        print("\n❌ Failed to subscribe. Check permissions or IDs.")
+        print("\n[ERROR] Failed to subscribe. Check permissions or IDs.")
 
 def check_subscriptions():
     print(f"\nChecking current subscriptions for WABA {WABA_ID}...")
