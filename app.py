@@ -22,6 +22,17 @@ def create_app():
         </html>
         """, 200
 
+    @app.route('/health')
+    def health():
+        from src.database import get_db_cursor
+        try:
+            with get_db_cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+            return "✅ Database Connection OK", 200
+        except Exception as e:
+            return f"❌ Database Connection Error: {str(e)}", 500
+
     return app
 
 app = create_app()
