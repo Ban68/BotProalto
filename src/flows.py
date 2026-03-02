@@ -151,7 +151,7 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Esta función de Saldo está en desarrollo. Intenta 'Estado Solicitud'.")
             
         elif btn_id == "menu_support":
-             WhatsAppService.send_message(user_phone, "Un asesor humano te atenderá pronto. Por favor espera...")
+             WhatsAppService.send_message(user_phone, "¡Claro que sí! Puedes comunicarte directamente con nuestro asesor haciendo clic en el siguiente enlace: https://wa.me/573145248483")
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
