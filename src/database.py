@@ -1,79 +1,90 @@
 import os
-import psycopg2
-from psycopg2 import pool
-from psycopg2.extras import RealDictCursor
-from contextlib import contextmanager
+import requests
 
-# Global Connection Pool
-db_pool = None
+# ──────────────────────────────────────────────────
+#  Cloud Run API Bridge
+#  Instead of connecting directly to PostgreSQL
+#  (blocked by GCP firewall), we call our secure
+#  Cloud Run microservice that queries the DB
+#  internally within the same GCP project.
+# ──────────────────────────────────────────────────
 
-def init_db_pool():
-    global db_pool
-    try:
-        db_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
-            host=os.getenv('DB_HOST'),
-            database=os.getenv('DB_NAME'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            port=os.getenv('DB_PORT', '5432'),
-            connect_timeout=int(os.getenv('DB_CONNECT_TIMEOUT', '5'))
-        )
-        print("✅ Database Connection Pool Created")
-    except Exception as e:
-        print(f"Error creating DB Pool: {e}")
-        raise e
+CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "").rstrip("/")
+API_TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "")
 
-@contextmanager
-def get_db_cursor():
-    """
-    Yields a cursor from a pooled connection.
-    Ensures connection is returned to pool even if error occurs.
-    """
-    global db_pool
-    if not db_pool:
-        init_db_pool()
-        
-    conn = None
-    cursor = None
-    try:
-        conn = db_pool.getconn()
-        conn.set_session(readonly=True, autocommit=True)
-
-        statement_timeout_ms = int(os.getenv('DB_STATEMENT_TIMEOUT_MS', '5000'))
-        with conn.cursor() as setup_cur:
-            setup_cur.execute("SET statement_timeout = %s", (statement_timeout_ms,))
-
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        yield cursor
-    except Exception as e:
-        print(f"Database Operation Error: {e}")
-        raise e
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            db_pool.putconn(conn)
 
 def get_solicitud_status(cedula):
     """
-    Queries v_solicitudes_whatsapp using connection pool.
+    Queries the Cloud Run API bridge to get the latest
+    solicitud status for the given cedula.
+    Returns a dict with the result or None if not found / error.
     """
-    try:
-        with get_db_cursor() as cur:
-            # We select the latest request based on nro_solicitud
-            query = """
-                SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado, 
-                       estado_interno, nombre_completo, plazo
-                FROM v_solicitudes_whatsapp 
-                WHERE cedula_nit = %s 
-                ORDER BY nro_solicitud DESC 
-                LIMIT 1;
-            """
-            cur.execute(query, (cedula,))
-            result = cur.fetchone()
-            return result
-    except Exception as e:
-        print(f"Error querying solicitud: {e}")
+    if not CLOUD_RUN_URL:
+        print("❌ CLOUD_RUN_URL not configured")
         return None
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"cedula": cedula},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                # Map the Cloud Run response keys to the same dict keys
+                # that flows.py already expects (RealDictCursor style)
+                return {
+                    "nro_solicitud": data.get("nro_solicitud"),
+                    "nombre_completo": data.get("nombre_completo", ""),
+                    "fecha_de_solicitud": data.get("fecha_de_solicitud", ""),
+                    "valor_preestudiado": data.get("valor_preestudiado", 0),
+                    "estado_interno": data.get("estado_interno", ""),
+                    "plazo": data.get("plazo"),
+                }
+            else:
+                return None
+        elif response.status_code == 401:
+            print("❌ Cloud Run API: Unauthorized (check API_TOKEN_SECRET)")
+            return None
+        else:
+            print(f"❌ Cloud Run API Error {response.status_code}: {response.text}")
+            return None
+
+    except requests.exceptions.Timeout:
+        print("❌ Cloud Run API: Request timed out")
+        return None
+    except Exception as e:
+        print(f"❌ Cloud Run API Error: {e}")
+        return None
+
+
+def test_cloud_run_connection():
+    """
+    Quick health check: sends a dummy cedula to verify the
+    Cloud Run function is reachable and responding.
+    """
+    if not CLOUD_RUN_URL:
+        return False, "CLOUD_RUN_URL not configured"
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"cedula": "0"},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=5
+        )
+        if response.status_code == 200:
+            return True, "Cloud Run API OK"
+        else:
+            return False, f"Status {response.status_code}: {response.text}"
+    except Exception as e:
+        return False, str(e)

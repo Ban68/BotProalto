@@ -24,14 +24,12 @@ def create_app():
 
     @app.route('/health')
     def health():
-        from src.database import get_db_cursor
-        try:
-            with get_db_cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
-            return "✅ Database Connection OK", 200
-        except Exception as e:
-            return f"❌ Database Connection Error: {str(e)}", 500
+        from src.database import test_cloud_run_connection
+        ok, msg = test_cloud_run_connection()
+        if ok:
+            return f"✅ {msg}", 200
+        else:
+            return f"❌ Cloud Run API Error: {msg}", 500
 
     @app.route('/whoami')
     def whoami():
