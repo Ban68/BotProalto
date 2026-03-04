@@ -88,3 +88,45 @@ def test_cloud_run_connection():
             return False, f"Status {response.status_code}: {response.text}"
     except Exception as e:
         return False, str(e)
+
+
+def get_saldo(cedula):
+    """
+    Queries the Cloud Run API bridge to get all active loans
+    and their balance for the given cedula.
+    Returns a list of dicts (one per loan) or empty list.
+    """
+    if not CLOUD_RUN_URL:
+        print("❌ CLOUD_RUN_URL not configured")
+        return []
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"cedula": cedula, "tipo": "saldo"},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return data.get("prestamos", [])
+            else:
+                return []
+        elif response.status_code == 401:
+            print("❌ Cloud Run API: Unauthorized (check API_TOKEN_SECRET)")
+            return []
+        else:
+            print(f"❌ Cloud Run API Error {response.status_code}: {response.text}")
+            return []
+
+    except requests.exceptions.Timeout:
+        print("❌ Cloud Run API: Request timed out")
+        return []
+    except Exception as e:
+        print(f"❌ Cloud Run API Error: {e}")
+        return []
