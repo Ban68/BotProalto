@@ -1,8 +1,33 @@
+import time
 from flask import Blueprint, request, jsonify, current_app
 from config import Config
 from src.flows import FlowHandler
 
 webhook_bp = Blueprint('webhook', __name__)
+
+# ── Deduplication cache ──────────────────────────────────────────────
+# Stores { message_id: timestamp } to avoid processing the same
+# webhook delivery twice (Meta sometimes retries or sends duplicates).
+_processed_messages: dict[str, float] = {}
+_DEDUP_TTL_SECONDS = 300  # keep IDs for 5 minutes, then forget them
+
+
+def _is_duplicate(message_id: str) -> bool:
+    """Return True if we already processed this message_id recently."""
+    now = time.time()
+
+    # Purge expired entries (simple housekeeping)
+    expired = [mid for mid, ts in _processed_messages.items()
+               if now - ts > _DEDUP_TTL_SECONDS]
+    for mid in expired:
+        del _processed_messages[mid]
+
+    if message_id in _processed_messages:
+        return True
+
+    _processed_messages[message_id] = now
+    return False
+
 
 @webhook_bp.route('/webhook', methods=['GET'])
 def verify_webhook():
@@ -29,8 +54,21 @@ def receive_message():
     try:
         data = request.get_json()
         print(f"Received webhook data: {data}") # Debug logging
-        
-        # Async processing could be added here in the future
+
+        # ── Extract message_id for deduplication ──────────────────
+        try:
+            entry = data.get("entry", [{}])[0]
+            changes = entry.get("changes", [{}])[0]
+            value = changes.get("value", {})
+            messages = value.get("messages", [])
+            if messages:
+                msg_id = messages[0].get("id", "")
+                if msg_id and _is_duplicate(msg_id):
+                    print(f"⏭️  Duplicate message ignored: {msg_id}")
+                    return jsonify({"status": "duplicate_ignored"}), 200
+        except (IndexError, KeyError):
+            pass  # If extraction fails, continue processing normally
+
         FlowHandler.handle_incoming_message(data)
         
         return jsonify({"status": "success"}), 200
