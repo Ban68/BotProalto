@@ -175,28 +175,36 @@ def get_conversations() -> list:
     client = _get_supabase_client()
     if USE_SUPABASE and client:
         try:
-            # Query conversations order by updated_at, exclude 'archived'
-            convs = client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).execute()
+            # Query up to 50 conversations to avoid overwhelming the admin panel
+            convs = client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(50).execute()
             result = []
             
-            # To get last message efficiently, we could do a joined query, 
-            # but for MVP we fetch the latest message for each.
-            # (In production, a database view is better. We'll do a simple list here).
+            phones = [c["phone"] for c in convs.data]
+            last_msgs = {}
+            msg_counts = {}
+            
+            # O(1) queries instead of O(N) N+1 queries to prevent socket exhaustion
+            if phones:
+                # Fetch up to 1000 recent messages for these phones to calculate stats locally
+                msgs_res = client.table('bot_messages').select("phone, text, id").in_("phone", phones).order("created_at", desc=True).limit(1000).execute()
+                for m in msgs_res.data:
+                    p = m["phone"]
+                    if p not in last_msgs:
+                        last_msgs[p] = m["text"]
+                    msg_counts[p] = msg_counts.get(p, 0) + 1
+            
             for c in convs.data:
-                msgs_res = client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
-                last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
-                
+                p = c["phone"]
+                last_msg = last_msgs.get(p, "")
                 if len(last_msg) > 80:
                     last_msg = last_msg[:80] + "…"
                     
-                count_res = client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
-                
                 result.append({
-                    "phone": c["phone"],
+                    "phone": p,
                     "last_message": last_msg,
                     "status": c.get("status", "bot"),
                     "updated_at": c.get("updated_at", ""),
-                    "message_count": count_res.count if count_res.count else 0,
+                    "message_count": msg_counts.get(p, 1),
                 })
             return result
         except Exception as e:
