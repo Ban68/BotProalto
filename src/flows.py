@@ -198,8 +198,21 @@ class FlowHandler:
             return
 
         # 3. Main Menu Logic (Reset triggers)
-        norm_text = text.lower()
-        if norm_text in ["hola", "menu", "inicio", "start"]:
+        norm_text = text.lower().strip()
+        
+        # Base greeting words
+        greetings = ["hola", "menu", "inicio", "start", "buenas", "holis", "holi", "saludos", "hi", "hello", "buen", "buenos"]
+        
+        # Extract the first word and clean punctuation
+        first_word = norm_text.split()[0] if norm_text else ""
+        for char in [",", ".", "!", "?", "¿", "¡"]:
+            first_word = first_word.replace(char, "")
+            
+        # Match if the first word is a greeting or the exact phrase is a greeting
+        exact_phrases = ["buenos dias", "buenos días", "buenas tardes", "buenas noches", "buen dia", "buen día", "que tal", "q tal"]
+        is_greeting = first_word in greetings or norm_text in exact_phrases
+        
+        if is_greeting:
             state["status"] = "active" # Reset any stuck state
             FlowHandler.send_main_menu(user_phone)
         else:
