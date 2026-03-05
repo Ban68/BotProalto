@@ -12,15 +12,29 @@ from config import Config
 # ── Supabase Setup ───────────────────────────────────────────────────
 USE_SUPABASE = bool(Config.SUPABASE_URL and Config.SUPABASE_KEY)
 supabase_client = None
+_supabase_initialized = False
+_supabase_lock = threading.Lock()
 
-if USE_SUPABASE:
-    try:
-        from supabase import create_client
-        supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
-        print("✅ Supabase configured for conversation logging.")
-    except Exception as e:
-        print(f"❌ Failed to initialize Supabase client: {e}")
-        USE_SUPABASE = False
+def _get_supabase_client():
+    global supabase_client, _supabase_initialized, USE_SUPABASE
+    if _supabase_initialized:
+        return supabase_client
+    
+    with _supabase_lock:
+        # Check again in case another thread initialized it while we waited
+        if _supabase_initialized:
+            return supabase_client
+            
+        if USE_SUPABASE:
+            try:
+                from supabase import create_client
+                supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+                print("✅ Supabase configured for conversation logging.")
+            except Exception as e:
+                print(f"❌ Failed to initialize Supabase client: {e}")
+                USE_SUPABASE = False
+        _supabase_initialized = True
+        return supabase_client
 
 # ── Local JSON Fallback Setup ────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
@@ -83,7 +97,7 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
         print(f"❌ Local JSON logging error: {e}")
 
     # 2. Supabase Logging (Async/Background)
-    if USE_SUPABASE and supabase_client:
+    if USE_SUPABASE:
         threading.Thread(
             target=_supabase_log_task,
             args=(phone, direction, text, msg_type, now),
@@ -93,11 +107,15 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
 
 def _supabase_log_task(phone, direction, text, msg_type, now):
     """Internal task to sync message to Supabase in background."""
+    client = _get_supabase_client()
+    if not client:
+        return
+        
     try:
         # Check current status for auto-restore logic
         current_status = None
         if direction == "inbound":
-            res = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
+            res = client.table('bot_conversations').select("status").eq("phone", phone).execute()
             if res.data:
                 current_status = res.data[0].get("status")
 
@@ -112,10 +130,10 @@ def _supabase_log_task(phone, direction, text, msg_type, now):
             upsert_data["status"] = "bot"
         
         # Update metadata
-        supabase_client.table('bot_conversations').upsert(upsert_data, on_conflict="phone").execute()
+        client.table('bot_conversations').upsert(upsert_data, on_conflict="phone").execute()
         
         # Log the message record
-        supabase_client.table('bot_messages').insert({
+        client.table('bot_messages').insert({
             "phone": phone,
             "direction": direction,
             "text": text,
@@ -133,9 +151,10 @@ def set_agent_mode(phone: str, active: bool):
     status = "agent" if active else "bot"
     now = datetime.now().isoformat()
     
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
-            supabase_client.table('bot_conversations').upsert({
+            client.table('bot_conversations').upsert({
                 "phone": phone,
                 "status": status,
                 "updated_at": now
@@ -155,23 +174,24 @@ def set_agent_mode(phone: str, active: bool):
 
 def get_conversations() -> list:
     """Get a summary list of all conversations, sorted by most recent."""
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
             # Query conversations order by updated_at, exclude 'archived'
-            convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).execute()
+            convs = client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).execute()
             result = []
             
             # To get last message efficiently, we could do a joined query, 
             # but for MVP we fetch the latest message for each.
             # (In production, a database view is better. We'll do a simple list here).
             for c in convs.data:
-                msgs_res = supabase_client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
+                msgs_res = client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
                 last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
                 
                 if len(last_msg) > 80:
                     last_msg = last_msg[:80] + "…"
                     
-                count_res = supabase_client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
+                count_res = client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
                 
                 result.append({
                     "phone": c["phone"],
@@ -208,13 +228,14 @@ def get_conversations() -> list:
 
 def get_conversation(phone: str) -> dict | None:
     """Get the full conversation history for a specific phone number."""
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
-            c_res = supabase_client.table('bot_conversations').select("*").eq("phone", phone).execute()
+            c_res = client.table('bot_conversations').select("*").eq("phone", phone).execute()
             if not c_res.data:
                 return None
                 
-            m_res = supabase_client.table('bot_messages').select("*").eq("phone", phone).order("created_at").execute()
+            m_res = client.table('bot_messages').select("*").eq("phone", phone).order("created_at").execute()
             
             # Transform to expected format
             messages = []
@@ -245,14 +266,15 @@ def get_agent_conversations() -> list:
 
 def delete_conversation(phone: str, permanent: bool = False):
     """Delete or hide a conversation from the dashboard."""
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
             if permanent:
                 # Hard delete (will cascade delete messages due to DB schema)
-                supabase_client.table('bot_conversations').delete().eq("phone", phone).execute()
+                client.table('bot_conversations').delete().eq("phone", phone).execute()
             else:
                 # Soft delete
-                supabase_client.table('bot_conversations').update({"status": "archived"}).eq("phone", phone).execute()
+                client.table('bot_conversations').update({"status": "archived"}).eq("phone", phone).execute()
             return
         except Exception as e:
             print(f"Supabase delete error: {e}")
@@ -270,16 +292,17 @@ def delete_conversation(phone: str, permanent: bool = False):
 
 def get_archived_conversations() -> list:
     """Get a list of archived (hidden) conversations."""
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
-            convs = supabase_client.table('bot_conversations').select("*").eq("status", "archived").order("updated_at", desc=True).execute()
+            convs = client.table('bot_conversations').select("*").eq("status", "archived").order("updated_at", desc=True).execute()
             result = []
             for c in convs.data:
-                msgs_res = supabase_client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
+                msgs_res = client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
                 last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
                 if len(last_msg) > 80:
                     last_msg = last_msg[:80] + "…"
-                count_res = supabase_client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
+                count_res = client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
                 result.append({
                     "phone": c["phone"],
                     "last_message": last_msg,
@@ -315,9 +338,10 @@ def get_archived_conversations() -> list:
 def restore_conversation(phone: str):
     """Restore an archived conversation back to active view (status: bot)."""
     now = datetime.now().isoformat()
-    if USE_SUPABASE and supabase_client:
+    client = _get_supabase_client()
+    if USE_SUPABASE and client:
         try:
-            supabase_client.table('bot_conversations').update({
+            client.table('bot_conversations').update({
                 "status": "bot",
                 "updated_at": now
             }).eq("phone", phone).execute()
