@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProAlto - Admin Dashboard</title>
+    <style>
+        :root {
+            --primary: #005A9C;
+            --primary-light: #E6F0F9;
+            --bg-color: #F4F7F6;
+            --text-main: #333333;
+            --text-muted: #777777;
+            --border: #DDDDDD;
+            --bot-bubble: #FFFFFF;
+            --user-bubble: #DCF8C6;
+            --agent-bubble: #E3F2FD;
+            --danger: #E74C3C;
+            --success: #2ECC71;
+            --warning: #F1C40F;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar - Conversation List */
+        .sidebar {
+            width: 350px;
+            background: #FFFFFF;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--primary);
+            color: white;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .conversation-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .conv-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .conv-item:hover {
+            background: var(--primary-light);
+        }
+
+        .conv-item.active {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+        }
+
+        .conv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .conv-phone {
+            font-weight: 600;
+        }
+
+        .conv-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .conv-status {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status-bot {
+            background: #EAEAEA;
+            color: #555;
+        }
+
+        .status-agent {
+            background: var(--danger);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .conv-preview {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Main Area - Chat View */
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #EFEFEF;
+        }
+
+        .chat-header {
+            padding: 15px 30px;
+            background: #FFFFFF;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: var(--text-muted);
+        }
+
+        /* Actions */
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 12px 25px;
+        }
+
+        /* Messages */
+        .chat-history {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-size: contain;
+        }
+
+        .message {
+            max-width: 65%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .msg-inbound {
+            align-self: flex-start;
+            background: var(--bot-bubble);
+            border-top-left-radius: 0;
+        }
+
+        .msg-outbound {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            border-top-right-radius: 0;
+        }
+
+        .msg-outbound.msg-agent {
+            background: var(--agent-bubble);
+        }
+
+        .msg-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        /* Input Area */
+        .chat-input-area {
+            padding: 20px 30px;
+            background: #F0F0F0;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .chat-input-area input:disabled {
+            background: #E0E0E0;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>ProAlto Monitor</h2>
+            <p>Control de Conversaciones</p>
+        </div>
+        <div class="conversation-list" id="convList">
+            <!-- Loading -->
+            <div style="padding: 20px; text-align: center; color: #777;">Cargando...</div>
+        </div>
+    </div>
+
+    <!-- Main Chat -->
+    <div class="main-chat" id="mainChat" style="display: none;">
+        <div class="chat-header">
+            <div>
+                <h3 id="currentPhone">+57 000 0000 000</h3>
+                <span id="currentStatusIndicator" class="conv-status"></span>
+            </div>
+            <div>
+                <button id="btnCloseAgent" class="btn btn-danger hidden" onclick="closeAgentSession()">Terminar Intervención</button>
+            </div>
+        </div>
+        
+        <div class="chat-history" id="chatHistory">
+            <!-- Messages go here -->
+        </div>
+
+        <div class="chat-input-area" id="chatInputArea">
+            <input type="text" id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)" disabled onkeypress="handleKeyPress(event)">
+            <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()">Enviar</button>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="main-chat" id="emptyState">
+        <div class="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <h2 style="margin-top: 15px; color: #888;">Selecciona una conversación</h2>
+        </div>
+    </div>
+
+    <script>
+        let currentActivePhone = null;
+        let lastFetchTime = 0;
+
+        function formatTime(isoString) {
+            if (!isoString) return "";
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + date.toLocaleDateString();
+        }
+
+        function scrollToBottom() {
+            const h = document.getElementById('chatHistory');
+            h.scrollTop = h.scrollHeight;
+        }
+
+        async function fetchList() {
+            try {
+                const res = await fetch('/admin/api/conversations');
+                const data = await res.json();
+                renderList(data);
+            } catch (err) {
+                console.error("Error fetching list:", err);
+            }
+        }
+
+        function renderList(conversations) {
+            const listEl = document.getElementById('convList');
+            if (conversations.length === 0) {
+                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">No hay conversaciones registradas</div>';
+                return;
+            }
+
+            // Save scroll pos
+            const scrollPos = listEl.scrollTop;
+            
+            let html = '';
+            conversations.forEach(c => {
+                const statusClass = c.status === 'agent' ? 'status-agent' : 'status-bot';
+                const statusLabel = c.status === 'agent' ? '🔴 ASESOR' : 'BOT';
+                const activeClass = currentActivePhone === c.phone ? 'active' : '';
+                
+                html += `
+                    <div class="conv-item ${activeClass}" onclick="selectConversation('${c.phone}')">
+                        <div class="conv-header">
+                            <span class="conv-phone">${c.phone}</span>
+                            <span class="conv-time">${formatTime(c.updated_at)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                            <span class="conv-preview">${c.last_message || '...'}</span>
+                            <span class="conv-status ${statusClass}">${statusLabel}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+            listEl.scrollTop = scrollPos;
+        }
+
+        async function selectConversation(phone) {
+            currentActivePhone = phone;
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('mainChat').style.display = 'flex';
+            document.getElementById('currentPhone').innerText = phone;
+            
+            // Re-render list to show active state
+            await fetchList();
+            
+            // Fetch history
+            await fetchHistory(phone);
+        }
+
+        async function fetchHistory(phone) {
+            if (!phone) return;
+            try {
+                const res = await fetch(`/admin/api/conversations/${phone}`);
+                const data = await res.json();
+                
+                const historyEl = document.getElementById('chatHistory');
+                let html = '';
+                
+                data.messages.forEach(m => {
+                    const isOut = m.direction === 'outbound';
+                    const isAgentMsg = isOut && m.text.includes('Asesor ProAlto');
+                    
+                    let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
+                    if (isAgentMsg) classes += ' msg-agent';
+                    
+                    // Basic formatting
+                    let text = m.text.replace(/\n/g, '<br>');
+                    
+                    html += `
+                        <div class="${classes}">
+                            <div>${text}</div>
+                            <div class="msg-meta">${formatTime(m.timestamp)}</div>
+                        </div>
+                    `;
+                });
+                
+                historyEl.innerHTML = html;
+                scrollToBottom();
+                
+                // Update UI based on status
+                updateInputState(data.status);
+                
+            } catch (err) {
+                console.error("Error fetching history:", err);
+            }
+        }
+
+        function updateInputState(status) {
+            const isAgent = status === 'agent';
+            document.getElementById('msgInput').disabled = !isAgent;
+            document.getElementById('btnSend').disabled = !isAgent;
+            
+            const btnClose = document.getElementById('btnCloseAgent');
+            const ind = document.getElementById('currentStatusIndicator');
+            
+            if (isAgent) {
+                btnClose.classList.remove('hidden');
+                ind.className = 'conv-status status-agent';
+                ind.innerText = '🔴 ESPERANDO ASESOR';
+                document.getElementById('msgInput').placeholder = "Modo Asesor Activo. Escribe acá tu respuesta...";
+            } else {
+                btnClose.classList.add('hidden');
+                ind.className = 'conv-status status-bot';
+                ind.innerText = 'CONTROLADO POR BOT';
+                document.getElementById('msgInput').placeholder = "Solo puedes escribir si el usuario escoge Hablar con Asesor";
+            }
+        }
+
+        async function sendMessage() {
+            if (!currentActivePhone) return;
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            input.disabled = true;
+            document.getElementById('btnSend').disabled = true;
+            
+            try {
+                const res = await fetch('/admin/api/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone: currentActivePhone, text: text })
+                });
+                
+                if (res.ok) {
+                    input.value = '';
+                    await fetchHistory(currentActivePhone);
+                    await fetchList();
+                } else {
+                    alert('Error al enviar el mensaje');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión');
+            } finally {
+                input.disabled = false;
+                document.getElementById('btnSend').disabled = false;
+                input.focus();
+            }
+        }
+
+        async function closeAgentSession() {
+            if (!currentActivePhone) return;
+            if (!confirm('¿Seguro quieres terminar la intervención y devolver el control al bot?')) return;
+            
+            try {
+                const res = await fetch(`/admin/api/close-agent/${currentActivePhone}`, {
+                    method: 'POST'
+                });
+                if (res.ok) {
+                    await fetchHistory(currentActivePhone);
+                    await fetchList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Auto polling
+        setInterval(async () => {
+            await fetchList();
+            if (currentActivePhone) {
+                await fetchHistory(currentActivePhone);
+            }
+        }, 5000);
+
+        // Initial fetch
+        fetchList();
+    </script>
+</body>
+</html>

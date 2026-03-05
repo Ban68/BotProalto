@@ -1,0 +1,21 @@
+{
+  "573001234567": {
+    "messages": [
+      {
+        "direction": "inbound",
+        "text": "Hola, necesito información",
+        "type": "text",
+        "timestamp": "2026-03-05T10:16:06.345217"
+      },
+      {
+        "direction": "outbound",
+        "text": "Bienvenido a ProAlto. Para continuar, necesitamos tu autorización para tratar tus datos personales según nuestra política de privacidad y la Ley 1581 de 2012. [Botones: Acepto, No Acepto]",
+        "type": "interactive",
+        "timestamp": "2026-03-05T10:16:08.156144"
+      }
+    ],
+    "status": "bot",
+    "updated_at": "2026-03-05T10:16:08.156144",
+    "created_at": "2026-03-05T10:16:06.345217"
+  }
+}

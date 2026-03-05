@@ -14,5 +14,9 @@ class Config:
     PORT = int(os.getenv("PORT", 5000))
     DEBUG = os.getenv("DEBUG", "True") == "True"
     
+    # Admin Panel Config
+    ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+    ADMIN_PASS = os.getenv("ADMIN_PASS", "proalto2024")
+    
     # Emergency Maintenance Mode: Set to True to disable DB calls
     MAINTENANCE_MODE = os.getenv("MAINTENANCE_MODE", "False") == "True"

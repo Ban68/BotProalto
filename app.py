@@ -1,6 +1,7 @@
 from flask import Flask
 from config import Config
 from src.webhook import webhook_bp
+from src.admin import admin_bp
 
 def create_app():
     app = Flask(__name__)
@@ -8,6 +9,7 @@ def create_app():
 
     # Register Blueprints
     app.register_blueprint(webhook_bp)
+    app.register_blueprint(admin_bp)
 
     @app.route('/privacy')
     def privacy():

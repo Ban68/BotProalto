@@ -1,5 +1,6 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
+from src.conversation_log import log_message, set_agent_mode
 
 # Simple in-memory storage for MVP (Use DB in production)
 # Structure: { "phone_number": { "status": "pending_consent" | "active" | "waiting_for_cedula", "last_interaction": timestamp } }
@@ -30,7 +31,14 @@ class FlowHandler:
                 user_sessions[user_phone] = {"status": "pending_consent"}
             
             user_state = user_sessions[user_phone]
-            
+
+            # ── Log inbound message ──────────────────────────────────
+            if msg_type == "text":
+                log_message(user_phone, "inbound", message["text"]["body"].strip(), "text")
+            elif msg_type == "interactive":
+                btn_title = message["interactive"].get("button_reply", {}).get("title", "")
+                log_message(user_phone, "inbound", btn_title, "button_reply")
+
             # Handle Text Messages
             if msg_type == "text":
                 text_body = message["text"]["body"].strip() # Keep case for Cedula
@@ -47,6 +55,15 @@ class FlowHandler:
 
     @staticmethod
     def process_text_input(user_phone, text, state):
+        # 0. Agent Mode — bot stays silent, let human advisor handle
+        if state["status"] == "agent_mode":
+            if text.lower() in ["salir", "cancelar", "volver"]:
+                state["status"] = "active"
+                set_agent_mode(user_phone, False)
+                WhatsAppService.send_message(user_phone, "Has salido del modo asesor. Escribe 'Hola' para ver el menú principal.")
+            # Otherwise do nothing — message was already logged above
+            return
+
         # 1. Check Consent Flow
         if state["status"] == "pending_consent":
             FlowHandler.send_habeas_data_prompt(user_phone)
@@ -189,7 +206,15 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
             
         elif btn_id == "menu_support":
-             WhatsAppService.send_message(user_phone, "¡Claro que sí! Puedes comunicarte directamente con nuestro asesor haciendo clic en el siguiente enlace: https://wa.me/573145248483")
+            state["status"] = "agent_mode"
+            set_agent_mode(user_phone, True)
+            WhatsAppService.send_message(
+                user_phone,
+                "👨‍💼 *Modo Asesor Activado*\n\n"
+                "Un asesor se conectará contigo en esta misma conversación. "
+                "Por favor espera, te responderemos lo más pronto posible.\n\n"
+                "_Si deseas volver al menú del bot, escribe *salir*._"
+            )
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)

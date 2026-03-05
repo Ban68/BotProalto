@@ -1,6 +1,7 @@
 import requests
 import json
 from config import Config
+from src.conversation_log import log_message
 
 class WhatsAppService:
     @staticmethod
@@ -23,6 +24,8 @@ class WhatsAppService:
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
+            # Log outbound message
+            log_message(to_number, "outbound", message_body, "text")
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error sending message: {e}")
@@ -66,6 +69,10 @@ class WhatsAppService:
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
+            # Log outbound interactive message
+            button_titles = [b["reply"]["title"] for b in action_buttons]
+            log_text = f"{body_text} [Botones: {', '.join(button_titles)}]"
+            log_message(to_number, "outbound", log_text, "interactive")
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error sending interactive message: {e}")
