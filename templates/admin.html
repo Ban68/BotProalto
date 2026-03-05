@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -59,6 +60,22 @@
         .sidebar-header p {
             font-size: 0.9rem;
             opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .search-container {
+            padding: 0 10px;
+            margin-bottom: -5px;
+            /* Offset for aesthetic spacing below header */
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+            font-size: 0.9rem;
         }
 
         .conversation-list {
@@ -194,7 +211,7 @@
             max-width: 65%;
             padding: 10px 15px;
             border-radius: 8px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
             position: relative;
             line-height: 1.4;
         }
@@ -246,9 +263,17 @@
         }
 
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         .hidden {
@@ -256,6 +281,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Sidebar -->
@@ -263,6 +289,9 @@
         <div class="sidebar-header">
             <h2>ProAlto Monitor</h2>
             <p>Control de Conversaciones</p>
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Buscar teléfono..." oninput="filterList()">
+            </div>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->
@@ -278,16 +307,21 @@
                 <span id="currentStatusIndicator" class="conv-status"></span>
             </div>
             <div>
-                <button id="btnCloseAgent" class="btn btn-danger hidden" onclick="closeAgentSession()">Terminar Intervención</button>
+                <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession()">Tomar
+                    Control</button>
+                <button id="btnCloseAgent" class="btn btn-danger hidden" onclick="closeAgentSession()">Terminar
+                    Intervención</button>
             </div>
         </div>
-        
+
         <div class="chat-history" id="chatHistory">
             <!-- Messages go here -->
         </div>
 
         <div class="chat-input-area" id="chatInputArea">
-            <input type="text" id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)" disabled onkeypress="handleKeyPress(event)">
+            <input type="text" id="msgInput"
+                placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)" disabled
+                onkeypress="handleKeyPress(event)">
             <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()">Enviar</button>
         </div>
     </div>
@@ -295,209 +329,294 @@
     <!-- Empty State -->
     <div class="main-chat" id="emptyState">
         <div class="empty-state">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <h2 style="margin-top: 15px; color: #888;">Selecciona una conversación</h2>
         </div>
     </div>
 
-    <script>
-        let currentActivePhone = null;
-        let lastFetchTime = 0;
+    let currentActivePhone = null;
+    let lastFetchTime = 0;
+    let knownAgentModes = {}; // Map to track beep notifications
 
-        function formatTime(isoString) {
-            if (!isoString) return "";
-            const date = new Date(isoString);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + date.toLocaleDateString();
-        }
+    function playBeep() {
+    try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const current = ctx.currentTime;
+    // Double chime
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
 
-        function scrollToBottom() {
-            const h = document.getElementById('chatHistory');
-            h.scrollTop = h.scrollHeight;
-        }
+    // First chime
+    osc.frequency.setValueAtTime(880, current);
+    gain.gain.setValueAtTime(0.3, current);
+    gain.gain.exponentialRampToValueAtTime(0.01, current + 0.2);
 
-        async function fetchList() {
-            try {
-                const res = await fetch('/admin/api/conversations');
-                const data = await res.json();
-                renderList(data);
-            } catch (err) {
-                console.error("Error fetching list:", err);
-            }
-        }
+    // Second chime
+    osc.frequency.setValueAtTime(1046, current + 0.2);
+    gain.gain.setValueAtTime(0.3, current + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.01, current + 0.5);
 
-        function renderList(conversations) {
-            const listEl = document.getElementById('convList');
-            if (conversations.length === 0) {
-                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">No hay conversaciones registradas</div>';
-                return;
-            }
+    osc.start(current);
+    osc.stop(current + 0.5);
+    } catch (e) {
+    console.error("Audio beep failed", e);
+    }
+    }
 
-            // Save scroll pos
-            const scrollPos = listEl.scrollTop;
-            
-            let html = '';
-            conversations.forEach(c => {
-                const statusClass = c.status === 'agent' ? 'status-agent' : 'status-bot';
-                const statusLabel = c.status === 'agent' ? '🔴 ASESOR' : 'BOT';
-                const activeClass = currentActivePhone === c.phone ? 'active' : '';
-                
-                html += `
-                    <div class="conv-item ${activeClass}" onclick="selectConversation('${c.phone}')">
-                        <div class="conv-header">
-                            <span class="conv-phone">${c.phone}</span>
-                            <span class="conv-time">${formatTime(c.updated_at)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                            <span class="conv-preview">${c.last_message || '...'}</span>
-                            <span class="conv-status ${statusClass}">${statusLabel}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            listEl.innerHTML = html;
-            listEl.scrollTop = scrollPos;
-        }
+    function formatTime(isoString) {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' - ' + date.toLocaleDateString();
+    }
 
-        async function selectConversation(phone) {
-            currentActivePhone = phone;
-            document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('mainChat').style.display = 'flex';
-            document.getElementById('currentPhone').innerText = phone;
-            
-            // Re-render list to show active state
-            await fetchList();
-            
-            // Fetch history
-            await fetchHistory(phone);
-        }
+    function scrollToBottom() {
+    const h = document.getElementById('chatHistory');
+    h.scrollTop = h.scrollHeight;
+    }
 
-        async function fetchHistory(phone) {
-            if (!phone) return;
-            try {
-                const res = await fetch(`/admin/api/conversations/${phone}`);
-                const data = await res.json();
-                
-                const historyEl = document.getElementById('chatHistory');
-                let html = '';
-                
-                data.messages.forEach(m => {
-                    const isOut = m.direction === 'outbound';
-                    const isAgentMsg = isOut && m.text.includes('Asesor ProAlto');
-                    
-                    let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
-                    if (isAgentMsg) classes += ' msg-agent';
-                    
-                    // Basic formatting
-                    let text = m.text.replace(/\n/g, '<br>');
-                    
-                    html += `
-                        <div class="${classes}">
-                            <div>${text}</div>
-                            <div class="msg-meta">${formatTime(m.timestamp)}</div>
-                        </div>
-                    `;
-                });
-                
-                historyEl.innerHTML = html;
-                scrollToBottom();
-                
-                // Update UI based on status
-                updateInputState(data.status);
-                
-            } catch (err) {
-                console.error("Error fetching history:", err);
-            }
-        }
+    async function fetchList() {
+    try {
+    const res = await fetch('/admin/api/conversations');
+    const data = await res.json();
+    renderList(data);
+    } catch (err) {
+    console.error("Error fetching list:", err);
+    }
+    }
 
-        function updateInputState(status) {
-            const isAgent = status === 'agent';
-            document.getElementById('msgInput').disabled = !isAgent;
-            document.getElementById('btnSend').disabled = !isAgent;
-            
-            const btnClose = document.getElementById('btnCloseAgent');
-            const ind = document.getElementById('currentStatusIndicator');
-            
-            if (isAgent) {
-                btnClose.classList.remove('hidden');
-                ind.className = 'conv-status status-agent';
-                ind.innerText = '🔴 ESPERANDO ASESOR';
-                document.getElementById('msgInput').placeholder = "Modo Asesor Activo. Escribe acá tu respuesta...";
-            } else {
-                btnClose.classList.add('hidden');
-                ind.className = 'conv-status status-bot';
-                ind.innerText = 'CONTROLADO POR BOT';
-                document.getElementById('msgInput').placeholder = "Solo puedes escribir si el usuario escoge Hablar con Asesor";
-            }
-        }
+    function renderList(conversations) {
+    const listEl = document.getElementById('convList');
+    if (conversations.length === 0) {
+    listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">No hay conversaciones registradas
+    </div>';
+    return;
+    }
 
-        async function sendMessage() {
-            if (!currentActivePhone) return;
-            const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            input.disabled = true;
-            document.getElementById('btnSend').disabled = true;
-            
-            try {
-                const res = await fetch('/admin/api/send', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ phone: currentActivePhone, text: text })
-                });
-                
-                if (res.ok) {
-                    input.value = '';
-                    await fetchHistory(currentActivePhone);
-                    await fetchList();
-                } else {
-                    alert('Error al enviar el mensaje');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Error de conexión');
-            } finally {
-                input.disabled = false;
-                document.getElementById('btnSend').disabled = false;
-                input.focus();
-            }
-        }
+    // Save scroll pos
+    const scrollPos = listEl.scrollTop;
 
-        async function closeAgentSession() {
-            if (!currentActivePhone) return;
-            if (!confirm('¿Seguro quieres terminar la intervención y devolver el control al bot?')) return;
-            
-            try {
-                const res = await fetch(`/admin/api/close-agent/${currentActivePhone}`, {
-                    method: 'POST'
-                });
-                if (res.ok) {
-                    await fetchHistory(currentActivePhone);
-                    await fetchList();
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
+    let html = '';
+    let newAgentDetected = false;
 
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        }
+    conversations.forEach(c => {
+    const statusClass = c.status === 'agent' ? 'status-agent' : 'status-bot';
+    const statusLabel = c.status === 'agent' ? '🔴 ASESOR' : 'BOT';
+    const activeClass = currentActivePhone === c.phone ? 'active' : '';
 
-        // Auto polling
-        setInterval(async () => {
-            await fetchList();
-            if (currentActivePhone) {
-                await fetchHistory(currentActivePhone);
-            }
-        }, 5000);
+    // Notification Logic
+    if (c.status === 'agent' && !knownAgentModes[c.phone]) {
+    // Only beep if the object was already populated (not on initial load spam)
+    if (Object.keys(knownAgentModes).length > 0) {
+    newAgentDetected = true;
+    }
+    knownAgentModes[c.phone] = true;
+    } else if (c.status !== 'agent' && knownAgentModes[c.phone]) {
+    knownAgentModes[c.phone] = false;
+    }
 
-        // Initial fetch
-        fetchList();
+    html += `
+    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" onclick="selectConversation('${c.phone}')">
+        <div class="conv-header">
+            <span class="conv-phone">${c.phone}</span>
+            <span class="conv-time">${formatTime(c.updated_at)}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+            <span class="conv-preview">${c.last_message || '...'}</span>
+            <span class="conv-status ${statusClass}">${statusLabel}</span>
+        </div>
+    </div>
+    `;
+    });
+    listEl.innerHTML = html;
+    listEl.scrollTop = scrollPos;
+
+    if (newAgentDetected) {
+    playBeep();
+    }
+
+    filterList(); // Re-apply filter if any
+    }
+
+    function filterList() {
+    const val = document.getElementById('searchInput').value.toLowerCase();
+    const items = document.querySelectorAll('.conv-item');
+    items.forEach(item => {
+    const phone = item.querySelector('.conv-phone').innerText.toLowerCase();
+    if (phone.includes(val)) {
+    item.style.display = 'flex';
+    } else {
+    item.style.display = 'none';
+    }
+    });
+    }
+
+    async function selectConversation(phone) {
+    currentActivePhone = phone;
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('mainChat').style.display = 'flex';
+    document.getElementById('currentPhone').innerText = phone;
+
+    // Re-render list to show active state
+    await fetchList();
+
+    // Fetch history
+    await fetchHistory(phone);
+    }
+
+    async function fetchHistory(phone) {
+    if (!phone) return;
+    try {
+    const res = await fetch(`/admin/api/conversations/${phone}`);
+    const data = await res.json();
+
+    const historyEl = document.getElementById('chatHistory');
+    let html = '';
+
+    data.messages.forEach(m => {
+    const isOut = m.direction === 'outbound';
+    const isAgentMsg = isOut && m.text.includes('Asesor ProAlto');
+
+    let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
+    if (isAgentMsg) classes += ' msg-agent';
+
+    // Basic formatting
+    let text = m.text.replace(/\n/g, '<br>');
+
+    html += `
+    <div class="${classes}">
+        <div>${text}</div>
+        <div class="msg-meta">${formatTime(m.timestamp)}</div>
+    </div>
+    `;
+    });
+
+    historyEl.innerHTML = html;
+    scrollToBottom();
+
+    // Update UI based on status
+    updateInputState(data.status);
+
+    } catch (err) {
+    console.error("Error fetching history:", err);
+    }
+    }
+
+    function updateInputState(status) {
+    const isAgent = status === 'agent';
+    document.getElementById('msgInput').disabled = !isAgent;
+    document.getElementById('btnSend').disabled = !isAgent;
+
+    const btnClose = document.getElementById('btnCloseAgent');
+    const btnForce = document.getElementById('btnForceAgent');
+    const ind = document.getElementById('currentStatusIndicator');
+
+    if (isAgent) {
+    btnClose.classList.remove('hidden');
+    btnForce.classList.add('hidden');
+    ind.className = 'conv-status status-agent';
+    ind.innerText = '🔴 ESPERANDO ASESOR';
+    document.getElementById('msgInput').placeholder = "Modo Asesor Activo. Escribe acá tu respuesta...";
+    } else {
+    btnClose.classList.add('hidden');
+    btnForce.classList.remove('hidden');
+    ind.className = 'conv-status status-bot';
+    ind.innerText = 'CONTROLADO POR BOT';
+    document.getElementById('msgInput').placeholder = "Solo puedes escribir si tomas el control (ver botón arriba)";
+    }
+    }
+
+    async function sendMessage() {
+    if (!currentActivePhone) return;
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.disabled = true;
+    document.getElementById('btnSend').disabled = true;
+
+    try {
+    const res = await fetch('/admin/api/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ phone: currentActivePhone, text: text })
+    });
+
+    if (res.ok) {
+    input.value = '';
+    await fetchHistory(currentActivePhone);
+    await fetchList();
+    } else {
+    alert('Error al enviar el mensaje');
+    }
+    } catch (e) {
+    console.error(e);
+    alert('Error de conexión');
+    } finally {
+    input.disabled = false;
+    document.getElementById('btnSend').disabled = false;
+    input.focus();
+    }
+    }
+
+    async function forceAgentSession() {
+    if (!currentActivePhone) return;
+    if (!confirm('¿Seguro quieres interrumpir al bot y tomar el control de la conversación?')) return;
+
+    try {
+    const res = await fetch(`/admin/api/force-agent/${currentActivePhone}`, {
+    method: 'POST'
+    });
+    if (res.ok) {
+    await fetchHistory(currentActivePhone);
+    await fetchList();
+    }
+    } catch (e) {
+    console.error(e);
+    }
+    }
+
+    async function closeAgentSession() {
+    if (!currentActivePhone) return;
+    if (!confirm('¿Seguro quieres terminar la intervención y devolver el control al bot?')) return;
+
+    try {
+    const res = await fetch(`/admin/api/close-agent/${currentActivePhone}`, {
+    method: 'POST'
+    });
+    if (res.ok) {
+    await fetchHistory(currentActivePhone);
+    await fetchList();
+    }
+    } catch (e) {
+    console.error(e);
+    }
+    }
+
+    function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+    sendMessage();
+    }
+    }
+
+    // Auto polling
+    setInterval(async () => {
+    await fetchList();
+    if (currentActivePhone) {
+    await fetchHistory(currentActivePhone);
+    }
+    }, 5000);
+
+    // Initial fetch
+    fetchList();
     </script>
 </body>
+
 </html>

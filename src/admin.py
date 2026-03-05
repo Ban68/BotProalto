@@ -110,3 +110,21 @@ def api_close_agent(phone):
     )
 
     return jsonify({"status": "closed"})
+
+
+@admin_bp.route('/admin/api/force-agent/<phone>', methods=['POST'])
+@requires_auth
+def api_force_agent(phone):
+    """Force agent mode from the dashboard to take over a conversation."""
+    set_agent_mode(phone, True)
+
+    # Update in-memory session too
+    if phone in user_sessions:
+        user_sessions[phone]["status"] = "agent_mode"
+
+    WhatsAppService.send_message(
+        phone,
+        "👨‍💼 Un asesor ha tomado el control de esta conversación. En un momento te escribiremos."
+    )
+
+    return jsonify({"status": "forced"})
