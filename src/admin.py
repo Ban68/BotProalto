@@ -14,7 +14,7 @@ from src.conversation_log import (
     get_archived_conversations, restore_conversation
 )
 from src.services import WhatsAppService
-from src.flows import user_sessions
+# from src.flows import user_sessions  # Moved inside functions to avoid circularity
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates')
 
@@ -102,6 +102,7 @@ def api_close_agent(phone):
     set_agent_mode(phone, False)
 
     # Update in-memory session too
+    from src.flows import user_sessions
     if phone in user_sessions:
         user_sessions[phone]["status"] = "active"
     else:
@@ -126,6 +127,7 @@ def api_force_agent(phone):
     set_agent_mode(phone, True)
 
     # Update in-memory session too
+    from src.flows import user_sessions
     if phone in user_sessions:
         user_sessions[phone]["status"] = "agent_mode"
     else:

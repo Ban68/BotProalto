@@ -10,6 +10,10 @@ def create_app():
     # Register Blueprints
     app.register_blueprint(webhook_bp)
     app.register_blueprint(admin_bp)
+    
+    @app.route('/')
+    def index():
+        return "ProAlto Bot is running 🚀", 200
 
     @app.route('/privacy')
     def privacy():
