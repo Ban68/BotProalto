@@ -48,16 +48,33 @@ def _save_json_conversations(data: dict):
 # ── Core Functions (Abstracted) ──────────────────────────────────────
 
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
-    """Log a single message to the conversation history."""
+    """Log a single message to the conversation history.
+    
+    If the conversation was archived and an inbound message arrives,
+    it is automatically restored to 'bot' status so it reappears in Activas.
+    """
     now = datetime.now().isoformat()
     
     if USE_SUPABASE and supabase_client:
         try:
+            # Check current status to detect if we need to auto-restore
+            current_status = "bot"
+            if direction == "inbound":
+                check = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
+                if check.data:
+                    current_status = check.data[0].get("status", "bot")
+
+            # If was archived and user writes again → restore to bot
+            new_status = "bot" if (direction == "inbound" and current_status == "archived") else None
+
+            upsert_data = {"phone": phone, "updated_at": now}
+            if new_status:
+                upsert_data["status"] = new_status
+
             # Upsert into bot_conversations to ensure phone exists and update updated_at
-            supabase_client.table('bot_conversations').upsert({
-                "phone": phone,
-                "updated_at": now
-            }, on_conflict="phone").execute()
+            supabase_client.table('bot_conversations').upsert(
+                upsert_data, on_conflict="phone"
+            ).execute()
             
             # Insert message
             supabase_client.table('bot_messages').insert({
@@ -69,7 +86,6 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
             return
         except Exception as e:
             print(f"Supabase logging error: {e}")
-            # Fallback to JSON below if there's an error... (optional, we'll just fail gracefully)
             pass
 
     # JSON Fallback
@@ -82,6 +98,11 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
                 "updated_at": "",
                 "created_at": now,
             }
+        
+        # Auto-restore archived if new inbound message arrives
+        if direction == "inbound" and conversations[phone].get("status") == "archived":
+            conversations[phone]["status"] = "bot"
+
         conversations[phone]["messages"].append({
             "direction": direction,
             "text": text,
@@ -90,6 +111,7 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
         })
         conversations[phone]["updated_at"] = now
         _save_json_conversations(conversations)
+
 
 
 def set_agent_mode(phone: str, active: bool):
