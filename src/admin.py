@@ -133,7 +133,7 @@ def api_force_agent(phone):
 
     WhatsAppService.send_message(
         phone,
-        f"👨‍💼 *{advisor_name}* ha tomado el control de esta conversación. En un momento te escribiremos."
+        f"¡Hola! Soy *{advisor_name}* de ProAlto. 👋 He tomado tu caso para darte una atención personalizada. Dame un momento mientras reviso tu información y ya mismo te escribo."
     )
 
     return jsonify({"status": "forced"})
