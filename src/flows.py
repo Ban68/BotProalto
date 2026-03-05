@@ -152,15 +152,27 @@ class FlowHandler:
                     nombre = prestamos[0].get("nombre_completo", "")
                     response_msg = f"💰 *Consulta de Saldo*\n\n👤 *Cliente:* {nombre}\n"
 
-                    for i, p in enumerate(prestamos, 1):
+                    for p in prestamos:
                         saldo = p.get("saldo_actual", 0)
                         estado = p.get("estado_del_prestamo", "")
                         id_prestamo = p.get("id_prestamo", "")
+                        cuotas = p.get("cuotas_restantes", 0)
+                        
+                        # Handle last payment date representation properly
+                        ultima_fecha = p.get("ultima_fecha_pago")
+                        if not ultima_fecha:
+                            ultima_fecha_str = "No registra"
+                        elif hasattr(ultima_fecha, 'strftime'):
+                            ultima_fecha_str = ultima_fecha.strftime('%Y-%m-%d')
+                        else:
+                            ultima_fecha_str = str(ultima_fecha)
+
                         response_msg += (
-                            f"\n📋 *Préstamo #{i}:*\n"
-                            f"🔢 *ID:* {id_prestamo}\n"
+                            f"\n🔢 *ID:* {id_prestamo}\n"
                             f"💵 *Saldo:* ${saldo:,.0f}\n"
                             f"📌 *Estado:* {estado}\n"
+                            f"📊 *Cuotas restantes:* {cuotas}\n"
+                            f"📅 *Última fecha de pago:* {ultima_fecha_str}\n"
                         )
 
                     WhatsAppService.send_message(user_phone, response_msg)

@@ -52,7 +52,7 @@ def get_solicitud(request):
         cur.execute("SET statement_timeout =10000")
         if tipo == "saldo":
             cur.execute(
-                "SELECT cedula, id_prestamo, nombre_completo, saldo_actual, estado_del_prestamo FROM vista_consulta_saldo WHERE cedula = %s",
+                "SELECT cedula, id_prestamo, nombre_completo, saldo_actual, estado_del_prestamo, cuotas_restantes, ultima_fecha_pago FROM vista_consulta_saldo WHERE cedula = %s",
                 (cedula,),
             )
             records = cur.fetchall()
@@ -66,6 +66,8 @@ def get_solicitud(request):
                         "nombre_completo": r[2] or "",
                         "saldo_actual": float(r[3]) if r[3] else 0,
                         "estado_del_prestamo": r[4] or "",
+                        "cuotas_restantes": r[5] if r[5] is not None else 0,
+                        "ultima_fecha_pago": str(r[6]) if r[6] else "",
                     })
                 return jsonify({"found": True, "prestamos": prestamos}), 200
             else:
