@@ -28,7 +28,19 @@ class FlowHandler:
             
             # Initialize session if new
             if user_phone not in user_sessions:
-                user_sessions[user_phone] = {"status": "pending_consent"}
+                from src.conversation_log import get_conversation
+                conv = get_conversation(user_phone)
+                
+                init_status = "pending_consent"
+                if conv:
+                    db_status = conv.get("status")
+                    if db_status == "agent":
+                        init_status = "agent_mode"
+                    elif len(conv.get("messages", [])) > 0:
+                        # User has talked to us before, skip consent
+                        init_status = "active"
+                
+                user_sessions[user_phone] = {"status": init_status}
             
             user_state = user_sessions[user_phone]
 

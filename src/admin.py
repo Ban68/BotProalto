@@ -103,6 +103,8 @@ def api_close_agent(phone):
     # Update in-memory session too
     if phone in user_sessions:
         user_sessions[phone]["status"] = "active"
+    else:
+        user_sessions[phone] = {"status": "active"}
 
     WhatsAppService.send_message(
         phone,
@@ -122,6 +124,8 @@ def api_force_agent(phone):
     # Update in-memory session too
     if phone in user_sessions:
         user_sessions[phone]["status"] = "agent_mode"
+    else:
+        user_sessions[phone] = {"status": "agent_mode"}
 
     WhatsAppService.send_message(
         phone,
