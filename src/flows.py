@@ -240,7 +240,7 @@ class FlowHandler:
 
         elif btn_id == "menu_credito":
             state["status"] = "active"
-            WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://docs.google.com/forms/d/e/1FAIpQLScJk7mBcnL76Hr3fqk23_tuYkghLMiio8_YkipFxzj25ieUlg/viewform")
+            WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id == "menu_saldo":
             state["status"] = "waiting_for_cedula_saldo"
