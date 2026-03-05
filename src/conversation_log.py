@@ -50,67 +50,81 @@ def _save_json_conversations(data: dict):
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
     """Log a single message to the conversation history.
     
-    If the conversation was archived and an inbound message arrives,
-    it is automatically restored to 'bot' status so it reappears in Activas.
+    Synchronously logs to local JSON for speed and reliability,
+    then kicks off a background thread for Supabase syncing.
     """
     now = datetime.now().isoformat()
     
-    if USE_SUPABASE and supabase_client:
-        try:
-            # Check current status to detect if we need to auto-restore
-            current_status = "bot"
-            if direction == "inbound":
-                check = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
-                if check.data:
-                    current_status = check.data[0].get("status", "bot")
-
-            # If was archived and user writes again → restore to bot
-            new_status = "bot" if (direction == "inbound" and current_status == "archived") else None
-
-            upsert_data = {"phone": phone, "updated_at": now}
-            if new_status:
-                upsert_data["status"] = new_status
-
-            # Upsert into bot_conversations to ensure phone exists and update updated_at
-            supabase_client.table('bot_conversations').upsert(
-                upsert_data, on_conflict="phone"
-            ).execute()
+    # 1. Local JSON Logging (Fast & Reliable)
+    try:
+        with _json_lock:
+            conversations = _load_json_conversations()
+            if phone not in conversations:
+                conversations[phone] = {
+                    "messages": [],
+                    "status": "bot",
+                    "updated_at": "",
+                    "created_at": now,
+                }
             
-            # Insert message
-            supabase_client.table('bot_messages').insert({
-                "phone": phone,
+            # Auto-restore archived if new inbound message arrives
+            if direction == "inbound" and conversations[phone].get("status") == "archived":
+                conversations[phone]["status"] = "bot"
+
+            conversations[phone]["messages"].append({
                 "direction": direction,
                 "text": text,
-                "msg_type": msg_type
-            }).execute()
-            return
-        except Exception as e:
-            print(f"Supabase logging error: {e}")
-            pass
+                "type": msg_type,
+                "timestamp": now,
+            })
+            conversations[phone]["updated_at"] = now
+            _save_json_conversations(conversations)
+    except Exception as e:
+        print(f"❌ Local JSON logging error: {e}")
 
-    # JSON Fallback
-    with _json_lock:
-        conversations = _load_json_conversations()
-        if phone not in conversations:
-            conversations[phone] = {
-                "messages": [],
-                "status": "bot",
-                "updated_at": "",
-                "created_at": now,
-            }
+    # 2. Supabase Logging (Async/Background)
+    if USE_SUPABASE and supabase_client:
+        threading.Thread(
+            target=_supabase_log_task,
+            args=(phone, direction, text, msg_type, now),
+            daemon=True
+        ).start()
+
+
+def _supabase_log_task(phone, direction, text, msg_type, now):
+    """Internal task to sync message to Supabase in background."""
+    try:
+        # Check current status for auto-restore logic
+        current_status = None
+        if direction == "inbound":
+            res = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
+            if res.data:
+                current_status = res.data[0].get("status")
+
+        upsert_data = {"phone": phone, "updated_at": now}
         
-        # Auto-restore archived if new inbound message arrives
-        if direction == "inbound" and conversations[phone].get("status") == "archived":
-            conversations[phone]["status"] = "bot"
-
-        conversations[phone]["messages"].append({
+        # Logic for maintaining/restoring status
+        if current_status is None:
+            # New conversation
+            upsert_data["status"] = "bot"
+        elif current_status == "archived" and direction == "inbound":
+            # Auto-restore
+            upsert_data["status"] = "bot"
+        
+        # Update metadata
+        supabase_client.table('bot_conversations').upsert(upsert_data, on_conflict="phone").execute()
+        
+        # Log the message record
+        supabase_client.table('bot_messages').insert({
+            "phone": phone,
             "direction": direction,
             "text": text,
-            "type": msg_type,
-            "timestamp": now,
-        })
-        conversations[phone]["updated_at"] = now
-        _save_json_conversations(conversations)
+            "msg_type": msg_type,
+            "created_at": now
+        }).execute()
+    except Exception as e:
+        print(f"⚠️ Supabase background logging error: {e}")
+
 
 
 
