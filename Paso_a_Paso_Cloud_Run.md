@@ -52,10 +52,10 @@ def get_solicitud(request):
             user=os.environ.get("DB_USER"),
             password=os.environ.get("DB_PASSWORD"),
             port=os.environ.get("DB_PORT", "5432"),
-            connect_timeout=3
+            connect_timeout=10
         )
         cur = conn.cursor()
-        cur.execute("SET statement_timeout = 5000")
+        cur.execute("SET statement_timeout = 10000")
         
         # Consulta a la vista de solicitudes
         query = """
