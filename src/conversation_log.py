@@ -1,28 +1,36 @@
 """
 Conversation Logger for ProAlto WhatsApp Bot.
-Stores all messages (inbound/outbound) in a JSON file
-and provides query methods for the admin dashboard.
+Provides query methods for the admin dashboard.
+Hybrid storage: uses Supabase if configured, otherwise falls back to a local JSON file.
 """
 import json
 import os
 import threading
 from datetime import datetime
+from config import Config
 
-# Path to the JSON file that stores conversations
+# ── Supabase Setup ───────────────────────────────────────────────────
+USE_SUPABASE = bool(Config.SUPABASE_URL and Config.SUPABASE_KEY)
+supabase_client = None
+
+if USE_SUPABASE:
+    try:
+        from supabase import create_client
+        supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+        print("✅ Supabase configured for conversation logging.")
+    except Exception as e:
+        print(f"❌ Failed to initialize Supabase client: {e}")
+        USE_SUPABASE = False
+
+# ── Local JSON Fallback Setup ────────────────────────────────────────
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 CONVERSATIONS_FILE = os.path.join(DATA_DIR, "conversations.json")
-
-# Thread lock for safe concurrent file access
-_lock = threading.Lock()
-
+_json_lock = threading.Lock()
 
 def _ensure_data_dir():
-    """Create data directory if it doesn't exist."""
     os.makedirs(DATA_DIR, exist_ok=True)
 
-
-def _load_conversations() -> dict:
-    """Load conversations from the JSON file."""
+def _load_json_conversations() -> dict:
     _ensure_data_dir()
     if not os.path.exists(CONVERSATIONS_FILE):
         return {}
@@ -32,36 +40,48 @@ def _load_conversations() -> dict:
     except (json.JSONDecodeError, IOError):
         return {}
 
-
-def _save_conversations(data: dict):
-    """Save conversations to the JSON file."""
+def _save_json_conversations(data: dict):
     _ensure_data_dir()
     with open(CONVERSATIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+# ── Core Functions (Abstracted) ──────────────────────────────────────
 
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
-    """
-    Log a single message to the conversation history.
+    """Log a single message to the conversation history."""
+    now = datetime.now().isoformat()
+    
+    if USE_SUPABASE and supabase_client:
+        try:
+            # Upsert into bot_conversations to ensure phone exists and update updated_at
+            supabase_client.table('bot_conversations').upsert({
+                "phone": phone,
+                "updated_at": now
+            }, on_conflict="phone").execute()
+            
+            # Insert message
+            supabase_client.table('bot_messages').insert({
+                "phone": phone,
+                "direction": direction,
+                "text": text,
+                "msg_type": msg_type
+            }).execute()
+            return
+        except Exception as e:
+            print(f"Supabase logging error: {e}")
+            # Fallback to JSON below if there's an error... (optional, we'll just fail gracefully)
+            pass
 
-    Args:
-        phone: User's phone number
-        direction: "inbound" (user→bot) or "outbound" (bot→user)
-        text: Message content
-        msg_type: Message type (text, interactive, button_reply, etc.)
-    """
-    with _lock:
-        conversations = _load_conversations()
-
+    # JSON Fallback
+    with _json_lock:
+        conversations = _load_json_conversations()
         if phone not in conversations:
             conversations[phone] = {
                 "messages": [],
-                "status": "bot",  # "bot" or "agent"
+                "status": "bot",
                 "updated_at": "",
-                "created_at": datetime.now().isoformat(),
+                "created_at": now,
             }
-
-        now = datetime.now().isoformat()
         conversations[phone]["messages"].append({
             "direction": direction,
             "text": text,
@@ -69,43 +89,73 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
             "timestamp": now,
         })
         conversations[phone]["updated_at"] = now
-
-        _save_conversations(conversations)
+        _save_json_conversations(conversations)
 
 
 def set_agent_mode(phone: str, active: bool):
-    """
-    Toggle agent mode for a conversation.
+    """Toggle agent mode for a conversation."""
+    status = "agent" if active else "bot"
+    now = datetime.now().isoformat()
+    
+    if USE_SUPABASE and supabase_client:
+        try:
+            supabase_client.table('bot_conversations').upsert({
+                "phone": phone,
+                "status": status,
+                "updated_at": now
+            }, on_conflict="phone").execute()
+            return
+        except Exception as e:
+            print(f"Supabase agent mode error: {e}")
 
-    Args:
-        phone: User's phone number
-        active: True to enable agent mode, False to return to bot
-    """
-    with _lock:
-        conversations = _load_conversations()
+    # JSON Fallback
+    with _json_lock:
+        conversations = _load_json_conversations()
         if phone in conversations:
-            conversations[phone]["status"] = "agent" if active else "bot"
-            conversations[phone]["updated_at"] = datetime.now().isoformat()
-            _save_conversations(conversations)
+            conversations[phone]["status"] = status
+            conversations[phone]["updated_at"] = now
+            _save_json_conversations(conversations)
 
 
 def get_conversations() -> list:
-    """
-    Get a summary list of all conversations, sorted by most recent.
+    """Get a summary list of all conversations, sorted by most recent."""
+    if USE_SUPABASE and supabase_client:
+        try:
+            # Query conversations order by updated_at
+            convs = supabase_client.table('bot_conversations').select("*").order("updated_at", desc=True).execute()
+            result = []
+            
+            # To get last message efficiently, we could do a joined query, 
+            # but for MVP we fetch the latest message for each.
+            # (In production, a database view is better. We'll do a simple list here).
+            for c in convs.data:
+                msgs_res = supabase_client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
+                last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
+                
+                if len(last_msg) > 80:
+                    last_msg = last_msg[:80] + "…"
+                    
+                count_res = supabase_client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
+                
+                result.append({
+                    "phone": c["phone"],
+                    "last_message": last_msg,
+                    "status": c.get("status", "bot"),
+                    "updated_at": c.get("updated_at", ""),
+                    "message_count": count_res.count if count_res.count else 0,
+                })
+            return result
+        except Exception as e:
+            print(f"Supabase get_conversations error: {e}")
 
-    Returns:
-        List of dicts: [{phone, last_message, status, updated_at, message_count}, ...]
-    """
-    conversations = _load_conversations()
+    # JSON Fallback
+    conversations = _load_json_conversations()
     result = []
-
     for phone, data in conversations.items():
         messages = data.get("messages", [])
         last_msg = messages[-1]["text"] if messages else ""
-        # Truncate long messages for the list view
         if len(last_msg) > 80:
             last_msg = last_msg[:80] + "…"
-
         result.append({
             "phone": phone,
             "last_message": last_msg,
@@ -113,28 +163,43 @@ def get_conversations() -> list:
             "updated_at": data.get("updated_at", ""),
             "message_count": len(messages),
         })
-
-    # Sort by most recent activity
     result.sort(key=lambda x: x["updated_at"], reverse=True)
     return result
 
 
 def get_conversation(phone: str) -> dict | None:
-    """
-    Get the full conversation history for a specific phone number.
+    """Get the full conversation history for a specific phone number."""
+    if USE_SUPABASE and supabase_client:
+        try:
+            c_res = supabase_client.table('bot_conversations').select("*").eq("phone", phone).execute()
+            if not c_res.data:
+                return None
+                
+            m_res = supabase_client.table('bot_messages').select("*").eq("phone", phone).order("created_at").execute()
+            
+            # Transform to expected format
+            messages = []
+            for m in m_res.data:
+                messages.append({
+                    "direction": m["direction"],
+                    "text": m["text"],
+                    "type": m["msg_type"],
+                    "timestamp": m["created_at"]
+                })
+                
+            return {
+                "status": c_res.data[0].get("status", "bot"),
+                "updated_at": c_res.data[0].get("updated_at", ""),
+                "messages": messages
+            }
+        except Exception as e:
+            print(f"Supabase get_conversation error: {e}")
 
-    Returns:
-        Dict with messages list, status, timestamps — or None if not found.
-    """
-    conversations = _load_conversations()
+    # JSON Fallback
+    conversations = _load_json_conversations()
     return conversations.get(phone)
 
 
 def get_agent_conversations() -> list:
-    """
-    Get only conversations currently in agent mode.
-
-    Returns:
-        Same format as get_conversations(), filtered to agent status.
-    """
+    """Get only conversations currently in agent mode."""
     return [c for c in get_conversations() if c["status"] == "agent"]

@@ -18,5 +18,9 @@ class Config:
     ADMIN_USER = os.getenv("ADMIN_USER", "admin")
     ADMIN_PASS = os.getenv("ADMIN_PASS", "proalto2024")
     
+    # Supabase (Chat History) Config
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+    
     # Emergency Maintenance Mode: Set to True to disable DB calls
     MAINTENANCE_MODE = os.getenv("MAINTENANCE_MODE", "False") == "True"
