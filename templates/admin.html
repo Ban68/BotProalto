@@ -641,17 +641,23 @@
             // Re-render list to show active state
             await fetchList();
 
-            // Fetch history
-            await fetchHistory(phone);
+            // Fetch history (force scroll to bottom on initial select)
+            await fetchHistory(phone, true);
         }
 
-        async function fetchHistory(phone) {
+        async function fetchHistory(phone, forceScroll = false) {
             if (!phone) return;
             try {
                 const res = await fetch(`/admin/api/conversations/${phone}`);
                 const data = await res.json();
 
                 const historyEl = document.getElementById('chatHistory');
+
+                // --- SMART SCROLL LOGIC ---
+                // Detect if user is at the bottom before rendering
+                const isAtBottom = historyEl.scrollHeight - historyEl.scrollTop - historyEl.clientHeight < 100;
+                const oldScrollTop = historyEl.scrollTop;
+
                 let html = '';
 
                 data.messages.forEach(m => {
@@ -672,8 +678,18 @@
     `;
                 });
 
-                historyEl.innerHTML = html;
-                scrollToBottom();
+                // Only update if content changed OR if it's the first load
+                // This prevents losing scroll position/flicker on every poll
+                if (historyEl.innerHTML !== html || forceScroll) {
+                    historyEl.innerHTML = html;
+
+                    if (forceScroll || isAtBottom) {
+                        scrollToBottom();
+                    } else {
+                        // Keep the scroll exactly where it was
+                        historyEl.scrollTop = oldScrollTop;
+                    }
+                }
 
                 // Update UI based on status
                 updateInputState(data.status);
@@ -833,7 +849,7 @@
         setInterval(async () => {
             await fetchList();
             if (currentActivePhone) {
-                await fetchHistory(currentActivePhone);
+                await fetchHistory(currentActivePhone, false); // false = don't force scroll
             }
         }, 5000);
 
