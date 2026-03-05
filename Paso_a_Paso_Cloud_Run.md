@@ -30,21 +30,15 @@ from flask import jsonify
 
 @functions_framework.http
 def get_solicitud(request):
-    # 1. Medida de seguridad: Validar el request con el API Token
     auth_header = request.headers.get("Authorization")
-    expected_token = f"Bearer {os.environ.get('API_TOKEN_SECRET')}"
-    
+    expected_token = "Bearer " + os.environ.get("API_TOKEN_SECRET", "")
     if auth_header != expected_token:
         return jsonify({"error": "No Autorizado"}), 401
-    
-    # 2. Extraer la cédula enviada (Payload JSON)
     request_json = request.get_json(silent=True)
-    if not request_json or 'cedula' not in request_json:
-        return jsonify({"error": "Cédula no proporcionada"}), 400
-        
-    cedula = request_json['cedula']
-    
-    # 3. Conexión rápida a PostgreSQL
+    if not request_json or "cedula" not in request_json:
+        return jsonify({"error": "Cedula no proporcionada"}), 400
+    cedula = request_json["cedula"]
+    tipo = request_json.get("tipo", "solicitud")
     try:
         conn = psycopg2.connect(
             host=os.environ.get("DB_HOST"),
@@ -52,40 +46,55 @@ def get_solicitud(request):
             user=os.environ.get("DB_USER"),
             password=os.environ.get("DB_PASSWORD"),
             port=os.environ.get("DB_PORT", "5432"),
-            connect_timeout=10
+            connect_timeout=10,
         )
         cur = conn.cursor()
-        cur.execute("SET statement_timeout = 10000")
-        
-        # Consulta a la vista de solicitudes
-        query = """
-            SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado, 
-                   estado_interno, nombre_completo, plazo
-            FROM v_solicitudes_whatsapp 
-            WHERE cedula_nit = %s 
-            ORDER BY nro_solicitud DESC 
-            LIMIT 1
-        """
-        cur.execute(query, (cedula,))
-        record = cur.fetchone()
-        
-        cur.close()
-        conn.close()
-        
-        # 4. Responder al cliente HTTPS
-        if record:
-            return jsonify({
-                "found": True,
-                "nro_solicitud": record[0],
-                "fecha_de_solicitud": str(record[1]) if record[1] else "",
-                "valor_preestudiado": float(record[2]) if record[2] else 0,
-                "estado_interno": record[3] or "",
-                "nombre_completo": record[4] or "",
-                "plazo": record[5]
-            }), 200
+        cur.execute("SET statement_timeout =10000")
+        if tipo == "saldo":
+            cur.execute(
+                "SELECT cedula, id_prestamo, nombre_completo, saldo_actual, estado_del_prestamo FROM vista_consulta_saldo WHERE cedula = %s",
+                (cedula,),
+            )
+            records = cur.fetchall()
+            cur.close()
+            conn.close()
+            if records:
+                prestamos = []
+                for r in records:
+                    prestamos.append({
+                        "id_prestamo": r[1] or "",
+                        "nombre_completo": r[2] or "",
+                        "saldo_actual": float(r[3]) if r[3] else 0,
+                        "estado_del_prestamo": r[4] or "",
+                    })
+                return jsonify({"found": True, "prestamos": prestamos}), 200
+            else:
+                return jsonify({"found": False}), 200
         else:
-            return jsonify({"found": False}), 200
-            
+            query = """
+                SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
+                       estado_interno, nombre_completo, plazo
+                FROM v_solicitudes_whatsapp
+                WHERE cedula_nit = %s
+                ORDER BY nro_solicitud DESC
+                LIMIT 1
+            """
+            cur.execute(query, (cedula,))
+            record = cur.fetchone()
+            cur.close()
+            conn.close()
+            if record:
+                return jsonify({
+                    "found": True,
+                    "nro_solicitud": record[0],
+                    "fecha_de_solicitud": str(record[1]) if record[1] else "",
+                    "valor_preestudiado": float(record[2]) if record[2] else 0,
+                    "estado_interno": record[3] or "",
+                    "nombre_completo": record[4] or "",
+                    "plazo": record[5],
+                }), 200
+            else:
+                return jsonify({"found": False}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 ```
