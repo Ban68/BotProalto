@@ -10,7 +10,7 @@ from flask import (
 from config import Config
 from src.conversation_log import (
     get_conversations, get_conversation,
-    set_agent_mode, log_message
+    set_agent_mode, log_message, delete_conversation
 )
 from src.services import WhatsAppService
 from src.flows import user_sessions
@@ -128,3 +128,13 @@ def api_force_agent(phone):
     )
 
     return jsonify({"status": "forced"})
+
+
+@admin_bp.route('/admin/api/delete-chat/<phone>', methods=['POST'])
+@requires_auth
+def api_delete_chat(phone):
+    """Delete or hide conversation."""
+    body = request.get_json() or {}
+    permanent = body.get("permanent", False)
+    delete_conversation(phone, permanent)
+    return jsonify({"status": "deleted"})

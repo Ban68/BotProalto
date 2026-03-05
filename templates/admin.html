@@ -189,6 +189,60 @@
             color: white;
         }
 
+        .btn-outline-danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .btn-outline-danger:hover {
+            background: #fdedec;
+            opacity: 1;
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
         .btn-primary {
             background: var(--primary);
             color: white;
@@ -306,9 +360,16 @@
                 <h3 id="currentPhone">+57 000 0000 000</h3>
                 <span id="currentStatusIndicator" class="conv-status"></span>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px; align-items: center;">
                 <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession()">Tomar
                     Control</button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-danger">Eliminar ▼</button>
+                    <div class="dropdown-content">
+                        <a onclick="deleteChat(false)">Ocultar de la lista (Guardar en BD)</a>
+                        <a onclick="deleteChat(true)" style="color: red; font-weight: bold;">Borrar permanentemente</a>
+                    </div>
+                </div>
                 <button id="btnCloseAgent" class="btn btn-danger hidden" onclick="closeAgentSession()">Terminar
                     Intervención</button>
             </div>
@@ -593,6 +654,33 @@
                 });
                 if (res.ok) {
                     await fetchHistory(currentActivePhone);
+                    await fetchList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function deleteChat(permanent) {
+            if (!currentActivePhone) return;
+
+            const msg = permanent
+                ? 'ATENCIÓN: ¿Seguro quieres eliminar este chat de la base de datos permanentemente? No se puede deshacer.'
+                : '¿Seguro quieres ocultar este chat de tu panel? Se mantendrá en la base de datos por si lo necesitas.';
+
+            if (!confirm(msg)) return;
+
+            try {
+                const res = await fetch(`/admin/api/delete-chat/${currentActivePhone}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permanent: permanent })
+                });
+
+                if (res.ok) {
+                    currentActivePhone = null;
+                    document.getElementById('emptyState').style.display = 'flex';
+                    document.getElementById('mainChat').style.display = 'none';
                     await fetchList();
                 }
             } catch (e) {
