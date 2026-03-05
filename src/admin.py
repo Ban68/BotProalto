@@ -77,15 +77,16 @@ def api_conversation_detail(phone):
 @requires_auth
 def api_send_message():
     """Send a message as the advisor to a user."""
-    body = request.get_json()
+    body = request.get_json() or {}
     phone = body.get("phone", "").strip()
     text = body.get("text", "").strip()
+    advisor_name = body.get("advisor_name", "Asesor ProAlto").strip()
 
     if not phone or not text:
         return jsonify({"error": "phone and text are required"}), 400
 
     # Prefix with advisor label so user knows it's a human
-    advisor_msg = f"👨‍💼 *Asesor ProAlto:*\n{text}"
+    advisor_msg = f"👨‍💼 *{advisor_name}:*\n{text}"
     result = WhatsAppService.send_message(phone, advisor_msg)
 
     if result:
@@ -119,6 +120,9 @@ def api_close_agent(phone):
 @requires_auth
 def api_force_agent(phone):
     """Force agent mode from the dashboard to take over a conversation."""
+    body = request.get_json() or {}
+    advisor_name = body.get("advisor_name", "Un asesor").strip()
+    
     set_agent_mode(phone, True)
 
     # Update in-memory session too
@@ -129,7 +133,7 @@ def api_force_agent(phone):
 
     WhatsAppService.send_message(
         phone,
-        "👨‍💼 Un asesor ha tomado el control de esta conversación. En un momento te escribiremos."
+        f"👨‍💼 *{advisor_name}* ha tomado el control de esta conversación. En un momento te escribiremos."
     )
 
     return jsonify({"status": "forced"})

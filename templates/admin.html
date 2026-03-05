@@ -369,6 +369,55 @@
         .hidden {
             display: none !important;
         }
+
+        /* Advisor Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-form select,
+        .modal-form input {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .modal-footer {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
     </style>
 </head>
 
@@ -429,14 +478,26 @@
         </div>
     </div>
 
-    <!-- Empty State -->
-    <div class="main-chat" id="emptyState">
-        <div class="empty-state">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <h2 style="margin-top: 15px; color: #888;">Selecciona una conversación</h2>
+    <!-- Advisor Selection Modal -->
+    <div id="advisorModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>¿Quién está atendiendo?</h3>
+            <div class="modal-form">
+                <p style="font-size: 0.9rem; color: #666;">Selecciona tu nombre para identificarte ante el cliente:</p>
+                <select id="advisorSelect" onchange="toggleCustomAdvisor()">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Carol">Carol</option>
+                    <option value="Angie">Angie</option>
+                    <option value="Yulaidis">Yulaidis</option>
+                    <option value="Carlos">Carlos</option>
+                    <option value="Breyner">Breyner</option>
+                    <option value="otro">Otro (Escribir...)</option>
+                </select>
+                <input type="text" id="customAdvisor" placeholder="Escribe tu nombre..." class="hidden">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="confirmAdvisor()">Continuar</button>
+            </div>
         </div>
     </div>
 
@@ -445,6 +506,45 @@
         let lastFetchTime = 0;
         let knownAgentModes = {};
         let currentTab = 'activas'; // 'activas' | 'archivadas'
+        let advisorName = localStorage.getItem('proalto_advisor_name');
+
+        function toggleCustomAdvisor() {
+            const select = document.getElementById('advisorSelect');
+            const custom = document.getElementById('customAdvisor');
+            if (select.value === 'otro') {
+                custom.classList.remove('hidden');
+            } else {
+                custom.classList.add('hidden');
+            }
+        }
+
+        function showAdvisorModal(callback) {
+            const modal = document.getElementById('advisorModal');
+            modal.classList.remove('hidden');
+            window.pendingAdvisorCallback = callback;
+        }
+
+        function confirmAdvisor() {
+            const select = document.getElementById('advisorSelect');
+            const customInput = document.getElementById('customAdvisor');
+            let name = select.value;
+            if (name === 'otro') name = customInput.value.trim();
+
+            if (!name) {
+                alert('Por favor selecciona o escribe tu nombre');
+                return;
+            }
+
+            advisorName = name;
+            localStorage.setItem('proalto_advisor_name', name);
+            document.getElementById('advisorModal').classList.add('hidden');
+
+            if (window.pendingAdvisorCallback) {
+                const cb = window.pendingAdvisorCallback;
+                window.pendingAdvisorCallback = null;
+                cb();
+            }
+        }
 
         function switchTab(tab) {
             currentTab = tab;
@@ -747,6 +847,11 @@
 
         async function sendMessage() {
             if (!currentActivePhone) return;
+            if (!advisorName) {
+                showAdvisorModal(sendMessage);
+                return;
+            }
+
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
@@ -758,7 +863,11 @@
                 const res = await fetch('/admin/api/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: currentActivePhone, text: text })
+                    body: JSON.stringify({
+                        phone: currentActivePhone,
+                        text: text,
+                        advisor_name: advisorName
+                    })
                 });
 
                 if (res.ok) {
@@ -780,11 +889,17 @@
 
         async function forceAgentSession() {
             if (!currentActivePhone) return;
+            if (!advisorName) {
+                showAdvisorModal(forceAgentSession);
+                return;
+            }
             if (!confirm('¿Seguro quieres interrumpir al bot y tomar el control de la conversación?')) return;
 
             try {
                 const res = await fetch(`/admin/api/force-agent/${currentActivePhone}`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ advisor_name: advisorName })
                 });
                 if (res.ok) {
                     await fetchHistory(currentActivePhone);
