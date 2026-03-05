@@ -17,22 +17,21 @@ _supabase_lock = threading.Lock()
 
 def _get_supabase_client():
     global supabase_client, _supabase_initialized, USE_SUPABASE
+    if not USE_SUPABASE:
+        return None
     if _supabase_initialized:
         return supabase_client
     
     with _supabase_lock:
-        # Check again in case another thread initialized it while we waited
         if _supabase_initialized:
             return supabase_client
-            
-        if USE_SUPABASE:
-            try:
-                from supabase import create_client
-                supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
-                print("✅ Supabase configured for conversation logging.")
-            except Exception as e:
-                print(f"❌ Failed to initialize Supabase client: {e}")
-                USE_SUPABASE = False
+        try:
+            from supabase import create_client
+            supabase_client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+            print("✅ Supabase initialized.")
+        except Exception as e:
+            print(f"⚠️ Supabase error: {e}")
+            USE_SUPABASE = False
         _supabase_initialized = True
         return supabase_client
 

@@ -30,12 +30,7 @@ def create_app():
 
     @app.route('/health')
     def health():
-        from src.database import test_cloud_run_connection
-        ok, msg = test_cloud_run_connection()
-        if ok:
-            return f"✅ {msg}", 200
-        else:
-            return f"❌ Cloud Run API Error: {msg}", 500
+        return "OK", 200
 
     @app.route('/whoami')
     def whoami():
