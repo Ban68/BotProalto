@@ -112,12 +112,11 @@ def _supabase_log_task(phone, direction, text, msg_type, now):
         return
         
     try:
-        # Check current status for auto-restore logic
+        # Check current status for auto-restore logic and to prevent overwriting 'agent' mode
         current_status = None
-        if direction == "inbound":
-            res = client.table('bot_conversations').select("status").eq("phone", phone).execute()
-            if res.data:
-                current_status = res.data[0].get("status")
+        res = client.table('bot_conversations').select("status").eq("phone", phone).execute()
+        if res.data:
+            current_status = res.data[0].get("status")
 
         upsert_data = {"phone": phone, "updated_at": now}
         
