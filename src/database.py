@@ -94,11 +94,12 @@ def get_saldo(cedula):
     """
     Queries the Cloud Run API bridge to get all active loans
     and their balance for the given cedula.
-    Returns a list of dicts (one per loan) or empty list.
+    Returns a list of dicts (one per loan), empty list if none found, 
+    or None if there was a technical error/API failure.
     """
     if not CLOUD_RUN_URL:
         print("❌ CLOUD_RUN_URL not configured")
-        return []
+        return None
 
     try:
         response = requests.post(
@@ -116,17 +117,18 @@ def get_saldo(cedula):
             if data.get("found"):
                 return data.get("prestamos", [])
             else:
+                # Successfully queried, but no loans found for this ID
                 return []
         elif response.status_code == 401:
-            print("❌ Cloud Run API: Unauthorized (check API_TOKEN_SECRET)")
-            return []
+            print(f"❌ Cloud Run API: Unauthorized for cedula {cedula} (check API_TOKEN_SECRET)")
+            return None
         else:
-            print(f"❌ Cloud Run API Error {response.status_code}: {response.text}")
-            return []
+            print(f"❌ Cloud Run API Error {response.status_code} for cedula {cedula}: {response.text}")
+            return None
 
     except requests.exceptions.Timeout:
-        print("❌ Cloud Run API: Request timed out")
-        return []
+        print(f"❌ Cloud Run API: Request timed out for cedula {cedula}")
+        return None
     except Exception as e:
-        print(f"❌ Cloud Run API Error: {e}")
-        return []
+        print(f"❌ Cloud Run API Error for cedula {cedula}: {e}")
+        return None

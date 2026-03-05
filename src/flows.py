@@ -147,24 +147,27 @@ class FlowHandler:
             # Query Saldo
             prestamos = get_saldo(text)
 
-            if prestamos:
-                nombre = prestamos[0].get("nombre_completo", "")
-                response_msg = f"💰 *Consulta de Saldo*\n\n👤 *Cliente:* {nombre}\n"
+            if prestamos is not None:
+                if prestamos:
+                    nombre = prestamos[0].get("nombre_completo", "")
+                    response_msg = f"💰 *Consulta de Saldo*\n\n👤 *Cliente:* {nombre}\n"
 
-                for i, p in enumerate(prestamos, 1):
-                    saldo = p.get("saldo_actual", 0)
-                    estado = p.get("estado_del_prestamo", "")
-                    id_prestamo = p.get("id_prestamo", "")
-                    response_msg += (
-                        f"\n📋 *Préstamo #{i}:*\n"
-                        f"🔢 *ID:* {id_prestamo}\n"
-                        f"💵 *Saldo:* ${saldo:,.0f}\n"
-                        f"📌 *Estado:* {estado}\n"
-                    )
+                    for i, p in enumerate(prestamos, 1):
+                        saldo = p.get("saldo_actual", 0)
+                        estado = p.get("estado_del_prestamo", "")
+                        id_prestamo = p.get("id_prestamo", "")
+                        response_msg += (
+                            f"\n📋 *Préstamo #{i}:*\n"
+                            f"🔢 *ID:* {id_prestamo}\n"
+                            f"💵 *Saldo:* ${saldo:,.0f}\n"
+                            f"📌 *Estado:* {estado}\n"
+                        )
 
-                WhatsAppService.send_message(user_phone, response_msg)
+                    WhatsAppService.send_message(user_phone, response_msg)
+                else:
+                    WhatsAppService.send_message(user_phone, f"❌ No encontramos préstamos activos con la cédula *{text}*.")
             else:
-                WhatsAppService.send_message(user_phone, f"❌ No encontramos préstamos activos con la cédula *{text}*.")
+                WhatsAppService.send_message(user_phone, "⚠️ *Error del Sistema*\n\nNo pudimos conectar con el servidor de base de datos. Por favor intenta de nuevo en unos minutos.")
 
             state["status"] = "active"
             WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
