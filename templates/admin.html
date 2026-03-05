@@ -65,8 +65,7 @@
 
         .search-container {
             padding: 0 10px;
-            margin-bottom: -5px;
-            /* Offset for aesthetic spacing below header */
+            margin-bottom: 5px;
         }
 
         .search-container input {
@@ -76,6 +75,43 @@
             border: none;
             outline: none;
             font-size: 0.9rem;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 5px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active-tab {
+            color: white;
+            border-bottom: 2px solid white;
+        }
+
+        .tab-btn:hover {
+            color: white;
+        }
+
+        .archived-badge {
+            display: inline-block;
+            background: #888;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 0.72rem;
+            font-weight: bold;
         }
 
         .conversation-list {
@@ -346,6 +382,10 @@
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Buscar teléfono..." oninput="filterList()">
             </div>
+            <div class="tab-buttons">
+                <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
+                <button class="tab-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
+            </div>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->
@@ -361,9 +401,11 @@
                 <span id="currentStatusIndicator" class="conv-status"></span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="btnRestore" class="btn btn-primary hidden" onclick="restoreChat()">Restaurar al
+                    Panel</button>
                 <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession()">Tomar
                     Control</button>
-                <div class="dropdown">
+                <div class="dropdown" id="dropdownDelete">
                     <button class="btn btn-outline-danger">Eliminar ▼</button>
                     <div class="dropdown-content">
                         <a onclick="deleteChat(false)">Ocultar de la lista (Guardar en BD)</a>
@@ -401,7 +443,78 @@
     <script>
         let currentActivePhone = null;
         let lastFetchTime = 0;
-        let knownAgentModes = {}; // Map to track beep notifications
+        let knownAgentModes = {};
+        let currentTab = 'activas'; // 'activas' | 'archivadas'
+
+        function switchTab(tab) {
+            currentTab = tab;
+            currentActivePhone = null;
+            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('mainChat').style.display = 'none';
+
+            // Update tab styles
+            document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
+            document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
+
+            if (tab === 'activas') {
+                fetchList();
+            } else {
+                fetchArchivedList();
+            }
+        }
+
+        async function fetchArchivedList() {
+            try {
+                const res = await fetch('/admin/api/archived-conversations');
+                const data = await res.json();
+                renderArchivedList(data);
+            } catch (err) {
+                console.error('Error fetching archived:', err);
+            }
+        }
+
+        function renderArchivedList(conversations) {
+            const listEl = document.getElementById('convList');
+            if (conversations.length === 0) {
+                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">No hay conversaciones archivadas</div>';
+                return;
+            }
+            let html = '';
+            conversations.forEach(c => {
+                const activeClass = currentActivePhone === c.phone ? 'active' : '';
+                html += `
+                    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" onclick="selectConversation('${c.phone}')">
+                        <div class="conv-header">
+                            <span class="conv-phone">${c.phone}</span>
+                            <span class="conv-time">${formatTime(c.updated_at)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                            <span class="conv-preview">${c.last_message || '...'}</span>
+                            <span class="archived-badge">ARCHIVADA</span>
+                        </div>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = html;
+            filterList();
+        }
+
+        async function restoreChat() {
+            if (!currentActivePhone) return;
+            if (!confirm('¿Restaurar esta conversación a la lista activa del panel?')) return;
+            try {
+                const res = await fetch(`/admin/api/restore-chat/${currentActivePhone}`, { method: 'POST' });
+                if (res.ok) {
+                    currentActivePhone = null;
+                    document.getElementById('emptyState').style.display = 'flex';
+                    document.getElementById('mainChat').style.display = 'none';
+                    fetchArchivedList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
 
         function playBeep() {
             try {
@@ -571,28 +684,50 @@
         }
 
         function updateInputState(status) {
-            const isAgent = status === 'agent';
+            const isArchived = currentTab === 'archivadas';
+            const isAgent = status === 'agent' && !isArchived;
+
             document.getElementById('msgInput').disabled = !isAgent;
             document.getElementById('btnSend').disabled = !isAgent;
 
             const btnClose = document.getElementById('btnCloseAgent');
             const btnForce = document.getElementById('btnForceAgent');
+            const btnRestore = document.getElementById('btnRestore');
+            const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
 
-            if (isAgent) {
+            if (isArchived) {
+                // Archived view: show Restore, hide all bot/agent controls
+                btnRestore.classList.remove('hidden');
+                btnForce.classList.add('hidden');
+                btnClose.classList.add('hidden');
+                dropdown.classList.add('hidden');
+                ind.className = 'conv-status';
+                ind.style.background = '#888';
+                ind.style.color = 'white';
+                ind.innerText = 'ARCHIVADA';
+                document.getElementById('msgInput').placeholder = 'Solo lectura. Restaura la conversación para interactuar.';
+            } else if (isAgent) {
+                btnRestore.classList.add('hidden');
                 btnClose.classList.remove('hidden');
                 btnForce.classList.add('hidden');
+                dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-agent';
+                ind.style = '';
                 ind.innerText = '🔴 ESPERANDO ASESOR';
-                document.getElementById('msgInput').placeholder = "Modo Asesor Activo. Escribe acá tu respuesta...";
+                document.getElementById('msgInput').placeholder = 'Modo Asesor Activo. Escribe acá tu respuesta...';
             } else {
+                btnRestore.classList.add('hidden');
                 btnClose.classList.add('hidden');
                 btnForce.classList.remove('hidden');
+                dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-bot';
+                ind.style = '';
                 ind.innerText = 'CONTROLADO POR BOT';
-                document.getElementById('msgInput').placeholder = "Solo puedes escribir si tomas el control (ver botón arriba)";
+                document.getElementById('msgInput').placeholder = 'Solo puedes escribir si tomas el control (ver botón arriba)';
             }
         }
+
 
         async function sendMessage() {
             if (!currentActivePhone) return;

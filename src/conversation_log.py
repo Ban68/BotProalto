@@ -230,3 +230,70 @@ def delete_conversation(phone: str, permanent: bool = False):
             else:
                 conversations[phone]["status"] = "archived"
             _save_json_conversations(conversations)
+
+
+def get_archived_conversations() -> list:
+    """Get a list of archived (hidden) conversations."""
+    if USE_SUPABASE and supabase_client:
+        try:
+            convs = supabase_client.table('bot_conversations').select("*").eq("status", "archived").order("updated_at", desc=True).execute()
+            result = []
+            for c in convs.data:
+                msgs_res = supabase_client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
+                last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
+                if len(last_msg) > 80:
+                    last_msg = last_msg[:80] + "…"
+                count_res = supabase_client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
+                result.append({
+                    "phone": c["phone"],
+                    "last_message": last_msg,
+                    "status": "archived",
+                    "updated_at": c.get("updated_at", ""),
+                    "message_count": count_res.count if count_res.count else 0,
+                })
+            return result
+        except Exception as e:
+            print(f"Supabase get_archived error: {e}")
+
+    # JSON Fallback
+    conversations = _load_json_conversations()
+    result = []
+    for phone, data in conversations.items():
+        if data.get("status") != "archived":
+            continue
+        messages = data.get("messages", [])
+        last_msg = messages[-1]["text"] if messages else ""
+        if len(last_msg) > 80:
+            last_msg = last_msg[:80] + "…"
+        result.append({
+            "phone": phone,
+            "last_message": last_msg,
+            "status": "archived",
+            "updated_at": data.get("updated_at", ""),
+            "message_count": len(messages),
+        })
+    result.sort(key=lambda x: x["updated_at"], reverse=True)
+    return result
+
+
+def restore_conversation(phone: str):
+    """Restore an archived conversation back to active view (status: bot)."""
+    now = datetime.now().isoformat()
+    if USE_SUPABASE and supabase_client:
+        try:
+            supabase_client.table('bot_conversations').update({
+                "status": "bot",
+                "updated_at": now
+            }).eq("phone", phone).execute()
+            return
+        except Exception as e:
+            print(f"Supabase restore error: {e}")
+
+    # JSON Fallback
+    with _json_lock:
+        conversations = _load_json_conversations()
+        if phone in conversations:
+            conversations[phone]["status"] = "bot"
+            conversations[phone]["updated_at"] = now
+            _save_json_conversations(conversations)
+

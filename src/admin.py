@@ -10,7 +10,8 @@ from flask import (
 from config import Config
 from src.conversation_log import (
     get_conversations, get_conversation,
-    set_agent_mode, log_message, delete_conversation
+    set_agent_mode, log_message, delete_conversation,
+    get_archived_conversations, restore_conversation
 )
 from src.services import WhatsAppService
 from src.flows import user_sessions
@@ -138,3 +139,18 @@ def api_delete_chat(phone):
     permanent = body.get("permanent", False)
     delete_conversation(phone, permanent)
     return jsonify({"status": "deleted"})
+
+
+@admin_bp.route('/admin/api/archived-conversations')
+@requires_auth
+def api_archived_conversations():
+    """Get list of archived (hidden) conversations."""
+    return jsonify(get_archived_conversations())
+
+
+@admin_bp.route('/admin/api/restore-chat/<phone>', methods=['POST'])
+@requires_auth
+def api_restore_chat(phone):
+    """Restore an archived conversation back to the active panel."""
+    restore_conversation(phone)
+    return jsonify({"status": "restored"})
