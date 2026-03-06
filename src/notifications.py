@@ -40,7 +40,7 @@ def notify_admin_agent_request(user_phone: str) -> None:
         msg = (
             f"🚨 *Aviso de Soporte*\n\n"
             f"El usuario con número {user_phone} ha solicitado hablar con un asesor.\n"
-            f"Por favor ingresa al panel de control para atenderlo: https://proalto.co/admin"
+            f"Por favor ingresa al panel de control para atenderlo: https://botproalto.onrender.com/admin"
         )
         notify_admins(msg)
 
