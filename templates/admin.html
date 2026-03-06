@@ -478,6 +478,8 @@
                 <span id="currentStatusIndicator" class="conv-status"></span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
+                <button id="btnExport" class="btn btn-primary" onclick="exportConversation()"
+                    title="Exportar a Texto">📤 Exportar</button>
                 <button id="btnRestore" class="btn btn-primary hidden" onclick="restoreChat()">Restaurar al
                     Panel</button>
                 <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession()">Tomar
@@ -990,6 +992,66 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        async function exportConversation() {
+            if (!currentActivePhone) return;
+            const btn = document.getElementById('btnExport');
+            const originalText = btn.innerHTML;
+
+            try {
+                btn.innerHTML = '⌛ Generando...';
+                btn.disabled = true;
+
+                const res = await fetch(`/admin/api/conversations/${currentActivePhone}`);
+                const data = await res.json();
+
+                let content = `========================================================\n`;
+                content += `      REPORTE DE CONVERSACIÓN - PROALTO BOT\n`;
+                content += `========================================================\n`;
+                content += `TELÉFONO: ${currentActivePhone}\n`;
+                content += `ESTADO ACTUAL: ${data.status.toUpperCase()}\n`;
+                content += `FECHA DE EXPORTACIÓN: ${new Date().toLocaleString()}\n`;
+                content += `--------------------------------------------------------\n\n`;
+
+                if (!data.messages || data.messages.length === 0) {
+                    content += `(No hay mensajes en esta conversación)\n`;
+                } else {
+                    data.messages.forEach(m => {
+                        const time = new Date(m.timestamp).toLocaleString();
+                        const isOut = m.direction === 'outbound';
+                        let sender = isOut ? 'BOT/SISTEMA' : 'CLIENTE';
+
+                        // Detectar si es un asesor por el prefijo que usamos
+                        if (isOut && m.text.includes('Asesor ProAlto')) {
+                            sender = 'ASESOR HUMANO';
+                        }
+
+                        content += `[${time}] ${sender}:\n`;
+                        content += `${m.text}\n`;
+                        content += `--------------------------------------------------------\n`;
+                    });
+                }
+
+                content += `\nFin del reporte.\nGenerado por ProAlto Admin Dashboard.`;
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Conversacion_ProAlto_${currentActivePhone}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+            } catch (err) {
+                console.error("Error exporting:", err);
+                alert("Hubo un problema al exportar la conversación. Por favor intenta de nuevo.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 
