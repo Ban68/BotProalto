@@ -1,14 +1,25 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    # Older Python versions (<3.9) - Fallback to UTC or try to import from backports
+    try:
+        from backports.zoneinfo import ZoneInfo
+    except ImportError:
+        # If no backports, just use a dummy class that doesn't explode
+        ZoneInfo = None 
 from config import Config
 from src.services import WhatsAppService
 
 def is_business_hours() -> bool:
     """Check if the current time is within business hours (8am - 5pm, Mon-Fri)."""
     try:
-        tz = ZoneInfo(Config.ADMIN_TIMEZONE)
+        if ZoneInfo:
+            tz = ZoneInfo(Config.ADMIN_TIMEZONE)
+        else:
+            tz = None
     except Exception as e:
-        print(f"Timezone error, defaulting to UTC: {e}")
+        print(f"Timezone error: {e}")
         tz = None
         
     now = datetime.now(tz)
