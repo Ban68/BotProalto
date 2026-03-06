@@ -14,6 +14,10 @@ class Config:
     PORT = int(os.getenv("PORT", 5000))
     DEBUG = os.getenv("DEBUG", "True") == "True"
     
+    # Notifications Config
+    ADMIN_NOTIFY_NUMBERS = os.getenv("ADMIN_NOTIFY_NUMBERS", "").split(",")
+    ADMIN_TIMEZONE = os.getenv("ADMIN_TIMEZONE", "America/Bogota")
+    
     # Admin Panel Config
     ADMIN_USER = os.getenv("ADMIN_USER", "admin")
     ADMIN_PASS = os.getenv("ADMIN_PASS", "proalto2024")

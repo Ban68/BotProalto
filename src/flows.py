@@ -1,6 +1,7 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.conversation_log import log_message, set_agent_mode
+from src.notifications import notify_admin_agent_request, notify_admin_error
 
 # Simple in-memory storage for MVP (Use DB in production)
 # Structure: { "phone_number": { "status": "pending_consent" | "active" | "waiting_for_cedula", "last_interaction": timestamp } }
@@ -64,6 +65,11 @@ class FlowHandler:
                 
         except Exception as e:
             print(f"Error processing message: {e}")
+            try:
+                # We extract user_phone from context if available
+                notify_admin_error(locals().get('user_phone', 'Desconocido'), str(e))
+            except Exception as notify_err:
+                print(f"Error sending admin notification: {notify_err}")
 
     @staticmethod
     def process_text_input(user_phone, text, state):
@@ -249,6 +255,13 @@ class FlowHandler:
         elif btn_id == "menu_support":
             state["status"] = "agent_mode"
             set_agent_mode(user_phone, True)
+            
+            try:
+                # Notify admin of support request
+                notify_admin_agent_request(user_phone)
+            except Exception as e:
+                print(f"Error notifying admin: {e}")
+                
             WhatsAppService.send_message(
                 user_phone,
                 "👨‍💼 *Modo Asesor Activado*\n\n"
