@@ -358,22 +358,27 @@
             gap: 10px;
         }
 
-        .chat-input-area input {
+        .chat-input-area textarea {
             flex: 1;
             padding: 12px 20px;
             border: 1px solid var(--border);
-            border-radius: 24px;
+            border-radius: 12px;
             outline: none;
             font-size: 0.95rem;
             background: white;
             transition: border-color 0.2s;
+            resize: none;
+            height: 48px;
+            min-height: 48px;
+            max-height: 150px;
+            line-height: 1.4;
         }
 
-        .chat-input-area input:focus {
+        .chat-input-area textarea:focus {
             border-color: var(--primary);
         }
 
-        .chat-input-area input:disabled {
+        .chat-input-area textarea:disabled {
             background: #E0E0E0;
             cursor: not-allowed;
         }
@@ -501,10 +506,10 @@
         </div>
 
         <div class="chat-input-area" id="chatInputArea">
-            <input type="text" id="msgInput"
-                placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)" disabled
-                onkeypress="handleKeyPress(event)">
-            <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()">Enviar</button>
+            <textarea id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)"
+                disabled onkeydown="handleKeyPress(event)"></textarea>
+            <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()"
+                style="height: 48px; align-self: flex-end;">Enviar</button>
         </div>
     </div>
 
@@ -1056,9 +1061,16 @@
         }
 
         function handleKeyPress(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Prevenir el salto de línea por defecto
                 sendMessage();
             }
+            // Si es Shift + Enter, el navegador hará el salto de línea normalmente
+
+            // Auto-resize textarea
+            const target = e.target;
+            target.style.height = '48px';
+            target.style.height = (target.scrollHeight) + 'px';
         }
 
         // Auto polling
