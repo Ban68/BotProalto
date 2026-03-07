@@ -35,7 +35,7 @@ class FlowHandler:
                 init_status = "pending_consent"
                 if conv:
                     db_status = conv.get("status")
-                    if db_status == "agent":
+                    if db_status in ["agent", "agent_silent"]:
                         init_status = "agent_mode"
                     elif len(conv.get("messages", [])) > 0:
                         # User has talked to us before, skip consent
@@ -77,7 +77,7 @@ class FlowHandler:
         if state["status"] == "agent_mode":
             if text.lower() in ["salir", "cancelar", "volver"]:
                 state["status"] = "active"
-                set_agent_mode(user_phone, False)
+                set_agent_mode(user_phone, "bot")
                 WhatsAppService.send_message(user_phone, "Has salido del modo asesor. Escribe 'Hola' para ver el menú principal.")
             # Otherwise do nothing — message was already logged above
             return
@@ -254,7 +254,7 @@ class FlowHandler:
             
         elif btn_id == "menu_support":
             state["status"] = "agent_mode"
-            set_agent_mode(user_phone, True)
+            set_agent_mode(user_phone, "agent")
             
             try:
                 # Notify admin of support request

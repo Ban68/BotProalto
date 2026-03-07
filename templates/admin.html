@@ -182,6 +182,12 @@
             animation: pulse 2s infinite;
         }
 
+        .status-silent {
+            background: #6366f1;
+            /* Indigo */
+            color: white;
+        }
+
         .conv-preview {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -257,6 +263,15 @@
             background: #fef2f2;
         }
 
+        .btn-bot-humano {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-bot-humano:hover {
+            background: #4f46e5;
+        }
+
         .dropdown {
             position: relative;
             display: inline-block;
@@ -293,16 +308,6 @@
 
         .btn:hover {
             opacity: 0.8;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: var(--primary-dark);
         }
 
         /* Messages */
@@ -355,6 +360,7 @@
             background: #F0F0F0;
             border-top: 1px solid var(--border);
             display: flex;
+            flex-direction: column;
             gap: 10px;
         }
 
@@ -487,8 +493,11 @@
                     title="Exportar a Texto">📤 Exportar</button>
                 <button id="btnRestore" class="btn btn-primary hidden" onclick="restoreChat()">Restaurar al
                     Panel</button>
-                <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession()">Tomar
+                <button id="btnForceAgent" class="btn btn-primary hidden" onclick="forceAgentSession(false)">Tomar
                     Control</button>
+                <button id="btnBotHumano" class="btn btn-bot-humano hidden" onclick="forceAgentSession(true)">🔇 Modo
+                    Bot Humano</button>
+
                 <div class="dropdown" id="dropdownDelete">
                     <button class="btn btn-outline-danger">Eliminar ▼</button>
                     <div class="dropdown-content">
@@ -508,8 +517,10 @@
         <div class="chat-input-area" id="chatInputArea">
             <textarea id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)"
                 disabled onkeydown="handleKeyPress(event)"></textarea>
-            <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()"
-                style="height: 48px; align-self: flex-end;">Enviar</button>
+            <div style="display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()"
+                    style="height: 40px;">Enviar</button>
+            </div>
         </div>
     </div>
 
@@ -553,6 +564,7 @@
         let knownAgentModes = {};
         let currentTab = 'activas'; // 'activas' | 'archivadas'
         let advisorName = localStorage.getItem('proalto_advisor_name');
+        let currentStatus = 'bot';
 
         function toggleCustomAdvisor() {
             const select = document.getElementById('advisorSelect');
@@ -727,13 +739,21 @@
             let newAgentDetected = false;
 
             conversations.forEach(c => {
-                const statusClass = c.status === 'agent' ? 'status-agent' : 'status-bot';
-                const statusLabel = c.status === 'agent' ? '🔴 ASESOR' : 'BOT';
+                let statusClass = 'status-bot';
+                let statusLabel = 'BOT';
+
+                if (c.status === 'agent') {
+                    statusClass = 'status-agent';
+                    statusLabel = '🔴 ASESOR';
+                } else if (c.status === 'agent_silent') {
+                    statusClass = 'status-silent';
+                    statusLabel = '🔇 BOT HUMANO';
+                }
+
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
 
-                // Notification Logic
+                // Notification Logic (only for normal agent mode)
                 if (c.status === 'agent' && !knownAgentModes[c.phone]) {
-                    // Only beep if the object was already populated (not on initial load spam)
                     if (Object.keys(knownAgentModes).length > 0) {
                         newAgentDetected = true;
                     }
@@ -798,9 +818,6 @@
                 const data = await res.json();
 
                 const historyEl = document.getElementById('chatHistory');
-
-                // --- SMART SCROLL LOGIC ---
-                // Detect if user is at the bottom before rendering
                 const isAtBottom = historyEl.scrollHeight - historyEl.scrollTop - historyEl.clientHeight < 100;
                 const oldScrollTop = historyEl.scrollTop;
 
@@ -808,12 +825,11 @@
 
                 data.messages.forEach(m => {
                     const isOut = m.direction === 'outbound';
-                    const isAgentMsg = isOut && m.text.includes('Asesor ProAlto');
+                    const isAgentMsg = isOut && (m.text.includes('Asesor ProAlto') || m.text.includes('👨‍💼'));
 
                     let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
                     if (isAgentMsg) classes += ' msg-agent';
 
-                    // Basic formatting
                     let text = m.text.replace(/\n/g, '<br>');
 
                     html += `
@@ -824,20 +840,16 @@
     `;
                 });
 
-                // Only update if content changed OR if it's the first load
-                // This prevents losing scroll position/flicker on every poll
                 if (historyEl.innerHTML !== html || forceScroll) {
                     historyEl.innerHTML = html;
-
                     if (forceScroll || isAtBottom) {
                         scrollToBottom();
                     } else {
-                        // Keep the scroll exactly where it was
                         historyEl.scrollTop = oldScrollTop;
                     }
                 }
 
-                // Update UI based on status
+                currentStatus = data.status;
                 updateInputState(data.status);
 
             } catch (err) {
@@ -847,21 +859,22 @@
 
         function updateInputState(status) {
             const isArchived = currentTab === 'archivadas';
-            const isAgent = status === 'agent' && !isArchived;
+            const isActiveAgent = (status === 'agent' || status === 'agent_silent') && !isArchived;
 
-            document.getElementById('msgInput').disabled = !isAgent;
-            document.getElementById('btnSend').disabled = !isAgent;
+            document.getElementById('msgInput').disabled = !isActiveAgent;
+            document.getElementById('btnSend').disabled = !isActiveAgent;
 
             const btnClose = document.getElementById('btnCloseAgent');
             const btnForce = document.getElementById('btnForceAgent');
+            const btnBotHumano = document.getElementById('btnBotHumano');
             const btnRestore = document.getElementById('btnRestore');
             const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
 
             if (isArchived) {
-                // Archived view: show Restore, hide all bot/agent controls
                 btnRestore.classList.remove('hidden');
                 btnForce.classList.add('hidden');
+                btnBotHumano.classList.add('hidden');
                 btnClose.classList.add('hidden');
                 dropdown.classList.add('hidden');
                 ind.className = 'conv-status';
@@ -869,24 +882,34 @@
                 ind.style.color = 'white';
                 ind.innerText = 'ARCHIVADA';
                 document.getElementById('msgInput').placeholder = 'Solo lectura. Restaura la conversación para interactuar.';
-            } else if (isAgent) {
+            } else if (status === 'agent' || status === 'agent_silent') {
                 btnRestore.classList.add('hidden');
                 btnClose.classList.remove('hidden');
                 btnForce.classList.add('hidden');
+                btnBotHumano.classList.add('hidden');
                 dropdown.classList.remove('hidden');
-                ind.className = 'conv-status status-agent';
-                ind.style = '';
-                ind.innerText = '🔴 ESPERANDO ASESOR';
-                document.getElementById('msgInput').placeholder = 'Modo Asesor Activo. Escribe acá tu respuesta...';
+
+                if (status === 'agent_silent') {
+                    ind.className = 'conv-status status-silent';
+                    ind.style = '';
+                    ind.innerText = '🔇 MODO BOT HUMANO';
+                    document.getElementById('msgInput').placeholder = 'Modo Bot Humano Activo. El cliente no sabrá que eres tú.';
+                } else {
+                    ind.className = 'conv-status status-agent';
+                    ind.style = '';
+                    ind.innerText = '🔴 ESPERANDO ASESOR';
+                    document.getElementById('msgInput').placeholder = 'Modo Asesor Activo. Escribe acá tu respuesta...';
+                }
             } else {
                 btnRestore.classList.add('hidden');
                 btnClose.classList.add('hidden');
                 btnForce.classList.remove('hidden');
+                btnBotHumano.classList.remove('hidden');
                 dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-bot';
                 ind.style = '';
                 ind.innerText = 'CONTROLADO POR BOT';
-                document.getElementById('msgInput').placeholder = 'Solo puedes escribir si tomas el control (ver botón arriba)';
+                document.getElementById('msgInput').placeholder = 'Solo puedes escribir si tomas el control.';
             }
         }
 
@@ -905,6 +928,8 @@
             input.disabled = true;
             document.getElementById('btnSend').disabled = true;
 
+            const isSilent = currentStatus === 'agent_silent';
+
             try {
                 const res = await fetch('/admin/api/send', {
                     method: 'POST',
@@ -912,12 +937,14 @@
                     body: JSON.stringify({
                         phone: currentActivePhone,
                         text: text,
-                        advisor_name: advisorName
+                        advisor_name: advisorName,
+                        silent: isSilent
                     })
                 });
 
                 if (res.ok) {
                     input.value = '';
+                    input.style.height = '48px';
                     await fetchHistory(currentActivePhone);
                     await fetchList();
                 } else {
@@ -933,19 +960,24 @@
             }
         }
 
-        async function forceAgentSession() {
+        async function forceAgentSession(silent = false) {
             if (!currentActivePhone) return;
             if (!advisorName) {
-                showAdvisorModal(forceAgentSession);
+                showAdvisorModal(() => forceAgentSession(silent));
                 return;
             }
-            if (!confirm('¿Seguro quieres interrumpir al bot y tomar el control de la conversación?')) return;
+
+            let msg = silent
+                ? '¿Quieres entrar en Modo Bot Humano? Podrás responder sin que el cliente reciba notificación de intervención.'
+                : '¿Seguro quieres interrumpir al bot y tomar el control de la conversación? Se enviará un mensaje de bienvenida al cliente.';
+
+            if (!confirm(msg)) return;
 
             try {
                 const res = await fetch(`/admin/api/force-agent/${currentActivePhone}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ advisor_name: advisorName })
+                    body: JSON.stringify({ advisor_name: advisorName, silent: silent })
                 });
                 if (res.ok) {
                     await fetchHistory(currentActivePhone);
@@ -1028,8 +1060,7 @@
                         const isOut = m.direction === 'outbound';
                         let sender = isOut ? 'BOT/SISTEMA' : 'CLIENTE';
 
-                        // Detectar si es un asesor por el prefijo que usamos
-                        if (isOut && m.text.includes('Asesor ProAlto')) {
+                        if (isOut && (m.text.includes('Asesor ProAlto') || m.text.includes('👨‍💼'))) {
                             sender = 'ASESOR HUMANO';
                         }
 
@@ -1062,26 +1093,22 @@
 
         function handleKeyPress(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Prevenir el salto de línea por defecto
+                e.preventDefault();
                 sendMessage();
             }
-            // Si es Shift + Enter, el navegador hará el salto de línea normalmente
 
-            // Auto-resize textarea
             const target = e.target;
             target.style.height = '48px';
             target.style.height = (target.scrollHeight) + 'px';
         }
 
-        // Auto polling
         setInterval(async () => {
             await fetchList();
             if (currentActivePhone) {
-                await fetchHistory(currentActivePhone, false); // false = don't force scroll
+                await fetchHistory(currentActivePhone, false);
             }
         }, 5000);
 
-        // Initial fetch
         fetchList();
     </script>
 </body>

@@ -144,9 +144,8 @@ def _supabase_log_task(phone, direction, text, msg_type, now):
 
 
 
-def set_agent_mode(phone: str, active: bool):
-    """Toggle agent mode for a conversation."""
-    status = "agent" if active else "bot"
+def set_agent_mode(phone: str, status: str = "agent"):
+    """Set the conversation status (bot, agent, agent_silent)."""
     now = datetime.now().isoformat()
     
     client = _get_supabase_client()
@@ -268,7 +267,7 @@ def get_conversation(phone: str) -> dict | None:
 
 def get_agent_conversations() -> list:
     """Get only conversations currently in agent mode."""
-    return [c for c in get_conversations() if c["status"] == "agent"]
+    return [c for c in get_conversations() if c["status"] in ["agent", "agent_silent"]]
 
 def delete_conversation(phone: str, permanent: bool = False):
     """Delete or hide a conversation from the dashboard."""
@@ -362,4 +361,3 @@ def restore_conversation(phone: str):
             conversations[phone]["status"] = "bot"
             conversations[phone]["updated_at"] = now
             _save_json_conversations(conversations)
-

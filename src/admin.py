@@ -82,11 +82,17 @@ def api_send_message():
     text = body.get("text", "").strip()
     advisor_name = body.get("advisor_name", "Asesor ProAlto").strip()
 
+    silent = body.get("silent", False)
+
     if not phone or not text:
         return jsonify({"error": "phone and text are required"}), 400
 
-    # Prefix with advisor label so user knows it's a human
-    advisor_msg = f"👨‍💼 *{advisor_name}:*\n{text}"
+    # Prefix with advisor label unless silent mode is on
+    if silent:
+        advisor_msg = text
+    else:
+        advisor_msg = f"👨‍💼 *{advisor_name}:*\n{text}"
+    
     result = WhatsAppService.send_message(phone, advisor_msg)
 
     if result:
@@ -99,7 +105,7 @@ def api_send_message():
 @requires_auth
 def api_close_agent(phone):
     """Close agent mode and return user to the bot."""
-    set_agent_mode(phone, False)
+    set_agent_mode(phone, "bot")
 
     # Update in-memory session too
     from src.flows import user_sessions
@@ -123,22 +129,25 @@ def api_force_agent(phone):
     """Force agent mode from the dashboard to take over a conversation."""
     body = request.get_json() or {}
     advisor_name = body.get("advisor_name", "Un asesor").strip()
+    silent = body.get("silent", False)
     
-    set_agent_mode(phone, True)
+    set_agent_mode(phone, "agent_silent" if silent else "agent")
 
     # Update in-memory session too
     from src.flows import user_sessions
     if phone in user_sessions:
         user_sessions[phone]["status"] = "agent_mode"
+        user_sessions[phone]["silent"] = silent
     else:
-        user_sessions[phone] = {"status": "agent_mode"}
+        user_sessions[phone] = {"status": "agent_mode", "silent": silent}
 
-    WhatsAppService.send_message(
-        phone,
-        f"¡Hola! Soy *{advisor_name}* de ProAlto. 👋 He tomado tu caso para darte una atención personalizada. Dame un momento mientras reviso tu información y ya mismo te escribo."
-    )
+    if not silent:
+        WhatsAppService.send_message(
+            phone,
+            f"¡Hola! Soy *{advisor_name}* de ProAlto. 👋 He tomado tu caso para darte una atención personalizada. Dame un momento mientras reviso tu información y ya mismo te escribo."
+        )
 
-    return jsonify({"status": "forced"})
+    return jsonify({"status": "forced", "silent": silent})
 
 
 @admin_bp.route('/admin/api/delete-chat/<phone>', methods=['POST'])
