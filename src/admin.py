@@ -105,20 +105,31 @@ def api_send_message():
 @requires_auth
 def api_close_agent(phone):
     """Close agent mode and return user to the bot."""
+    # Check if we were in silent mode before closing
+    from src.flows import user_sessions
+    is_silent = user_sessions.get(phone, {}).get("silent", False)
+    
+    # Fallback to DB check if not in memory or just to be safe
+    if not is_silent:
+        conv = get_conversation(phone)
+        if conv and conv.get("status") == "agent_silent":
+            is_silent = True
+
     set_agent_mode(phone, "bot")
 
     # Update in-memory session too
-    from src.flows import user_sessions
     if phone in user_sessions:
         user_sessions[phone]["status"] = "active"
+        user_sessions[phone]["silent"] = False
     else:
-        user_sessions[phone] = {"status": "active"}
+        user_sessions[phone] = {"status": "active", "silent": False}
 
-    WhatsAppService.send_message(
-        phone,
-        "✅ Tu asesor ha finalizado la conversación.\n\n"
-        "Escribe *Hola* para volver al menú principal."
-    )
+    if not is_silent:
+        WhatsAppService.send_message(
+            phone,
+            "✅ Tu asesor ha finalizado la conversación.\n\n"
+            "Escribe *Hola* para volver al menú principal."
+        )
 
     return jsonify({"status": "closed"})
 
