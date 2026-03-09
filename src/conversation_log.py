@@ -166,7 +166,9 @@ def set_agent_mode(phone: str, status: str = "agent"):
         if phone in conversations:
             conversations[phone]["status"] = status
             conversations[phone]["updated_at"] = now
-            _save_json_conversations(conversations)
+        else:
+            conversations[phone] = {"status": status, "updated_at": now, "messages": []}
+        _save_json_conversations(conversations)
 
 
 def get_conversations() -> list:

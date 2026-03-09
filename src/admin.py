@@ -161,6 +161,33 @@ def api_force_agent(phone):
     return jsonify({"status": "forced", "silent": silent})
 
 
+@admin_bp.route('/admin/api/create-chat', methods=['POST'])
+@requires_auth
+def api_create_chat():
+    """Create a new empty conversation manually in agent mode."""
+    body = request.get_json() or {}
+    phone = body.get("phone", "").strip()
+    
+    # Strip any +, spaces or dashes from phone to ensure clean format
+    import re
+    phone = re.sub(r'\D', '', phone)
+
+    if not phone:
+        return jsonify({"error": "Valid phone number required"}), 400
+
+    # Force agent mode natively
+    set_agent_mode(phone, "agent")
+
+    # Update in-memory session
+    from src.flows import user_sessions
+    if phone in user_sessions:
+        user_sessions[phone]["status"] = "agent_mode"
+    else:
+        user_sessions[phone] = {"status": "agent_mode", "silent": False}
+
+    return jsonify({"status": "created", "phone": phone})
+
+
 @admin_bp.route('/admin/api/delete-chat/<phone>', methods=['POST'])
 @requires_auth
 def api_delete_chat(phone):

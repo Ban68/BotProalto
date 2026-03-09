@@ -467,8 +467,11 @@
                 style="height: 40px; margin-bottom: 12px; filter: brightness(0) invert(1);">
             <h2>Monitor Admin</h2>
             <p>Panel de Conversaciones</p>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Buscar teléfono..." oninput="filterList()">
+            <div class="search-container" style="display: flex; gap: 8px;">
+                <input type="text" id="searchInput" placeholder="Buscar teléfono..." oninput="filterList()"
+                    style="flex: 1;">
+                <button class="btn btn-primary" onclick="showNewChatModal()" title="Nueva Conversación"
+                    style="padding: 8px 12px; font-size: 1.2rem;">+</button>
             </div>
             <div class="tab-buttons">
                 <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
@@ -558,6 +561,21 @@
         </div>
     </div>
 
+    <div id="newChatModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Iniciar Nueva Conversación</h3>
+            <div class="modal-form">
+                <p style="font-size: 0.9rem; color: #666;">Ingresa el número de WhatsApp (con código de país, ej:
+                    573001234567):</p>
+                <input type="text" id="newChatPhone" placeholder="573001234567">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-danger" onclick="closeNewChatModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmNewChat()">Iniciar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentActivePhone = null;
         let lastFetchTime = 0;
@@ -601,6 +619,54 @@
                 const cb = window.pendingAdvisorCallback;
                 window.pendingAdvisorCallback = null;
                 cb();
+            }
+        }
+
+        function showNewChatModal() {
+            document.getElementById('newChatModal').classList.remove('hidden');
+        }
+
+        function closeNewChatModal() {
+            document.getElementById('newChatModal').classList.add('hidden');
+            document.getElementById('newChatPhone').value = '';
+        }
+
+        async function confirmNewChat() {
+            const phoneInput = document.getElementById('newChatPhone').value.trim();
+            if (!phoneInput) {
+                alert("Por favor ingresa un número de teléfono.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/admin/api/create-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phoneInput })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    closeNewChatModal();
+
+                    // Switch to active tab if not already on it
+                    if (currentTab !== 'activas') {
+                        switchTab('activas');
+                    } else {
+                        await fetchList();
+                    }
+
+                    // Small delay to ensure the UI updates before selecting
+                    setTimeout(() => {
+                        selectConversation(data.phone);
+                    }, 500);
+                } else {
+                    const errorData = await res.json();
+                    alert(errorData.error || 'Error al iniciar conversación');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error de conexión');
             }
         }
 
