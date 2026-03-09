@@ -1,5 +1,5 @@
 from src.services import WhatsAppService
-from src.database import get_solicitud_status, get_saldo
+from src.database import get_solicitud_status, get_Saldo
 from src.conversation_log import log_message, set_agent_mode
 from src.notifications import notify_admin_agent_request, notify_admin_error
 
@@ -94,13 +94,8 @@ class FlowHandler:
                  WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
                  return
 
-            # 2. Check connections and Maintenance
-            from config import Config
-            if Config.MAINTENANCE_MODE:
-                WhatsAppService.send_message(user_phone, "⚠️ *Sistema en Mantenimiento*\n\nEstamos realizando mejoras en nuestros servidores. Por favor intenta consultar tu estado más tarde. Agradecemos tu paciencia.")
-                return
-
             # Query Database
+            from src.database import get_solicitud_status
             result = get_solicitud_status(text)
             
             if result:
@@ -157,12 +152,8 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
                 return
 
-            from config import Config
-            if Config.MAINTENANCE_MODE:
-                WhatsAppService.send_message(user_phone, "⚠️ *Sistema en Mantenimiento*\n\nEstamos realizando mejoras en nuestros servidores. Por favor intenta más tarde.")
-                return
-
             # Query Saldo
+            from src.database import get_saldo
             prestamos = get_saldo(text)
 
             if prestamos is not None:
@@ -236,7 +227,6 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Entendemos. No podremos atenderte por este medio sin tu autorización. Si cambias de opinión, escribe 'Hola'.")
             state["status"] = "pending_consent"
 
-        # 3. Handle Client Menu Options
         elif btn_id == "menu_cliente":
             FlowHandler.send_client_menu(user_phone)
 
@@ -264,9 +254,7 @@ class FlowHandler:
                 
             WhatsAppService.send_message(
                 user_phone,
-                "👨‍💼 *Modo Asesor Activado*\n\n"
-                "Un asesor se conectará contigo en esta misma conversación. "
-                "Por favor espera, te responderemos lo más pronto posible.\n\n"
+                "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
                 "_Si deseas volver al menú del bot, escribe *salir*._"
             )
 

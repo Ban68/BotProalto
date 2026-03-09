@@ -155,7 +155,7 @@ def api_force_agent(phone):
     if not silent:
         WhatsAppService.send_message(
             phone,
-            f"¡Hola! Soy *{advisor_name}* de ProAlto. 👋 He tomado tu caso para darte una atención personalizada. Dame un momento mientras reviso tu información y ya mismo te escribo."
+            "Dame un momento mientras reviso tu información y ya mismo te escribo."
         )
 
     return jsonify({"status": "forced", "silent": silent})
