@@ -194,7 +194,7 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
 
-        # 3. Main Menu Logic (Reset triggers)
+        # 3. Main Menu Logic (Triggers: Hola, Inicio, etc.)
         norm_text = text.lower().strip()
         
         # Base greeting words
