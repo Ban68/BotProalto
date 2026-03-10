@@ -14,7 +14,6 @@ from src.conversation_log import (
     get_archived_conversations, restore_conversation
 )
 from src.services import WhatsAppService
-# from src.flows import user_sessions  # Moved inside functions to avoid circularity
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates')
 
@@ -105,24 +104,12 @@ def api_send_message():
 @requires_auth
 def api_close_agent(phone):
     """Close agent mode and return user to the bot."""
-    # Check if we were in silent mode before closing
-    from src.flows import user_sessions
-    is_silent = user_sessions.get(phone, {}).get("silent", False)
-    
-    # Fallback to DB check if not in memory or just to be safe
-    if not is_silent:
-        conv = get_conversation(phone)
-        if conv and conv.get("status") == "agent_silent":
-            is_silent = True
+    conv = get_conversation(phone)
+    is_silent = False
+    if conv and conv.get("status") == "agent_silent":
+        is_silent = True
 
-    set_agent_mode(phone, "bot")
-
-    # Update in-memory session too
-    if phone in user_sessions:
-        user_sessions[phone]["status"] = "active"
-        user_sessions[phone]["silent"] = False
-    else:
-        user_sessions[phone] = {"status": "active", "silent": False}
+    set_agent_mode(phone, "active")
 
     if not is_silent:
         WhatsAppService.send_message(
@@ -143,14 +130,6 @@ def api_force_agent(phone):
     silent = body.get("silent", False)
     
     set_agent_mode(phone, "agent_silent" if silent else "agent")
-
-    # Update in-memory session too
-    from src.flows import user_sessions
-    if phone in user_sessions:
-        user_sessions[phone]["status"] = "agent_mode"
-        user_sessions[phone]["silent"] = silent
-    else:
-        user_sessions[phone] = {"status": "agent_mode", "silent": silent}
 
     if not silent:
         WhatsAppService.send_message(
@@ -177,13 +156,6 @@ def api_create_chat():
 
     # Force agent mode natively
     set_agent_mode(phone, "agent")
-
-    # Update in-memory session
-    from src.flows import user_sessions
-    if phone in user_sessions:
-        user_sessions[phone]["status"] = "agent_mode"
-    else:
-        user_sessions[phone] = {"status": "agent_mode", "silent": False}
 
     return jsonify({"status": "created", "phone": phone})
 

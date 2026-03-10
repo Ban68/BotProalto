@@ -814,6 +814,10 @@
                 } else if (c.status === 'agent_silent') {
                     statusClass = 'status-silent';
                     statusLabel = '🔇 BOT HUMANO';
+                } else {
+                    if (c.status === 'pending_consent') statusLabel = 'BOT (Habeas Data)';
+                    else if (c.status === 'waiting_for_cedula') statusLabel = 'BOT (Ced. Solicitud)';
+                    else if (c.status === 'waiting_for_cedula_saldo') statusLabel = 'BOT (Ced. Saldo)';
                 }
 
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
