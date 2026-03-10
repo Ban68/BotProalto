@@ -9,7 +9,14 @@ from config import Config
 from supabase import create_client, Client
 
 # Initialize Supabase client
-supabase_client: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+supabase_client = None
+if Config.SUPABASE_URL and Config.SUPABASE_KEY:
+    try:
+        supabase_client: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
+    except Exception as e:
+        print(f"⚠️ Failed to initialize Supabase client: {e}")
+else:
+    print("⚠️ SUPABASE_URL or SUPABASE_KEY is missing. Supabase logging will fail.")
 
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
     """Log a single message to the conversation history in background."""
