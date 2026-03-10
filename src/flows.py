@@ -194,8 +194,23 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id == "menu_saldo":
-            set_user_state(user_phone, "waiting_for_cedula_saldo")
-            WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
+            # TEMPORALMENTE DESACTIVADO - Redirigir a asesor
+            # set_user_state(user_phone, "waiting_for_cedula_saldo")
+            # WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
+            
+            set_user_state(user_phone, "agent")
+            
+            try:
+                # Notify admin of support request
+                notify_admin_agent_request(user_phone)
+            except Exception as e:
+                print(f"Error notifying admin: {e}")
+                
+            WhatsAppService.send_message(
+                user_phone,
+                "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
+                "_Si deseas volver al menú del bot, escribe *salir*._"
+            )
             
         elif btn_id == "menu_support":
             set_user_state(user_phone, "agent")
