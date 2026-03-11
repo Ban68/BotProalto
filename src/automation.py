@@ -13,6 +13,8 @@ def send_approved_notifications():
     already received one today.
     """
     print(f"[{datetime.now()}] Running scheduled task: send_approved_notifications")
+    print("Functionality temporarily disabled pending Meta template configuration.")
+    return
     
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
