@@ -215,3 +215,24 @@ def restore_conversation(phone: str):
         }).eq("phone", phone).execute()
     except Exception as e:
         print(f"Supabase restore error: {e}")
+
+def has_sent_aprobado_msg_today(phone: str) -> bool:
+    """Check if an approved proactive message was already sent today to this phone."""
+    if not supabase_client:
+        return False
+    
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("id")\
+            .eq("phone", phone)\
+            .eq("direction", "outbound")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .ilike("text", "%Acepto las condiciones del crédito%")\
+            .limit(1)\
+            .execute()
+        return len(res.data) > 0
+    except Exception as e:
+        print(f"Supabase has_sent_aprobado_msg_today error: {e}")
+        return False
+

@@ -98,16 +98,47 @@ class FlowHandler:
                     f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
                 )
 
-                if clean_status == "APROBADO POR EL CLIENTE" and plazo:
-                    response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
+                if clean_status == "APROBADO POR EL CLIENTE":
+                    if plazo:
+                        response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
+                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
-                response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
-                WhatsAppService.send_message(user_phone, response_msg)
+                    # 2.2 Send response with CTA
+                    WhatsAppService.send_message(user_phone, response_msg)
+
+                    body_text = (
+                        "Para continuar con el proceso y poder enviarte el contrato, por favor confirma tu aceptación."
+                    )
+                    buttons = [
+                        {"id": "acepto_condiciones", "title": "Acepto las condiciones"}
+                    ]
+                    WhatsAppService.send_interactive_button(user_phone, body_text, buttons)
+                else:
+                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
+                    WhatsAppService.send_message(user_phone, response_msg)
             else:
                 WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
             
-            set_user_state(user_phone, "active")
-            WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to click CTA
+            if not result or clean_status != "APROBADO POR EL CLIENTE":
+                set_user_state(user_phone, "active")
+                WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            return
+
+        # 2a. Check if waiting for Email
+        if state == "waiting_for_email":
+            email = text.strip()
+            if "@" in email and "." in email:
+                WhatsAppService.send_message(user_phone, "¡Gracias! Hemos registrado tu correo electrónico. En breve te estaremos enviando el contrato de crédito.")
+                # Optional: Send a notification to Admin about the email
+                try:
+                    notify_admin_agent_request(user_phone) # Or create a specific `notify_admin_email_received` in notifications.py
+                except Exception as e:
+                    print(f"Error notifying admin: {e}")
+                
+                set_user_state(user_phone, "active")
+            else:
+                WhatsAppService.send_message(user_phone, "Por favor ingresa un correo electrónico válido (ejemplo: correo@email.com):")
             return
 
         # 2b. Check if waiting for Cedula (Saldo / Balance)
@@ -229,6 +260,10 @@ class FlowHandler:
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
+
+        elif btn_id == "acepto_condiciones":
+            set_user_state(user_phone, "waiting_for_email")
+            WhatsAppService.send_message(user_phone, "¡Excelente! Por favor envíanos tu *correo electrónico* para poder enviarte el contrato de crédito.")
 
     @staticmethod
     def send_habeas_data_prompt(user_phone):

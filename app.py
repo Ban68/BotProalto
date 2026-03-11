@@ -45,5 +45,12 @@ def create_app():
 
 app = create_app()
 
+# Start background automation
+try:
+    from src.automation import start_scheduler
+    start_scheduler()
+except ImportError as e:
+    print(f"Could not start scheduler: {e}")
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=Config.PORT, debug=Config.DEBUG)

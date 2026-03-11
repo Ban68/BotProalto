@@ -35,10 +35,12 @@ def get_solicitud(request):
     if auth_header != expected_token:
         return jsonify({"error": "No Autorizado"}), 401
     request_json = request.get_json(silent=True)
-    if not request_json or "cedula" not in request_json:
+    tipo = request_json.get("tipo", "solicitud") if request_json else "solicitud"
+    
+    cedula = request_json.get("cedula") if request_json else None
+    if tipo != "aprobados" and not cedula:
         return jsonify({"error": "Cedula no proporcionada"}), 400
-    cedula = request_json["cedula"]
-    tipo = request_json.get("tipo", "solicitud")
+
     try:
         conn = psycopg2.connect(
             host=os.environ.get("DB_HOST"),
@@ -72,6 +74,31 @@ def get_solicitud(request):
                 return jsonify({"found": True, "prestamos": prestamos}), 200
             else:
                 return jsonify({"found": False}), 200
+        elif tipo == "aprobados":
+            cur.execute("""
+                SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
+                       estado_interno, nombre_completo, plazo, telefono
+                FROM v_solicitudes_whatsapp
+                WHERE UPPER(estado_interno) = 'APROBADO POR EL CLIENTE'
+            """)
+            records = cur.fetchall()
+            cur.close()
+            conn.close()
+            if records:
+                aprobados = []
+                for r in records:
+                    aprobados.append({
+                        "nro_solicitud": r[0] or 0,
+                        "fecha_de_solicitud": str(r[1]) if r[1] else "",
+                        "valor_preestudiado": float(r[2]) if r[2] else 0,
+                        "estado_interno": r[3] or "",
+                        "nombre_completo": r[4] or "",
+                        "plazo": r[5] if r[5] else 0,
+                        "telefono": r[6] if len(r) > 6 and r[6] else ""
+                    })
+                return jsonify({"found": True, "aprobados": aprobados}), 200
+            else:
+                return jsonify({"found": False, "aprobados": []}), 200
         else:
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
