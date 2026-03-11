@@ -183,3 +183,15 @@ def api_restore_chat(phone):
     """Restore an archived conversation back to the active panel."""
     restore_conversation(phone)
     return jsonify({"status": "restored"})
+
+
+@admin_bp.route('/admin/api/trigger-aprobados')
+@requires_auth
+def api_trigger_aprobados():
+    """Manual trigger to test the send_approved_notifications automation."""
+    from src.automation import send_approved_notifications
+    try:
+        send_approved_notifications()
+        return jsonify({"status": "ok", "message": "Automatización ejecutada exitosamente en segundo plano."})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
