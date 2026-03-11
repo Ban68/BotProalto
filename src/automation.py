@@ -24,13 +24,16 @@ def send_approved_notifications():
         nombre = user.get("nombre_completo", "Cliente")
         
         # We need a valid phone number
-        if not telefono or not str(telefono).isdigit():
+        # Convert to string and handle possible floats (e.g. 3123456789.0)
+        phone_str = str(telefono).split(".")[0]
+        phone_str = "".join(filter(str.isdigit, phone_str))
+        
+        if not phone_str:
             print(f"Skipping user {nombre} due to invalid or missing phone: {telefono}")
             continue
             
-        # Ensure country code (basic format check for Colombia)
-        phone_str = str(telefono)
-        if len(phone_str) == 10 and phone_str.startswith("3"):
+        # Ensure country code (putting 57 unconditionally if it's missing)
+        if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
             
         if has_sent_aprobado_msg_today(phone_str):
