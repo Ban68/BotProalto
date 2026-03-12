@@ -125,7 +125,7 @@ class FlowHandler:
                     WhatsAppService.send_message(
                         user_phone, 
                         f"🔍 *Resultado de Solicitud*\n\n"
-                        f"¡Hola! Hemos encontrado tu solicitud radicada recientemente. Actualmente se encuentra *En Estudio*.\n\n"
+                        f"¡Hola! Hemos recibido tu solicitud radicada recientemente. Actualmente se encuentra *En Estudio*.\n\n"
                         f"Te estaremos avisando por este medio apenas tengamos una respuesta o novedad."
                     )
                 else:
