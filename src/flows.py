@@ -1,5 +1,6 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
+from src.google_sheets import get_solicitud_reciente_sheet
 from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
@@ -117,7 +118,18 @@ class FlowHandler:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)
             else:
-                WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
+                # 2.3 Si no está en BD, verificar en Google Sheets de los últimos 3 días
+                sheet_result = get_solicitud_reciente_sheet(text)
+                
+                if sheet_result:
+                    WhatsAppService.send_message(
+                        user_phone, 
+                        f"🔍 *Resultado de Solicitud*\n\n"
+                        f"¡Hola! Hemos encontrado tu solicitud radicada recientemente. Actualmente se encuentra *En Estudio*.\n\n"
+                        f"Te estaremos avisando por este medio apenas tengamos una respuesta o novedad."
+                    )
+                else:
+                    WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
             
             # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to click CTA
             if not result or clean_status != "APROBADO POR EL CLIENTE":

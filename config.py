@@ -28,3 +28,7 @@ class Config:
     
     # Emergency Maintenance Mode: Set to True to disable DB calls
     MAINTENANCE_MODE = os.getenv("MAINTENANCE_MODE", "False") == "True"
+    
+    # Google Apps Script Web App (Fallback form check)
+    GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_APPS_SCRIPT_URL", "https://script.google.com/macros/s/AKfycbwPHixL8u1fNY43ifidJXYLWMMQnXQWdWGS0lkKDs1EUDrLLu0NZl_FVPxE7hLhi-Jy/exec")
+
