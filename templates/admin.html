@@ -470,7 +470,10 @@
             
             <!-- Online Presence UI -->
             <div id="onlineAdvisorsContainer" style="margin-bottom: 12px; font-size: 0.85rem; text-align: left; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px;">
-                <strong style="color: var(--primary);">Conectados Ahora:</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <strong style="color: var(--primary);">Conectados Ahora:</strong>
+                    <button style="padding: 2px 6px; font-size: 0.7rem; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;" onclick="showAdvisorModal(() => { sendHeartbeat(); fetchList(); })">Cambiar Mi Nombre</button>
+                </div>
                 <div id="onlineAdvisorsList" style="margin-top: 4px; color: #ddd;">Cargando...</div>
             </div>
 
@@ -830,6 +833,15 @@
 
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
 
+                // Check who is active here
+                const activeInChat = latestActiveAdvisors.filter(a => a.current_chat === c.phone);
+                let advisorIcons = '';
+                if (activeInChat.length > 0) {
+                    advisorIcons = `<div style="font-size: 0.75rem; color: #22c55e; margin-top: 6px; font-weight: 600; display: flex; gap: 6px; flex-wrap: wrap;">
+                        ${activeInChat.map(a => '<span>🟢 ' + (a.name === advisorName ? a.name + ' (Tú)' : a.name) + '</span>').join('')}
+                    </div>`;
+                }
+
                 // Notification Logic (only for normal agent mode)
                 if (c.status === 'agent' && !knownAgentModes[c.phone]) {
                     if (Object.keys(knownAgentModes).length > 0) {
@@ -850,6 +862,7 @@
             <span class="conv-preview">${c.last_message || '...'}</span>
             <span class="conv-status ${statusClass}">${statusLabel}</span>
         </div>
+        ${advisorIcons}
     </div>
     `;
             });
@@ -1229,9 +1242,8 @@
                     const listEl = document.getElementById('onlineAdvisorsList');
                     if (latestActiveAdvisors.length > 0) {
                         listEl.innerHTML = latestActiveAdvisors.map(a => {
-                            const chatInfo = a.current_chat ? ` <span style="font-size:0.75rem; opacity:0.8;">(en ${a.current_chat})</span>` : '';
                             return `<div style="margin-bottom: 4px; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
-                                🟢 ${a.name === advisorName ? '<b>' + a.name + ' (Tú)</b>' : a.name}${chatInfo}
+                                🟢 ${a.name === advisorName ? '<b>' + a.name + ' (Tú)</b>' : a.name}
                             </div>`;
                         }).join('');
                     } else {
