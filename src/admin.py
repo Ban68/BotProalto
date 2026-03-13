@@ -75,8 +75,8 @@ def api_presence():
             "current_chat": current_chat
         }
         
-    # Clean up stale advisors (inactive for > 60 seconds)
-    stale_threshold = now - timedelta(seconds=60)
+    # Clean up stale advisors (inactive for > 30 seconds)
+    stale_threshold = now - timedelta(seconds=30)
     to_remove = [name for name, info in active_advisors.items() if info["last_seen"] < stale_threshold]
     for name in to_remove:
         del active_advisors[name]
