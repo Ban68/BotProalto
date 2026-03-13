@@ -54,9 +54,26 @@ class FlowHandler:
                     target_dir = os.path.join("static", "uploads", user_phone)
                     target_path = os.path.join(target_dir, filename)
                     if WhatsAppService.download_media_file(media_url, target_path):
-                        # Log with the relative path so the dashboard can find it
-                        relative_path = f"/static/uploads/{user_phone}/{filename}"
-                        log_message(user_phone, "inbound", relative_path, msg_type)
+                        # Determine MIME type for Supabase
+                        mime_type = media_info.get("mime_type", "application/octet-stream")
+                        if msg_type == "image" and not getattr(media_info, 'mime_type', None):
+                             mime_type = "image/jpeg"
+                             
+                        # Try to upload to Supabase Storage
+                        supabase_path = f"{user_phone}/{filename}"
+                        public_url = WhatsAppService.upload_to_supabase_storage(target_path, supabase_path, mime_type)
+                        
+                        # Use public URL if successful, otherwise fallback to local relative path
+                        final_path = public_url if public_url else f"/static/uploads/{user_phone}/{filename}"
+                        
+                        log_message(user_phone, "inbound", final_path, msg_type)
+                        
+                        # Optionally cleanup local file to save disk space if uploaded successfully
+                        if public_url:
+                            try:
+                                os.remove(target_path)
+                            except Exception as e:
+                                print(f"Could not remove temporary file {target_path}: {e}")
                     else:
                         WhatsAppService.send_message(user_phone, "Lo siento, hubo un error al procesar tu archivo.")
                 else:

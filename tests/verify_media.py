@@ -13,13 +13,15 @@ class TestMediaProcessing(unittest.TestCase):
 
     @patch('src.services.WhatsAppService.get_media_url')
     @patch('src.services.WhatsAppService.download_media_file')
+    @patch('src.services.WhatsAppService.upload_to_supabase_storage')
     @patch('src.flows.log_message')
     @patch('src.flows.get_user_state')
-    def test_image_reception(self, mock_get_state, mock_log, mock_download, mock_get_url):
+    def test_image_reception(self, mock_get_state, mock_log, mock_upload, mock_download, mock_get_url):
         # Setup
         mock_get_state.return_value = "active"
         mock_get_url.return_value = "https://meta.com/temp_url"
         mock_download.return_value = True
+        mock_upload.return_value = None # Fallback to offline path behavior for test
         
         payload = {
             "entry": [{
@@ -51,13 +53,15 @@ class TestMediaProcessing(unittest.TestCase):
 
     @patch('src.services.WhatsAppService.get_media_url')
     @patch('src.services.WhatsAppService.download_media_file')
+    @patch('src.services.WhatsAppService.upload_to_supabase_storage')
     @patch('src.flows.log_message')
     @patch('src.flows.get_user_state')
-    def test_document_reception(self, mock_get_state, mock_log, mock_download, mock_get_url):
+    def test_document_reception(self, mock_get_state, mock_log, mock_upload, mock_download, mock_get_url):
         # Setup
         mock_get_state.return_value = "active"
         mock_get_url.return_value = "https://meta.com/temp_url_doc"
         mock_download.return_value = True
+        mock_upload.return_value = "https://mock-supabase.co/storage/v1/object/public/media/573001234567/contrato.pdf"
         
         payload = {
             "entry": [{
@@ -84,7 +88,7 @@ class TestMediaProcessing(unittest.TestCase):
         # Verify
         mock_get_url.assert_called_with("doc_789")
         mock_download.assert_called()
-        expected_path = "/static/uploads/573001234567/contrato.pdf"
+        expected_path = "https://mock-supabase.co/storage/v1/object/public/media/573001234567/contrato.pdf"
         mock_log.assert_any_call("573001234567", "inbound", expected_path, "document")
 
 if __name__ == '__main__':

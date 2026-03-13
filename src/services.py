@@ -159,3 +159,30 @@ class WhatsAppService:
         except Exception as e:
             print(f"Error downloading media file: {e}")
             return False
+
+    @staticmethod
+    def upload_to_supabase_storage(local_path, storage_path, content_type):
+        """
+        Uploads a local file to Supabase Storage ('media' bucket) and returns the public URL.
+        """
+        from src.conversation_log import supabase_client
+        if not supabase_client:
+            print("Supabase client not initialized, skipping storage upload.")
+            return None
+            
+        try:
+            with open(local_path, "rb") as f:
+                file_bytes = f.read()
+                
+            supabase_client.storage.from_("media").upload(
+                path=storage_path,
+                file=file_bytes,
+                file_options={"content-type": content_type, "upsert": "true"}
+            )
+            
+            # Fetch and return the public URL
+            url = supabase_client.storage.from_("media").get_public_url(storage_path)
+            return url
+        except Exception as e:
+            print(f"Error uploading media to Supabase Storage: {e}")
+            return None
