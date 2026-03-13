@@ -14,8 +14,12 @@ from src.conversation_log import (
     get_archived_conversations, restore_conversation
 )
 from src.services import WhatsAppService
+from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates')
+
+# Track active advisors { "advisor_name": last_seen_datetime }
+active_advisors = {}
 
 
 # ── HTTP Basic Auth ──────────────────────────────────────────────────
@@ -54,6 +58,27 @@ def dashboard():
 
 
 # ── API Routes ───────────────────────────────────────────────────────
+
+@admin_bp.route('/admin/api/presence', methods=['POST'])
+@requires_auth
+def api_presence():
+    """Receive heartbeat from client and return active advisors."""
+    body = request.get_json() or {}
+    advisor_name = body.get("advisor_name", "").strip()
+    
+    now = datetime.utcnow()
+    
+    if advisor_name:
+        active_advisors[advisor_name] = now
+        
+    # Clean up stale advisors (inactive for > 60 seconds)
+    stale_threshold = now - timedelta(seconds=60)
+    to_remove = [name for name, last_seen in active_advisors.items() if last_seen < stale_threshold]
+    for name in to_remove:
+        del active_advisors[name]
+        
+    return jsonify({"active_advisors": list(active_advisors.keys())})
+
 
 @admin_bp.route('/admin/api/conversations')
 @requires_auth
