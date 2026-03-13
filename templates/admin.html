@@ -964,7 +964,10 @@
                     if (m.type === 'image') {
                         content = `
                             <img src="${m.text}" class="msg-media" onclick="window.open('${m.text}', '_blank')" alt="Imagen">
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">📷 Imagen recibida</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">📷 Imagen recibida</div>
+                                <a href="${m.text}" download target="_blank" style="font-size: 0.75rem; color: var(--primary-dark); text-decoration: underline; cursor: pointer;">Descargar</a>
+                            </div>
                         `;
                     } else if (m.type === 'document') {
                         const filename = m.text.split('/').pop();
