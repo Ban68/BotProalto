@@ -590,6 +590,7 @@
         let currentTab = 'activas'; // 'activas' | 'archivadas'
         let advisorName = localStorage.getItem('proalto_advisor_name');
         let currentStatus = 'bot';
+        let latestActiveAdvisors = []; // To store the list from heartbeat
 
         function toggleCustomAdvisor() {
             const select = document.getElementById('advisorSelect');
@@ -938,15 +939,37 @@
             const isArchived = currentTab === 'archivadas';
             const isActiveAgent = (status === 'agent' || status === 'agent_silent') && !isArchived;
 
-            document.getElementById('msgInput').disabled = !isActiveAgent;
-            document.getElementById('btnSend').disabled = !isActiveAgent;
+            // Check if another advisor is in this chat
+            const otherAdvisorInChat = latestActiveAdvisors.find(a => a.name !== advisorName && a.current_chat === currentActivePhone);
 
+            const msgInput = document.getElementById('msgInput');
+            const btnSend = document.getElementById('btnSend');
             const btnClose = document.getElementById('btnCloseAgent');
             const btnForce = document.getElementById('btnForceAgent');
             const btnBotHumano = document.getElementById('btnBotHumano');
             const btnRestore = document.getElementById('btnRestore');
             const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
+
+            if (otherAdvisorInChat) {
+                // Lock the chat
+                msgInput.disabled = true;
+                btnSend.disabled = true;
+                btnForce.disabled = true;
+                btnBotHumano.disabled = true;
+                btnClose.disabled = true;
+                dropdown.classList.add('hidden'); // Better to hide it to avoid accidents
+                
+                ind.className = 'conv-status';
+                ind.style.background = '#f59e0b'; // Warning color
+                ind.style.color = 'white';
+                ind.innerText = `⚠️ OCUPADO POR ${otherAdvisorInChat.name.toUpperCase()}`;
+                msgInput.placeholder = `Este chat está siendo atendido por ${otherAdvisorInChat.name}. Espera a que termine.`;
+                return;
+            }
+
+            msgInput.disabled = !isActiveAgent;
+            btnSend.disabled = !isActiveAgent;
 
             if (isArchived) {
                 btnRestore.classList.remove('hidden');
@@ -1188,24 +1211,36 @@
 
         // Presence Logic
         async function sendHeartbeat() {
-            if (!advisorName) return; // Don't send if no name is set
+            if (!advisorName) return; 
             
             try {
                 const res = await fetch('/admin/api/presence', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ advisor_name: advisorName })
+                    body: JSON.stringify({ 
+                        advisor_name: advisorName,
+                        current_chat: currentActivePhone
+                    })
                 });
                 
                 if (res.ok) {
                     const data = await res.json();
+                    latestActiveAdvisors = data.active_advisors || [];
                     const listEl = document.getElementById('onlineAdvisorsList');
-                    if (data.active_advisors && data.active_advisors.length > 0) {
-                        listEl.innerHTML = data.active_advisors.map(name => 
-                            `<span style="display:inline-block; margin-right: 6px; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 4px;">🟢 ${name === advisorName ? name + ' (Tú)' : name}</span>`
-                        ).join('');
+                    if (latestActiveAdvisors.length > 0) {
+                        listEl.innerHTML = latestActiveAdvisors.map(a => {
+                            const chatInfo = a.current_chat ? ` <span style="font-size:0.75rem; opacity:0.8;">(en ${a.current_chat})</span>` : '';
+                            return `<div style="margin-bottom: 4px; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                                🟢 ${a.name === advisorName ? '<b>' + a.name + ' (Tú)</b>' : a.name}${chatInfo}
+                            </div>`;
+                        }).join('');
                     } else {
                         listEl.innerHTML = "<em>Solo tú</em>";
+                    }
+
+                    // Dynamic update of current view if someone else enters
+                    if (currentActivePhone) {
+                        updateInputState(currentStatus);
                     }
                 }
             } catch (err) {
@@ -1213,8 +1248,8 @@
             }
         }
 
-        // Send heartbeat every 30 seconds
-        setInterval(sendHeartbeat, 30000);
+        // Send heartbeat every 15 seconds for faster synchronization
+        setInterval(sendHeartbeat, 15000);
 
         // Initial setup
         fetchList();

@@ -62,22 +62,32 @@ def dashboard():
 @admin_bp.route('/admin/api/presence', methods=['POST'])
 @requires_auth
 def api_presence():
-    """Receive heartbeat from client and return active advisors."""
+    """Receive heartbeat from client and return active advisors with their current chat."""
     body = request.get_json() or {}
     advisor_name = body.get("advisor_name", "").strip()
+    current_chat = body.get("current_chat") # Can be null
     
     now = datetime.utcnow()
     
     if advisor_name:
-        active_advisors[advisor_name] = now
+        active_advisors[advisor_name] = {
+            "last_seen": now,
+            "current_chat": current_chat
+        }
         
     # Clean up stale advisors (inactive for > 60 seconds)
     stale_threshold = now - timedelta(seconds=60)
-    to_remove = [name for name, last_seen in active_advisors.items() if last_seen < stale_threshold]
+    to_remove = [name for name, info in active_advisors.items() if info["last_seen"] < stale_threshold]
     for name in to_remove:
         del active_advisors[name]
+    
+    # Format response: list of {name, current_chat}
+    response_data = [
+        {"name": name, "current_chat": info["current_chat"]}
+        for name, info in active_advisors.items()
+    ]
         
-    return jsonify({"active_advisors": list(active_advisors.keys())})
+    return jsonify({"active_advisors": response_data})
 
 
 @admin_bp.route('/admin/api/conversations')
@@ -110,6 +120,14 @@ def api_send_message():
 
     if not phone or not text:
         return jsonify({"error": "phone and text are required"}), 400
+
+    # Ensure no other advisor is currently "holding" this chat
+    for other_name, info in active_advisors.items():
+        if other_name != advisor_name and info.get("current_chat") == phone:
+            return jsonify({
+                "error": f"Este chat está siendo atendido por {other_name} en este momento.",
+                "owner": other_name
+            }), 409
 
     # Prefix with advisor label unless silent mode is on
     if silent:
@@ -154,6 +172,14 @@ def api_force_agent(phone):
     advisor_name = body.get("advisor_name", "Un asesor").strip()
     silent = body.get("silent", False)
     
+    # Ensure no other advisor is currently "holding" this chat
+    for other_name, info in active_advisors.items():
+        if other_name != advisor_name and info.get("current_chat") == phone:
+            return jsonify({
+                "error": f"Este chat está siendo atendido por {other_name} en este momento.",
+                "owner": other_name
+            }), 409
+            
     set_agent_mode(phone, "agent_silent" if silent else "agent")
 
     if not silent:
