@@ -357,6 +357,39 @@
             margin-top: 5px;
         }
 
+        .msg-media {
+            max-width: 100%;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .msg-media:hover {
+            transform: scale(1.02);
+        }
+
+        .doc-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            text-decoration: none;
+            color: var(--primary-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .doc-link:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .doc-icon {
+            font-size: 1.5rem;
+        }
+
         /* Input Area */
         .chat-input-area {
             padding: 20px 30px;
@@ -926,14 +959,27 @@
 
                     let text = (m.text || "").replace(/\n/g, '<br>');
                     
-                    // Asegurar que si es un mensaje de botones del sistema, se vea bien
-                    if (m.type === 'interactive' && !text.includes('[Botones:')) {
-                         // Opcional: podrías marcarlo de alguna forma si fuera necesario
+                    let content = `<div>${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>`;
+
+                    if (m.type === 'image') {
+                        content = `
+                            <img src="${m.text}" class="msg-media" onclick="window.open('${m.text}', '_blank')" alt="Imagen">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">📷 Imagen recibida</div>
+                        `;
+                    } else if (m.type === 'document') {
+                        const filename = m.text.split('/').pop();
+                        content = `
+                            <a href="${m.text}" target="_blank" class="doc-link">
+                                <span class="doc-icon">📄</span>
+                                <span>${filename}</span>
+                            </a>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">📎 Documento recibido</div>
+                        `;
                     }
 
                     html += `
     <div class="${classes}">
-        <div style="font-size: 0.95rem;">${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>
+        ${content}
         <div class="msg-meta">${formatTime(m.timestamp)}</div>
     </div>
     `;

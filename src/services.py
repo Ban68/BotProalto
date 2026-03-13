@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 from config import Config
 from src.conversation_log import log_message
 
@@ -113,3 +114,48 @@ class WhatsAppService:
             if e.response:
                 print(f"Response content: {e.response.text}")
             return None
+
+    @staticmethod
+    def get_media_url(media_id):
+        """
+        Fetch the temporary URL for a media file from WhatsApp Cloud API.
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{media_id}"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}"
+        }
+        
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json().get("url")
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching media URL: {e}")
+            if e.response:
+                print(f"Response content: {e.response.text}")
+            return None
+
+    @staticmethod
+    def download_media_file(media_url, target_path):
+        """
+        Download the media file from Meta servers to a local path.
+        """
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}"
+        }
+        
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            
+            response = requests.get(media_url, headers=headers, stream=True)
+            response.raise_for_status()
+            
+            with open(target_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            return True
+        except Exception as e:
+            print(f"Error downloading media file: {e}")
+            return False

@@ -40,6 +40,27 @@ class FlowHandler:
             elif msg_type == "interactive":
                 btn_title = message["interactive"].get("button_reply", {}).get("title", "")
                 log_message(user_phone, "inbound", btn_title, "button_reply")
+            elif msg_type in ["image", "document"]:
+                media_info = message[msg_type]
+                media_id = media_info["id"]
+                filename = media_info.get("filename", f"{msg_type}_{media_id}")
+                if msg_type == "image":
+                    ext = media_info.get("mime_type", "").split("/")[-1] or "jpg"
+                    filename = f"{media_id}.{ext}" if "." not in filename else filename
+                
+                # Fetch and download
+                media_url = WhatsAppService.get_media_url(media_id)
+                if media_url:
+                    target_dir = os.path.join("static", "uploads", user_phone)
+                    target_path = os.path.join(target_dir, filename)
+                    if WhatsAppService.download_media_file(media_url, target_path):
+                        # Log with the relative path so the dashboard can find it
+                        relative_path = f"/static/uploads/{user_phone}/{filename}"
+                        log_message(user_phone, "inbound", relative_path, msg_type)
+                    else:
+                        WhatsAppService.send_message(user_phone, "Lo siento, hubo un error al procesar tu archivo.")
+                else:
+                    WhatsAppService.send_message(user_phone, "Lo siento, no pudimos obtener el archivo de WhatsApp.")
 
             # Handle Text Messages
             if msg_type == "text":
