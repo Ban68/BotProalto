@@ -329,6 +329,9 @@
             box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
             position: relative;
             line-height: 1.4;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .msg-inbound {
@@ -921,11 +924,16 @@
                     let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
                     if (isAgentMsg) classes += ' msg-agent';
 
-                    let text = m.text.replace(/\n/g, '<br>');
+                    let text = (m.text || "").replace(/\n/g, '<br>');
+                    
+                    // Asegurar que si es un mensaje de botones del sistema, se vea bien
+                    if (m.type === 'interactive' && !text.includes('[Botones:')) {
+                         // Opcional: podrías marcarlo de alguna forma si fuera necesario
+                    }
 
                     html += `
     <div class="${classes}">
-        <div>${text}</div>
+        <div style="font-size: 0.95rem;">${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>
         <div class="msg-meta">${formatTime(m.timestamp)}</div>
     </div>
     `;
