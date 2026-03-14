@@ -60,13 +60,13 @@ def send_approved_notifications():
 def start_scheduler():
     scheduler = BackgroundScheduler(daemon=True)
     
-    # Run twice a day (e.g., at 09:00 AM and 03:00 PM)
-    scheduler.add_job(send_approved_notifications, 'cron', hour=9, minute=0)
-    scheduler.add_job(send_approved_notifications, 'cron', hour=15, minute=0)
+    # DESACTIVADO TEMPORALMENTE PARA REVISIÓN
+    # scheduler.add_job(send_approved_notifications, 'cron', hour=9, minute=0)
+    # scheduler.add_job(send_approved_notifications, 'cron', hour=15, minute=0)
     
     # Start the scheduler
     scheduler.start()
-    print("Background scheduler started (Cron: 09:00 and 15:00).")
+    print("Background scheduler started (TAREAS AUTOMÁTICAS DESACTIVADAS).")
     
     # Shut down the scheduler when exiting the app
     atexit.register(lambda: scheduler.shutdown(wait=False))
