@@ -135,8 +135,21 @@ class FlowHandler:
                     f"🔍 *Resultado de Solicitud*\n\n"
                     f"👤 *Cliente:* {nombre}\n"
                     f"📅 *Fecha:* {fecha}\n"
-                    f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
                 )
+
+                # Definir estados en los que NO se debe mostrar el monto
+                statuses_no_monto = [
+                    "REVISAR NUEVAMENTE", 
+                    "FALTA ALGÚN DOCUMENTO", 
+                    "EMPRESA PAUSADA", 
+                    "DENEGADO", 
+                    "CANCELADO POR LA EMPRESA",
+                    "DESISTIÓ DEL CRÉDITO", 
+                    "NO RESPONDIÓ"
+                ]
+
+                if clean_status not in statuses_no_monto:
+                    response_msg += f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
 
                 if clean_status == "APROBADO POR EL CLIENTE":
                     if plazo:
