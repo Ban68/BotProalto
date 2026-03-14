@@ -151,21 +151,14 @@ class FlowHandler:
                 if clean_status not in statuses_no_monto:
                     response_msg += f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
 
-                if clean_status == "APROBADO POR EL CLIENTE":
+                if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                     if plazo:
                         response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
-                    # 2.2 Send response with CTA
+                    # Send response and immediately set state to wait for email
                     WhatsAppService.send_message(user_phone, response_msg)
-
-                    body_text = (
-                        "Para continuar con el proceso y poder enviarte el contrato, por favor confirma tu aceptación."
-                    )
-                    buttons = [
-                        {"id": "acepto_condiciones", "title": "Acepto las condiciones"}
-                    ]
-                    WhatsAppService.send_interactive_button(user_phone, body_text, buttons)
+                    set_user_state(user_phone, "waiting_for_email")
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)
@@ -183,8 +176,8 @@ class FlowHandler:
                 else:
                     WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
             
-            # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to click CTA
-            if not result or clean_status != "APROBADO POR EL CLIENTE":
+            # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to type email
+            if not result or clean_status not in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                 set_user_state(user_phone, "active")
                 WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
