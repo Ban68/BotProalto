@@ -261,13 +261,30 @@ def api_restore_chat(phone):
     return jsonify({"status": "restored"})
 
 
-@admin_bp.route('/admin/api/trigger-aprobados')
+@admin_bp.route('/admin/api/pending-notifications')
 @requires_auth
-def api_trigger_aprobados():
-    """Manual trigger to test the send_approved_notifications automation."""
-    from src.automation import send_approved_notifications
+def api_pending_notifications():
+    """Get list of users eligible for 'Aprobado' automation today."""
+    from src.automation import get_pending_approved_notifications
     try:
-        send_approved_notifications()
-        return jsonify({"status": "ok", "message": "Automatización ejecutada exitosamente en segundo plano."})
+        pending = get_pending_approved_notifications()
+        return jsonify({"status": "ok", "pending": pending})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@admin_bp.route('/admin/api/trigger-bulk-send', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_send():
+    """Execute bulk send for a configured list of users."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+    
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+        
+    from src.automation import execute_bulk_approved_notifications
+    try:
+        results = execute_bulk_approved_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

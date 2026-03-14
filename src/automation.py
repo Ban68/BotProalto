@@ -6,41 +6,57 @@ from src.database import get_aprobados_por_el_cliente
 from src.services import WhatsAppService
 from src.conversation_log import has_sent_aprobado_msg_today, set_user_state
 
-def send_approved_notifications():
+def get_pending_approved_notifications():
     """
-    Fetches all applications in 'Aprobado por el cliente' state,
-    and sends them a WhatsApp message with a CTA button if they haven't
-    already received one today.
+    Returns a list of applications in 'Aprobado por el cliente' state
+    who are eligible to receive a notification today.
     """
-    print(f"[{datetime.now()}] Running scheduled task: send_approved_notifications")
-    
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
-        print("No accounts pending notification or error fetching.")
-        return
+        return []
 
+    eligible_users = []
+    
     for user in aprobados:
         telefono = user.get("telefono")
         nombre = user.get("nombre_completo", "Cliente")
         
         # We need a valid phone number
-        # Convert to string and handle possible floats (e.g. 3123456789.0)
         phone_str = str(telefono).split(".")[0]
         phone_str = "".join(filter(str.isdigit, phone_str))
         
         if not phone_str:
-            print(f"Skipping user {nombre} due to invalid or missing phone: {telefono}")
             continue
             
-        # Ensure country code (putting 57 unconditionally if it's missing)
+        # Ensure country code
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
             
         if has_sent_aprobado_msg_today(phone_str):
-            print(f"Already sent automated message to {phone_str} today. Skipping.")
             continue
             
-        # Define component for the template variable
+        eligible_users.append({
+            "phone": phone_str,
+            "name": nombre
+        })
+        
+    return eligible_users
+
+
+def execute_bulk_approved_notifications(users_list):
+    """
+    Executes the sending of notifications for a provided list of users.
+    Validates Meta response before updating state to prevent ghost conversations.
+    """
+    results = {"success": 0, "failed": 0, "errors": []}
+    
+    for user in users_list:
+        phone_str = user.get("phone")
+        nombre = user.get("name")
+        
+        if not phone_str:
+            continue
+            
         components = [
             {
                 "type": "body",
@@ -50,12 +66,34 @@ def send_approved_notifications():
             }
         ]
         
-        WhatsAppService.send_template(phone_str, "estado_verde", components=components)
+        response = WhatsAppService.send_template(phone_str, "estado_verde", components=components)
         
-        # Set state to wait for their email reply
-        set_user_state(phone_str, "waiting_for_email")
-        
+        # Check if response is truthy AND contains a messages array or message_id indicating success
+        if response and response.get('messages'):
+            # Only update state if Meta successfully accepted the message
+            # But do NOT set the status to active to avoid flooding the admin panel view.
+            # set_user_state typically updates status to 'active'. 
+            # We will use an internal state bypass or standard set_user_state depending on current logic.
+            # Currently set_user_state sets the bot state and the DB state.
+            set_user_state(phone_str, "waiting_for_email")
+            results["success"] += 1
+            from src.conversation_log import log_message
+            log_message(phone_str, "BOT_AUTO", f"✅ Notificación Masiva Aprobado enviada a {nombre}.")
+        else:
+            print(f"[{datetime.now()}] ERROR sending bulk to {phone_str}: {response}")
+            results["failed"] += 1
+            results["errors"].append({"phone": phone_str, "error": str(response)})
+            
         time.sleep(1) # Sleep slightly to avoid rate-limiting
+        
+    return results
+
+def send_approved_notifications():
+    """ 
+    Legacy wrapper, used for testing or raw script execution.
+    """
+    pending = get_pending_approved_notifications()
+    execute_bulk_approved_notifications(pending)
 
 def start_scheduler():
     scheduler = BackgroundScheduler(daemon=True)

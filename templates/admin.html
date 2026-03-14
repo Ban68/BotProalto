@@ -551,6 +551,7 @@
             <div class="tab-buttons">
                 <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
                 <button class="tab-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
+                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: var(--warning); color: #000; border-radius: 4px;">⚡ Envíos</button>
             </div>
         </div>
         <div class="conversation-list" id="convList">
@@ -610,6 +611,50 @@
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <h2 style="margin-top: 15px; color: #888;">Selecciona una conversación</h2>
+        </div>
+    </div>
+
+    <!-- Envíos Masivos State -->
+    <div class="main-chat" id="enviosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: var(--primary-dark); margin-bottom: 20px;">Envíos Masivos: Aprobado por el cliente</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Esta herramienta te permite notificar a todos los clientes que han sido aprobados y no han recibido un mensaje hoy.
+        </p>
+        
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Clientes listos para notificar: <span id="enviosCount">0</span></h3>
+                <button id="btnRefreshEnvios" class="btn btn-outline-danger" onclick="fetchPendingEnvios()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Refrescar Lista</button>
+            </div>
+            
+            <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                        </tr>
+                    </thead>
+                    <tbody id="enviosTableBody">
+                        <tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
+            <button id="btnExecuteEnvios" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 24px;" onclick="executeBulkSend()" disabled>🚀 Ejecutar Envío a Todos</button>
+        </div>
+        
+        <div id="enviosResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="enviosSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="enviosFailCount">0</span>
+                <ul id="enviosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
         </div>
     </div>
 
@@ -749,17 +794,37 @@
         function switchTab(tab) {
             currentTab = tab;
             currentActivePhone = null;
-            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('emptyState').style.display = tab === 'envios' ? 'none' : 'flex';
             document.getElementById('mainChat').style.display = 'none';
+            
+            const enviosState = document.getElementById('enviosState');
+            if(enviosState) {
+                enviosState.style.display = tab === 'envios' ? 'flex' : 'none';
+                enviosState.style.flexDirection = 'column';
+            }
 
             // Update tab styles
             document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
             document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
+            const tabEnvios = document.getElementById('tabEnvios');
+            if(tabEnvios) {
+                tabEnvios.classList.toggle('active-tab', tab === 'envios');
+                if(tab === 'envios') {
+                    tabEnvios.style.color = "white";
+                    tabEnvios.style.background = "var(--primary)";
+                } else {
+                    tabEnvios.style.color = "#000";
+                    tabEnvios.style.background = "var(--warning)";
+                }
+            }
 
             if (tab === 'activas') {
                 fetchList();
-            } else {
+            } else if (tab === 'archivadas') {
                 fetchArchivedList();
+            } else if (tab === 'envios') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Masivos Activo.<br><br>👉 Mira el panel principal.</div>';
+                fetchPendingEnvios();
             }
         }
 
@@ -812,6 +877,86 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        let pendingUsersData = [];
+        
+        async function fetchPendingEnvios() {
+            const tbody = document.getElementById('enviosTableBody');
+            const btn = document.getElementById('btnExecuteEnvios');
+            document.getElementById('enviosResults').style.display = 'none';
+            
+            tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
+            btn.disabled = true;
+            pendingUsersData = [];
+            
+            try {
+                const res = await fetch('/admin/api/pending-notifications');
+                const data = await res.json();
+                
+                if (res.ok && data.pending) {
+                    pendingUsersData = data.pending;
+                    document.getElementById('enviosCount').innerText = pendingUsersData.length;
+                    
+                    if (pendingUsersData.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar hoy.</td></tr>';
+                    } else {
+                        let rows = '';
+                        pendingUsersData.forEach(user => {
+                            rows += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px;">${user.phone}</td><td style="padding: 10px;">${user.name}</td></tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                        btn.disabled = false;
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
+            }
+        }
+        
+        async function executeBulkSend() {
+            if (pendingUsersData.length === 0) return;
+            if (!confirm(`¿Estás seguro de enviar la notificación de Aprobado a ${pendingUsersData.length} clientes?`)) return;
+            
+            const btn = document.getElementById('btnExecuteEnvios');
+            btn.disabled = true;
+            btn.innerText = '⌛ Enviando... por favor espera';
+            
+            try {
+                const res = await fetch('/admin/api/trigger-bulk-send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ users: pendingUsersData })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.results) {
+                    document.getElementById('enviosResults').style.display = 'block';
+                    document.getElementById('enviosSuccessCount').innerText = data.results.success;
+                    document.getElementById('enviosFailCount').innerText = data.results.failed;
+                    
+                    const errorList = document.getElementById('enviosErrorList');
+                    if (data.results.errors && data.results.errors.length > 0) {
+                        errorList.innerHTML = data.results.errors.map(err => `<li>${err.phone}: ${err.error}</li>`).join('');
+                    } else {
+                        errorList.innerHTML = '<li>Vaya, no hubo errores reportados.</li>';
+                    }
+                    
+                    // Refresh the pending list after sending
+                    await fetchPendingEnvios();
+                } else {
+                    alert('Error en el envío masivo: ' + (data.message || 'Respuesta desconocida'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Hubo un error de red al intentar el envío.');
+            } finally {
+                btn.innerText = '🚀 Ejecutar Envío a Todos';
             }
         }
 
@@ -970,6 +1115,7 @@
         async function selectConversation(phone) {
             currentActivePhone = phone;
             document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('enviosState').style.display = 'none';
             document.getElementById('mainChat').style.display = 'flex';
             document.getElementById('currentPhone').innerText = phone;
 
@@ -1345,8 +1491,12 @@
         }
 
         setInterval(async () => {
-            await fetchList();
-            if (currentActivePhone) {
+            if (currentTab === 'activas') {
+                await fetchList();
+            } else if (currentTab === 'archivadas') {
+                await fetchArchivedList();
+            }
+            if (currentActivePhone && currentTab !== 'envios') {
                 await fetchHistory(currentActivePhone, false);
             }
         }, 5000);
