@@ -4,7 +4,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from src.database import get_aprobados_por_el_cliente
 from src.services import WhatsAppService
-from src.conversation_log import has_sent_aprobado_msg_today, set_user_state
+from src.conversation_log import get_notified_phones_batch, set_user_state
 
 def get_pending_approved_notifications():
     """
@@ -15,7 +15,8 @@ def get_pending_approved_notifications():
     if not aprobados:
         return []
 
-    eligible_users = []
+    raw_users = []
+    phones_to_check = []
     
     for user in aprobados:
         telefono = user.get("telefono")
@@ -32,13 +33,17 @@ def get_pending_approved_notifications():
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
             
-        if has_sent_aprobado_msg_today(phone_str):
-            continue
-            
-        eligible_users.append({
-            "phone": phone_str,
-            "name": nombre
-        })
+        raw_users.append({"phone": phone_str, "name": nombre})
+        phones_to_check.append(phone_str)
+
+    if not phones_to_check:
+        return []
+
+    # SINGLE query to Supabase for all phones
+    notified_today = get_notified_phones_batch(phones_to_check)
+    
+    # Filter out those already notified
+    eligible_users = [u for u in raw_users if u["phone"] not in notified_today]
         
     return eligible_users
 

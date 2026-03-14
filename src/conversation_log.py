@@ -231,13 +231,36 @@ def has_sent_aprobado_msg_today(phone: str) -> bool:
             .eq("phone", phone)\
             .eq("direction", "outbound")\
             .gte("created_at", f"{today}T00:00:00")\
-            .ilike("text", "%Acepto las condiciones del crédito%")\
+            .ilike("text", "%correo electrónico%")\
             .limit(1)\
             .execute()
         return len(res.data) > 0
     except Exception as e:
         print(f"Supabase has_sent_aprobado_msg_today error: {e}")
         return False
+
+def get_notified_phones_batch(phones: list) -> set:
+    """
+    Given a list of phone numbers, returns a SET of those that 
+    HAVE already been notified today. (Optimized single query).
+    """
+    if not supabase_client or not phones:
+        return set()
+    
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .ilike("text", "%correo electrónico%")\
+            .execute()
+        
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_notified_phones_batch error: {e}")
+        return set()
 
 def mark_message_deleted(message_id: str):
     """Mark a message as deleted in the local database."""
