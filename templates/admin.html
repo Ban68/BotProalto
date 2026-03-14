@@ -551,7 +551,9 @@
             <div class="tab-buttons">
                 <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
                 <button class="tab-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
-                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: var(--warning); color: #000; border-radius: 4px;">⚡ Envíos</button>
+                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid var(--primary);">
+                    <span style="text-shadow: 0 0 2px #000;">⚡</span> Envíos
+                </button>
             </div>
         </div>
         <div class="conversation-list" id="convList">
@@ -811,10 +813,12 @@
                 tabEnvios.classList.toggle('active-tab', tab === 'envios');
                 if(tab === 'envios') {
                     tabEnvios.style.color = "white";
-                    tabEnvios.style.background = "var(--primary)";
+                    tabEnvios.style.background = "#4f46e5"; // Indigo para que resalte y contraste con el rayo
+                    tabEnvios.style.borderColor = "#4f46e5";
                 } else {
-                    tabEnvios.style.color = "#000";
-                    tabEnvios.style.background = "var(--warning)";
+                    tabEnvios.style.color = "#fff";
+                    tabEnvios.style.background = "#1e293b"; // Slate oscuro para contraste
+                    tabEnvios.style.borderColor = "var(--primary)";
                 }
             }
 
