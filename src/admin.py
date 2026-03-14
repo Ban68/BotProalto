@@ -159,16 +159,15 @@ def api_delete_message():
         return jsonify({"error": "WhatsApp message ID (wamid) is required"}), 400
 
     # 1. Attempt reveal on WhatsApp
-    result = WhatsAppService.revoke_message(wamid)
+    success, result = WhatsAppService.revoke_message(wamid)
     
-    # 2. Even if it fails (e.g. timeout > 48h), we can mark it deleted in our dashboard 
-    # but usually we want to know if WhatsApp allowed it.
-    if result:
+    if success:
         if msg_id_db:
             mark_message_deleted(msg_id_db)
         return jsonify({"status": "deleted", "whatsapp_response": result})
     else:
-        return jsonify({"error": "No se pudo eliminar el mensaje en WhatsApp. Es posible que hayan pasado más de 48 horas o el mensaje ya no exista."}), 500
+        # result contains the error message here
+        return jsonify({"error": f"WhatsApp API: {result}"}), 500
 
 
 @admin_bp.route('/admin/api/close-agent/<phone>', methods=['POST'])

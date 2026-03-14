@@ -313,6 +313,7 @@ class WhatsAppService:
         """
         Delete (revoke) a message previously sent via WhatsApp Cloud API.
         The message must have been sent within the last 2 days.
+        Returns (True, result) on success, (False, error_msg) on failure.
         """
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
@@ -322,15 +323,20 @@ class WhatsAppService:
         data = {
             "messaging_product": "whatsapp",
             "status": "deleted",
-            "message_id": message_id
+            "message_id": message_id.strip() if message_id else message_id
         }
         
         try:
             response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Error revoking message {message_id}: {e}")
-            if e.response:
-                print(f"Response content: {e.response.text}")
-            return None
+            res_json = response.json()
+            
+            if response.status_code >= 200 and response.status_code < 300:
+                return True, res_json
+            else:
+                error_msg = res_json.get("error", {}).get("message", "Error desconocido de WhatsApp")
+                print(f"WhatsApp API Error revoking message {message_id}: {error_msg}")
+                return False, error_msg
+                
+        except Exception as e:
+            print(f"Exception revoking message {message_id}: {e}")
+            return False, str(e)
