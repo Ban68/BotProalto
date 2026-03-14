@@ -156,8 +156,18 @@ class FlowHandler:
                         response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
-                    # Send response and immediately set state to wait for email
+                    # 1. Send the result box
                     WhatsAppService.send_message(user_phone, response_msg)
+                    
+                    # 2. Send a second, separate, and highlighted instruction message
+                    instruction_msg = (
+                        "⚠️ *ACCIÓN NECESARIA*\n\n"
+                        "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
+                        "_Lo necesitamos para enviarte el contrato para firma electrónica._"
+                    )
+                    WhatsAppService.send_message(user_phone, instruction_msg)
+                    
+                    # 3. Set state to wait for email
                     set_user_state(user_phone, "waiting_for_email")
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
