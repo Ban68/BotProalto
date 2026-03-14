@@ -130,6 +130,47 @@ class WhatsAppService:
             return None
 
     @staticmethod
+    def send_template(to_number, template_name, language_code="es_CO", components=None):
+        """
+        Send a WhatsApp template message.
+        components: List of component dicts (e.g. for parameters)
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": language_code},
+                "components": components or []
+            }
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            res_json = response.json()
+            
+            # Extract WhatsApp Message ID
+            wamid = None
+            if "messages" in res_json and len(res_json["messages"]) > 0:
+                wamid = res_json["messages"][0].get("id")
+
+            # Log outbound template message
+            log_message(to_number, "outbound", f"[Template: {template_name}]", "template", wamid=wamid)
+            return res_json
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending template: {e}")
+            if e.response:
+                print(f"Response content: {e.response.text}")
+            return None
+
+    @staticmethod
     def get_media_url(media_id):
         """
         Fetch the temporary URL for a media file from WhatsApp Cloud API.
