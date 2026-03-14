@@ -239,7 +239,7 @@ def has_sent_aprobado_msg_today(phone: str) -> bool:
         print(f"Supabase has_sent_aprobado_msg_today error: {e}")
         return False
 
-def mark_message_deleted(message_id: int):
+def mark_message_deleted(message_id: str):
     """Mark a message as deleted in the local database."""
     try:
         supabase_client.table('bot_messages').update({

@@ -1011,11 +1011,12 @@
 
                     let deleteBtn = '';
                     if (isOut && m.wamid && m.type !== 'deleted') {
-                        deleteBtn = `<button class="delete-msg-btn" title="Eliminar para todos" onclick="deleteMessage(${m.id}, '${m.wamid}')">×</button>`;
+                        // DB id is a UUID string, must be quoted
+                        deleteBtn = `<button class="delete-msg-btn" title="Eliminar para todos" onclick="deleteMessage('${m.id}', '${m.wamid}')">×</button>`;
                     }
 
                     html += `
-    <div class="${classes}">
+    <div class="${classes}" id="msg-${m.id}">
         ${deleteBtn}
         ${content}
         <div class="msg-meta">${formatTime(m.timestamp)}</div>
