@@ -880,6 +880,19 @@
             let html = '';
             let newAgentDetected = false;
 
+            // Ordenar: Primero los que están en modo ASESOR o BOT HUMANO, luego el resto por fecha de actualización
+            conversations.sort((a, b) => {
+                const priorityStatus = ['agent', 'agent_silent'];
+                const aIsPriority = priorityStatus.includes(a.status);
+                const bIsPriority = priorityStatus.includes(b.status);
+
+                if (aIsPriority && !bIsPriority) return -1;
+                if (!aIsPriority && bIsPriority) return 1;
+                
+                // Si ambos tienen la misma prioridad, ordenar por fecha de actualización (más reciente primero)
+                return new Date(b.updated_at) - new Date(a.updated_at);
+            });
+
             conversations.forEach(c => {
                 let statusClass = 'status-bot';
                 let statusLabel = 'BOT';
