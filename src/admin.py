@@ -8,6 +8,9 @@ from flask import (
     Response, current_app
 )
 from config import Config
+import os
+import uuid
+from werkzeug.utils import secure_filename
 from src.conversation_log import (
     get_conversations, get_conversation,
     set_agent_mode, log_message, delete_conversation,
@@ -259,6 +262,76 @@ def api_restore_chat(phone):
     """Restore an archived conversation back to the active panel."""
     restore_conversation(phone)
     return jsonify({"status": "restored"})
+
+
+@admin_bp.route('/admin/api/upload-media', methods=['POST'])
+@requires_auth
+def api_upload_media():
+    """Upload a file to temporary storage and then to Supabase."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    phone = request.form.get("phone", "admin_upload")
+    
+    filename = secure_filename(file.filename)
+    unique_name = f"{uuid.uuid4()}_{filename}"
+    temp_path = os.path.join("static", "uploads", "temp", unique_name)
+    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+    
+    file.save(temp_path)
+    
+    # Determine type
+    content_type = file.content_type
+    storage_path = f"admin_uploads/{phone}/{unique_name}"
+    
+    public_url = WhatsAppService.upload_to_supabase_storage(temp_path, storage_path, content_type)
+    
+    # Cleanup temp file
+    try:
+        os.remove(temp_path)
+    except:
+        pass
+        
+    if public_url:
+        return jsonify({
+            "status": "uploaded",
+            "url": public_url,
+            "filename": filename,
+            "content_type": content_type
+        })
+    else:
+        return jsonify({"error": "Failed to upload to Supabase"}), 500
+
+
+@admin_bp.route('/admin/api/send-media', methods=['POST'])
+@requires_auth
+def api_send_media():
+    """Send media (image or document) to a user."""
+    body = request.get_json() or {}
+    phone = body.get("phone")
+    media_url = body.get("url")
+    media_type = body.get("type") # 'image' or 'document'
+    filename = body.get("filename")
+    caption = body.get("caption")
+
+    if not phone or not media_url or not media_type:
+        return jsonify({"error": "phone, url, and type are required"}), 400
+
+    if media_type == 'image':
+        result = WhatsAppService.send_image(phone, media_url, caption)
+    elif media_type == 'document':
+        result = WhatsAppService.send_document(phone, media_url, filename, caption)
+    else:
+        return jsonify({"error": "Invalid media type"}), 400
+
+    if result:
+        return jsonify({"status": "sent"})
+    else:
+        return jsonify({"error": "Failed to send media"}), 500
 
 
 @admin_bp.route('/admin/api/pending-notifications')

@@ -596,9 +596,15 @@
         </div>
 
         <div class="chat-input-area" id="chatInputArea">
-            <textarea id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)"
-                disabled onkeydown="handleKeyPress(event)"></textarea>
-            <div style="display: flex; justify-content: flex-end;">
+            <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelected(this)" />
+            <div style="display: flex; gap: 8px; align-items: flex-end;">
+                <button id="btnUpload" class="btn btn-outline-secondary" onclick="document.getElementById('fileInput').click()" disabled
+                    title="Enviar imagen o PDF" style="font-size: 1.2rem; border-radius: 4px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0;">
+                    📎
+                </button>
+                <textarea id="msgInput" placeholder="Escribe un mensaje al cliente... (Solo funciona en modo Asesor)"
+                    style="flex: 1; height: 40px; resize: none; margin-bottom: 0;"
+                    disabled onkeydown="handleKeyPress(event)"></textarea>
                 <button class="btn btn-primary" id="btnSend" disabled onclick="sendMessage()"
                     style="height: 40px;">Enviar</button>
             </div>
@@ -1213,6 +1219,7 @@
 
             const msgInput = document.getElementById('msgInput');
             const btnSend = document.getElementById('btnSend');
+            const btnUpload = document.getElementById('btnUpload');
             const btnClose = document.getElementById('btnCloseAgent');
             const btnForce = document.getElementById('btnForceAgent');
             const btnBotHumano = document.getElementById('btnBotHumano');
@@ -1224,6 +1231,7 @@
                 // Lock the chat
                 msgInput.disabled = true;
                 btnSend.disabled = true;
+                btnUpload.disabled = true;
                 btnForce.disabled = true;
                 btnBotHumano.disabled = true;
                 btnClose.disabled = true;
@@ -1239,6 +1247,7 @@
 
             msgInput.disabled = !isActiveAgent;
             btnSend.disabled = !isActiveAgent;
+            btnUpload.disabled = !isActiveAgent;
 
             if (isArchived) {
                 btnRestore.classList.remove('hidden');
@@ -1282,6 +1291,72 @@
             }
         }
 
+
+        async function handleFileSelected(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const phone = document.getElementById('currentPhone').innerText.replace(/\s+/g, '');
+            if (!phone) {
+                alert("Por favor selecciona un chat primero.");
+                input.value = "";
+                return;
+            }
+
+            // Show loading or disable buttons
+            const btnUpload = document.getElementById('btnUpload');
+            const originalContent = btnUpload.innerHTML;
+            btnUpload.disabled = true;
+            btnUpload.innerHTML = '...';
+
+            try {
+                // 1. Upload to server (then to Supabase)
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('phone', phone);
+
+                const uploadRes = await fetch('/admin/api/upload-media', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadData.error || "Error al subir archivo");
+
+                const mediaUrl = uploadData.url;
+                const contentType = uploadData.content_type;
+                const filename = uploadData.filename;
+
+                // 2. Determine type (image or document)
+                let mediaType = 'document';
+                if (contentType.startsWith('image/')) mediaType = 'image';
+
+                // 3. Send via WhatsApp
+                const sendRes = await fetch('/admin/api/send-media', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        url: mediaUrl,
+                        type: mediaType,
+                        filename: filename
+                    })
+                });
+
+                const sendData = await sendRes.json();
+                if (!sendRes.ok) throw new Error(sendData.error || "Error al enviar mensaje");
+
+                // Success! Refresh history
+                fetchHistory(phone);
+                input.value = ""; // clear file input
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message);
+            } finally {
+                btnUpload.disabled = false;
+                btnUpload.innerHTML = originalContent;
+            }
+        }
 
         async function sendMessage() {
             if (!currentActivePhone) return;

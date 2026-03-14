@@ -42,6 +42,72 @@ class WhatsAppService:
             return None
 
     @staticmethod
+    def send_image(to_number, image_url, caption=None):
+        """
+        Send an image via public URL.
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "image",
+            "image": {
+                "link": image_url
+            }
+        }
+        if caption:
+            data["image"]["caption"] = caption
+
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            res_json = response.json()
+            wamid = res_json["messages"][0].get("id") if "messages" in res_json else None
+            log_message(to_number, "outbound", image_url, "image", wamid=wamid)
+            return res_json
+        except Exception as e:
+            print(f"Error sending image: {e}")
+            return None
+
+    @staticmethod
+    def send_document(to_number, doc_url, filename=None, caption=None):
+        """
+        Send a document via public URL.
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "messaging_product": "whatsapp",
+            "to": to_number,
+            "type": "document",
+            "document": {
+                "link": doc_url
+            }
+        }
+        if filename:
+            data["document"]["filename"] = filename
+        if caption:
+            data["document"]["caption"] = caption
+
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            res_json = response.json()
+            wamid = res_json["messages"][0].get("id") if "messages" in res_json else None
+            log_message(to_number, "outbound", doc_url, "document", wamid=wamid)
+            return res_json
+        except Exception as e:
+            print(f"Error sending document: {e}")
+            return None
+
+    @staticmethod
     def send_interactive_button(to_number, body_text, buttons):
         """
         Send an interactive message with buttons.
