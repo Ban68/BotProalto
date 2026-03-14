@@ -35,11 +35,12 @@ class FlowHandler:
             current_state = get_user_state(user_phone)
 
             # ── Log inbound message ──────────────────────────────────
+            msg_id = message.get("id")
             if msg_type == "text":
-                log_message(user_phone, "inbound", message["text"]["body"].strip(), "text")
+                log_message(user_phone, "inbound", message["text"]["body"].strip(), "text", wamid=msg_id)
             elif msg_type == "interactive":
                 btn_title = message["interactive"].get("button_reply", {}).get("title", "")
-                log_message(user_phone, "inbound", btn_title, "button_reply")
+                log_message(user_phone, "inbound", btn_title, "button_reply", wamid=msg_id)
             elif msg_type in ["image", "document"]:
                 media_info = message[msg_type]
                 media_id = media_info["id"]
@@ -66,7 +67,7 @@ class FlowHandler:
                         # Use public URL if successful, otherwise fallback to local relative path
                         final_path = public_url if public_url else f"/static/uploads/{user_phone}/{filename}"
                         
-                        log_message(user_phone, "inbound", final_path, msg_type)
+                        log_message(user_phone, "inbound", final_path, msg_type, wamid=msg_id)
                         
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:

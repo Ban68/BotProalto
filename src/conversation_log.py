@@ -18,18 +18,18 @@ if Config.SUPABASE_URL and Config.SUPABASE_KEY:
 else:
     print("⚠️ SUPABASE_URL or SUPABASE_KEY is missing. Supabase logging will fail.")
 
-def log_message(phone: str, direction: str, text: str, msg_type: str = "text"):
+def log_message(phone: str, direction: str, text: str, msg_type: str = "text", wamid: str = None):
     """Log a single message to the conversation history in background."""
     now = datetime.now().isoformat()
     
     # Run DB insert in background to avoid blocking WhatsApp webhook response
     threading.Thread(
         target=_supabase_log_task,
-        args=(phone, direction, text, msg_type, now),
+        args=(phone, direction, text, msg_type, now, wamid),
         daemon=True
     ).start()
 
-def _supabase_log_task(phone, direction, text, msg_type, now):
+def _supabase_log_task(phone, direction, text, msg_type, now, wamid=None):
     """Internal synchronous task to sync message to Supabase."""
     try:
         # Check current status for auto-restore logic
@@ -64,7 +64,8 @@ def _supabase_log_task(phone, direction, text, msg_type, now):
             "direction": direction,
             "text": text,
             "msg_type": msg_type,
-            "created_at": now
+            "created_at": now,
+            "wamid": wamid
         }).execute()
     except Exception as e:
         print(f"⚠️ Supabase logging error: {e}")
@@ -150,10 +151,12 @@ def get_conversation(phone: str) -> dict | None:
         messages = []
         for m in m_res.data:
             messages.append({
+                "id": m.get("id"),
                 "direction": m["direction"],
                 "text": m["text"],
                 "type": m["msg_type"],
-                "timestamp": m["created_at"]
+                "timestamp": m["created_at"],
+                "wamid": m.get("wamid")
             })
             
         return {
@@ -235,4 +238,14 @@ def has_sent_aprobado_msg_today(phone: str) -> bool:
     except Exception as e:
         print(f"Supabase has_sent_aprobado_msg_today error: {e}")
         return False
+
+def mark_message_deleted(message_id: int):
+    """Mark a message as deleted in the local database."""
+    try:
+        supabase_client.table('bot_messages').update({
+            "text": "🚫 _Mensaje eliminado por el asesor_",
+            "msg_type": "deleted"
+        }).eq("id", message_id).execute()
+    except Exception as e:
+        print(f"Supabase mark_message_deleted error: {e}")
 

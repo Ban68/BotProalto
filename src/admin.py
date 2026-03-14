@@ -11,7 +11,8 @@ from config import Config
 from src.conversation_log import (
     get_conversations, get_conversation,
     set_agent_mode, log_message, delete_conversation,
-    get_archived_conversations, restore_conversation
+    get_archived_conversations, restore_conversation,
+    mark_message_deleted
 )
 from src.services import WhatsAppService
 from datetime import datetime, timedelta
@@ -141,6 +142,30 @@ def api_send_message():
         return jsonify({"status": "sent"})
     else:
         return jsonify({"error": "Failed to send message"}), 500
+
+
+@admin_bp.route('/admin/api/delete-message', methods=['POST'])
+@requires_auth
+def api_delete_message():
+    """Revoke a message on WhatsApp and mark it as deleted in DB."""
+    body = request.get_json() or {}
+    msg_id_db = body.get("id")
+    wamid = body.get("wamid")
+
+    if not wamid:
+        return jsonify({"error": "WhatsApp message ID (wamid) is required"}), 400
+
+    # 1. Attempt reveal on WhatsApp
+    result = WhatsAppService.revoke_message(wamid)
+    
+    # 2. Even if it fails (e.g. timeout > 48h), we can mark it deleted in our dashboard 
+    # but usually we want to know if WhatsApp allowed it.
+    if result:
+        if msg_id_db:
+            mark_message_deleted(msg_id_db)
+        return jsonify({"status": "deleted", "whatsapp_response": result})
+    else:
+        return jsonify({"error": "No se pudo eliminar el mensaje en WhatsApp. Es posible que hayan pasado más de 48 horas o el mensaje ya no exista."}), 500
 
 
 @admin_bp.route('/admin/api/close-agent/<phone>', methods=['POST'])

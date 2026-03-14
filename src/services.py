@@ -25,9 +25,16 @@ class WhatsAppService:
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
-            # Log outbound message
-            log_message(to_number, "outbound", message_body, "text")
-            return response.json()
+            res_json = response.json()
+            
+            # Extract WhatsApp Message ID
+            wamid = None
+            if "messages" in res_json and len(res_json["messages"]) > 0:
+                wamid = res_json["messages"][0].get("id")
+
+            # Log outbound message with its ID
+            log_message(to_number, "outbound", message_body, "text", wamid=wamid)
+            return res_json
         except requests.exceptions.RequestException as e:
             print(f"Error sending message: {e}")
             if e.response:
@@ -70,11 +77,18 @@ class WhatsAppService:
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
+            res_json = response.json()
+
+            # Extract WhatsApp Message ID
+            wamid = None
+            if "messages" in res_json and len(res_json["messages"]) > 0:
+                wamid = res_json["messages"][0].get("id")
+
             # Log outbound interactive message
             button_titles = [b["reply"]["title"] for b in action_buttons]
             log_text = f"{body_text} [Botones: {', '.join(button_titles)}]"
-            log_message(to_number, "outbound", log_text, "interactive")
-            return response.json()
+            log_message(to_number, "outbound", log_text, "interactive", wamid=wamid)
+            return res_json
         except requests.exceptions.RequestException as e:
             print(f"Error sending interactive message: {e}")
             return None
@@ -185,4 +199,31 @@ class WhatsAppService:
             return url
         except Exception as e:
             print(f"Error uploading media to Supabase Storage: {e}")
+            return None
+
+    @staticmethod
+    def revoke_message(message_id):
+        """
+        Delete (revoke) a message previously sent via WhatsApp Cloud API.
+        The message must have been sent within the last 2 days.
+        """
+        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+        headers = {
+            "Authorization": f"Bearer {Config.API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "messaging_product": "whatsapp",
+            "status": "deleted",
+            "message_id": message_id
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error revoking message {message_id}: {e}")
+            if e.response:
+                print(f"Response content: {e.response.text}")
             return None

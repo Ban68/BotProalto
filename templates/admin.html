@@ -491,6 +491,35 @@
             justify-content: flex-end;
             gap: 10px;
         }
+
+        /* Message deletion styles */
+        .delete-msg-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 5;
+        }
+
+        .message:hover .delete-msg-btn {
+            display: flex;
+        }
+
+        .delete-msg-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
     </style>
 </head>
 
@@ -980,8 +1009,14 @@
                         `;
                     }
 
+                    let deleteBtn = '';
+                    if (isOut && m.wamid && m.type !== 'deleted') {
+                        deleteBtn = `<button class="delete-msg-btn" title="Eliminar para todos" onclick="deleteMessage(${m.id}, '${m.wamid}')">×</button>`;
+                    }
+
                     html += `
     <div class="${classes}">
+        ${deleteBtn}
         ${content}
         <div class="msg-meta">${formatTime(m.timestamp)}</div>
     </div>
@@ -1174,6 +1209,29 @@
                 console.error(e);
             }
         }
+
+        async function deleteMessage(dbId, wamid) {
+            if (!confirm('¿Seguro quieres eliminar este mensaje para todos en WhatsApp? Esta acción es irreversible.')) return;
+
+            try {
+                const res = await fetch('/admin/api/delete-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: dbId, wamid: wamid })
+                });
+
+                if (res.ok) {
+                    await fetchHistory(currentActivePhone);
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Error al eliminar el mensaje');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión al intentar eliminar el mensaje');
+            }
+        }
+
 
         async function deleteChat(permanent) {
             if (!currentActivePhone) return;
