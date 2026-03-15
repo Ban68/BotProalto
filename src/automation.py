@@ -78,7 +78,11 @@ def execute_bulk_approved_notifications(users_list):
             {
                 "type": "body",
                 "parameters": [
-                    {"type": "text", "text": nombre}
+                    {
+                        "type": "text", 
+                        "text": nombre,
+                        "parameter_name": "nombre"
+                    }
                 ]
             }
         ]
