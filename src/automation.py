@@ -6,11 +6,23 @@ from src.database import get_aprobados_por_el_cliente
 from src.services import WhatsAppService
 from src.conversation_log import get_notified_phones_batch, set_user_state
 
+# --- TEST MODE CONFIG ---
+TEST_MODE = True  # SET TO FALSE BEFORE PRODUCTION
+TEST_NUMBER = "573106176713"
+# -------------------------
+
 def get_pending_approved_notifications():
     """
     Returns a list of applications in 'Aprobado por el cliente' state
     who are eligible to receive a notification today.
     """
+    if TEST_MODE:
+        # En modo prueba solo mostramos el número de test (si no se le ha enviado hoy)
+        notified = get_notified_phones_batch([TEST_NUMBER])
+        if TEST_NUMBER in notified:
+            return []
+        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST"}]
+
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
         return []
