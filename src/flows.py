@@ -41,6 +41,9 @@ class FlowHandler:
             elif msg_type == "interactive":
                 btn_title = message["interactive"].get("button_reply", {}).get("title", "")
                 log_message(user_phone, "inbound", btn_title, "button_reply", wamid=msg_id)
+            elif msg_type == "button":
+                btn_text = message["button"].get("text", "")
+                log_message(user_phone, "inbound", btn_text, "button", wamid=msg_id)
             elif msg_type in ["image", "document"]:
                 media_info = message[msg_type]
                 media_id = media_info["id"]
@@ -89,6 +92,14 @@ class FlowHandler:
             elif msg_type == "interactive":
                 reply = message["interactive"]["button_reply"]
                 reply_id = reply["id"]
+                FlowHandler.process_button_click(user_phone, reply_id, current_state)
+            
+            # Handle Template Button Replies (Quick Replies)
+            elif msg_type == "button":
+                reply = message["button"]
+                # For templates, the payload is often exactly what we want, 
+                # but if not present, we use the text as fallback ID.
+                reply_id = reply.get("payload", reply.get("text"))
                 FlowHandler.process_button_click(user_phone, reply_id, current_state)
                 
         except Exception as e:
@@ -314,7 +325,7 @@ class FlowHandler:
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
 
-        elif btn_id == "acepto_condiciones":
+        elif btn_id in ["acepto_condiciones", "Acepto las condiciones"]:
             set_user_state(user_phone, "waiting_for_email")
             WhatsAppService.send_message(user_phone, "¡Excelente! Por favor envíanos tu *correo electrónico* para poder enviarte el contrato de crédito.")
 
