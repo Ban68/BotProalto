@@ -95,11 +95,18 @@ def execute_bulk_approved_notifications(users_list):
             set_user_state(phone_str, "waiting_for_email")
             results["success"] += 1
             from src.conversation_log import log_message
-            log_message(phone_str, "BOT_AUTO", f"✅ Notificación Masiva Aprobado enviada a {nombre}.")
+            # Log with 'outbound' so it's detected by the 'already notified' check
+            log_message(phone_str, "outbound", f"✅ Notificación Masiva Aprobado enviada a {nombre}.", "bot_notification")
         else:
-            print(f"[{datetime.now()}] ERROR sending bulk to {phone_str}: {response}")
+            error_details = "No response from Meta"
+            if response and 'error' in response:
+                error_details = response['error'].get('message', str(response))
+            elif response:
+                error_details = str(response)
+                
+            print(f"[{datetime.now()}] ERROR sending bulk to {phone_str}: {error_details}")
             results["failed"] += 1
-            results["errors"].append({"phone": phone_str, "error": str(response)})
+            results["errors"].append({"phone": phone_str, "error": error_details})
             
         time.sleep(1) # Sleep slightly to avoid rate-limiting
         

@@ -231,7 +231,7 @@ def has_sent_aprobado_msg_today(phone: str) -> bool:
             .eq("phone", phone)\
             .eq("direction", "outbound")\
             .gte("created_at", f"{today}T00:00:00")\
-            .ilike("text", "%correo electrónico%")\
+            .or_("text.ilike.%correo electrónico%,text.ilike.%estado_verde%,text.ilike.%Notificación Masiva%")\
             .limit(1)\
             .execute()
         return len(res.data) > 0
@@ -254,7 +254,7 @@ def get_notified_phones_batch(phones: list) -> set:
             .in_("phone", phones)\
             .eq("direction", "outbound")\
             .gte("created_at", f"{today}T00:00:00")\
-            .ilike("text", "%correo electrónico%")\
+            .or_("text.ilike.%correo electrónico%,text.ilike.%estado_verde%,text.ilike.%Notificación Masiva%")\
             .execute()
         
         return {item["phone"] for item in res.data}
