@@ -892,10 +892,12 @@
 
         let pendingUsersData = [];
         
-        async function fetchPendingEnvios() {
+        async function fetchPendingEnvios(hideResults = true) {
             const tbody = document.getElementById('enviosTableBody');
             const btn = document.getElementById('btnExecuteEnvios');
-            document.getElementById('enviosResults').style.display = 'none';
+            if (hideResults) {
+                document.getElementById('enviosResults').style.display = 'none';
+            }
             
             tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
@@ -957,8 +959,8 @@
                         errorList.innerHTML = '<li>Vaya, no hubo errores reportados.</li>';
                     }
                     
-                    // Refresh the pending list after sending
-                    await fetchPendingEnvios();
+                    // Refresh the pending list after sending but keep results visible
+                    await fetchPendingEnvios(false);
                 } else {
                     alert('Error en el envío masivo: ' + (data.message || 'Respuesta desconocida'));
                 }
