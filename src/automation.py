@@ -18,9 +18,10 @@ def get_pending_approved_notifications():
     """
     if TEST_MODE:
         # En modo prueba solo mostramos el número de test (si no se le ha enviado hoy)
-        notified = get_notified_phones_batch([TEST_NUMBER])
-        if TEST_NUMBER in notified:
-            return []
+        # Comentamos el filtro para poder probar varias veces el mismo día
+        # notified = get_notified_phones_batch([TEST_NUMBER])
+        # if TEST_NUMBER in notified:
+        #     return []
         return [{"phone": TEST_NUMBER, "name": "PROALTO TEST"}]
 
     aprobados = get_aprobados_por_el_cliente()
