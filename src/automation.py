@@ -7,7 +7,7 @@ from src.services import WhatsAppService
 from src.conversation_log import get_notified_phones_batch, set_user_state
 
 # --- TEST MODE CONFIG ---
-TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
+TEST_MODE = True  # SET TO FALSE BEFORE PRODUCTION
 TEST_NUMBER = "573106176713"
 # -------------------------
 
