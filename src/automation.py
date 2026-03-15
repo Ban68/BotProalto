@@ -7,7 +7,7 @@ from src.services import WhatsAppService
 from src.conversation_log import get_notified_phones_batch, set_user_state
 
 # --- TEST MODE CONFIG ---
-TEST_MODE = True  # SET TO FALSE BEFORE PRODUCTION
+TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
 TEST_NUMBER = "573106176713"
 # -------------------------
 
@@ -18,10 +18,7 @@ def get_pending_approved_notifications():
     """
     if TEST_MODE:
         # En modo prueba solo mostramos el número de test (si no se le ha enviado hoy)
-        # Comentamos el filtro para poder probar varias veces el mismo día
-        # notified = get_notified_phones_batch([TEST_NUMBER])
-        # if TEST_NUMBER in notified:
-        #     return []
+        # Comentamos el filtro para poder probar varias veces el mismo día en modo test
         return [{"phone": TEST_NUMBER, "name": "PROALTO TEST"}]
 
     aprobados = get_aprobados_por_el_cliente()
@@ -60,13 +57,12 @@ def get_pending_approved_notifications():
         
     return eligible_users
 
-
 def execute_bulk_approved_notifications(users_list):
     """
-    Executes the sending of notifications for a provided list of users.
-    Validates Meta response before updating state to prevent ghost conversations.
+    Sends the 'estado_verde' template to a list of users.
+    Returns summary of results.
     """
-    results = {"success": 0, "failed": 0, "errors": []}
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
     
     for user in users_list:
         phone_str = user.get("phone")
@@ -93,47 +89,26 @@ def execute_bulk_approved_notifications(users_list):
         # Check if response is truthy AND contains a messages array or message_id indicating success
         if response and response.get('messages'):
             # Only update state if Meta successfully accepted the message
-            # But do NOT set the status to active to avoid flooding the admin panel view.
-            # set_user_state typically updates status to 'active'. 
-            # We will use an internal state bypass or standard set_user_state depending on current logic.
-            # Currently set_user_state sets the bot state and the DB state.
             set_user_state(phone_str, "waiting_for_email")
             results["success"] += 1
-            from src.conversation_log import log_message
-            # Log with 'outbound' so it's detected by the 'already notified' check
-            log_message(phone_str, "outbound", f"✅ Notificación Masiva Aprobado enviada a {nombre}.", "bot_notification")
         else:
-            error_details = "No response from Meta"
-            if response and 'error' in response:
-                error_details = response['error'].get('message', str(response))
-            elif response:
-                error_details = str(response)
-                
-            print(f"[{datetime.now()}] ERROR sending bulk to {phone_str}: {error_details}")
-            results["failed"] += 1
-            results["errors"].append({"phone": phone_str, "error": error_details})
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
             
-        time.sleep(1) # Sleep slightly to avoid rate-limiting
-        
     return results
 
-def send_approved_notifications():
-    """ 
-    Legacy wrapper, used for testing or raw script execution.
-    """
-    pending = get_pending_approved_notifications()
-    execute_bulk_approved_notifications(pending)
+# --- Scheduler Logic for future automation ---
+def scheduled_task():
+    print(f"[{datetime.now()}] Checking for pending approved notifications...")
+    # This is where we'd put the automated logic if we want it 100% hands-free later
+    # For now, it's triggered manually from the admin panel.
+    pass
 
-def start_scheduler():
-    scheduler = BackgroundScheduler(daemon=True)
-    
-    # DESACTIVADO TEMPORALMENTE PARA REVISIÓN
-    # scheduler.add_job(send_approved_notifications, 'cron', hour=9, minute=0)
-    # scheduler.add_job(send_approved_notifications, 'cron', hour=15, minute=0)
-    
-    # Start the scheduler
-    scheduler.start()
-    print("Background scheduler started (TAREAS AUTOMÁTICAS DESACTIVADAS).")
-    
-    # Shut down the scheduler when exiting the app
-    atexit.register(lambda: scheduler.shutdown(wait=False))
+scheduler = BackgroundScheduler()
+# scheduler.add_job(func=scheduled_task, trigger="interval", minutes=60)
+# scheduler.start()
+
+# atexit.register(lambda: scheduler.shutdown())
