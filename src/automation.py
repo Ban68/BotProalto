@@ -19,7 +19,7 @@ def get_pending_approved_notifications():
     if TEST_MODE:
         # En modo prueba solo mostramos el número de test (si no se le ha enviado hoy)
         # Comentamos el filtro para poder probar varias veces el mismo día en modo test
-        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST"}]
+        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "monto": 1000000, "plazo": 12}]
 
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
@@ -43,7 +43,12 @@ def get_pending_approved_notifications():
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
             
-        raw_users.append({"phone": phone_str, "name": nombre})
+        raw_users.append({
+            "phone": phone_str, 
+            "name": nombre,
+            "monto": user.get("valor_preestudiado", 0),
+            "plazo": user.get("plazo", 0)
+        })
         phones_to_check.append(phone_str)
 
     if not phones_to_check:
@@ -71,6 +76,17 @@ def execute_bulk_approved_notifications(users_list):
         if not phone_str:
             continue
             
+        # Format monto and plazo for better presentation
+        monto_val = user.get("monto", 0)
+        # Colombia style: dot as thousand separator
+        if isinstance(monto_val, (int, float)):
+            monto_format = f"${monto_val:,.0f}".replace(",", ".")
+        else:
+            monto_format = str(monto_val)
+        
+        plazo_val = user.get("plazo", 0)
+        plazo_format = f"{plazo_val} cuotas"
+        
         components = [
             {
                 "type": "body",
@@ -79,6 +95,16 @@ def execute_bulk_approved_notifications(users_list):
                         "type": "text", 
                         "text": nombre,
                         "parameter_name": "nombre"
+                    },
+                    {
+                        "type": "text", 
+                        "text": monto_format,
+                        "parameter_name": "monto"
+                    },
+                    {
+                        "type": "text", 
+                        "text": plazo_format,
+                        "parameter_name": "plazo"
                     }
                 ]
             }
