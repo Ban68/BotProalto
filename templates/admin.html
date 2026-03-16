@@ -91,29 +91,39 @@
 
         .tab-buttons {
             display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
             border-top: 1px solid rgba(255, 255, 255, 0.2);
-            margin-top: 5px;
+            margin-top: 10px;
+            padding-top: 10px;
         }
 
         .tab-btn {
-            flex: 1;
-            padding: 8px;
-            background: transparent;
-            border: none;
-            color: rgba(255, 255, 255, 0.7);
+            flex: 1 1 calc(33.33% - 8px);
+            min-width: 80px;
+            padding: 8px 4px;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
             cursor: pointer;
-            font-size: 0.82rem;
+            font-size: 0.75rem;
             font-weight: 600;
             transition: all 0.2s;
-        }
-
-        .tab-btn.active-tab {
-            color: white;
-            border-bottom: 2px solid white;
+            text-align: center;
+            white-space: nowrap;
         }
 
         .tab-btn:hover {
-            color: white;
+            filter: brightness(1.2);
+            transform: translateY(-1px);
+        }
+
+        .tab-btn.active-tab {
+            background: var(--primary) !important;
+            color: #1e293b !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 12px rgba(254, 192, 92, 0.3);
         }
 
         .archived-badge {
@@ -552,13 +562,13 @@
             <div class="tab-buttons">
                 <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
                 <button class="tab-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
-                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid var(--primary);">
+                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: #1e293b; color: #fff; border: 1px solid var(--primary);">
                     <span style="text-shadow: 0 0 2px #000;">⚡</span> Envíos
                 </button>
-                <button class="tab-btn" id="tabLeads" onclick="switchTab('leads')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid #10b981;">
+                <button class="tab-btn" id="tabLeads" onclick="switchTab('leads')" style="background: #1e293b; color: #fff; border: 1px solid #10b981;">
                     <span style="text-shadow: 0 0 2px #000;">🎯</span> Leads
                 </button>
-                <button class="tab-btn" id="tabCorreos" onclick="switchTab('correos')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid #3b82f6;">
+                <button class="tab-btn" id="tabCorreos" onclick="switchTab('correos')" style="background: #1e293b; color: #fff; border: 1px solid #3b82f6;">
                     <span style="text-shadow: 0 0 2px #000;">📧</span> Correos
                 </button>
             </div>
@@ -910,13 +920,13 @@
             if(tabEnvios) {
                 tabEnvios.classList.toggle('active-tab', tab === 'envios');
                 if(tab === 'envios') {
-                    tabEnvios.style.color = "white";
                     tabEnvios.style.background = "#4f46e5";
                     tabEnvios.style.borderColor = "#4f46e5";
+                    tabEnvios.style.color = "white";
                 } else {
-                    tabEnvios.style.color = "#fff";
                     tabEnvios.style.background = "#1e293b";
                     tabEnvios.style.borderColor = "var(--primary)";
+                    tabEnvios.style.color = "#fff";
                 }
             }
 
@@ -924,13 +934,13 @@
             if(tabLeads) {
                 tabLeads.classList.toggle('active-tab', tab === 'leads');
                 if(tab === 'leads') {
-                    tabLeads.style.color = "white";
                     tabLeads.style.background = "#059669";
                     tabLeads.style.borderColor = "#059669";
+                    tabLeads.style.color = "white";
                 } else {
-                    tabLeads.style.color = "#fff";
                     tabLeads.style.background = "#1e293b";
                     tabLeads.style.borderColor = "#10b981";
+                    tabLeads.style.color = "#fff";
                 }
             }
 
@@ -938,13 +948,13 @@
             if(tabCorreos) {
                 tabCorreos.classList.toggle('active-tab', tab === 'correos');
                 if(tab === 'correos') {
-                    tabCorreos.style.color = "white";
                     tabCorreos.style.background = "#3b82f6";
                     tabCorreos.style.borderColor = "#3b82f6";
+                    tabCorreos.style.color = "white";
                 } else {
-                    tabCorreos.style.color = "#fff";
                     tabCorreos.style.background = "#1e293b";
                     tabCorreos.style.borderColor = "#3b82f6";
+                    tabCorreos.style.color = "#fff";
                 }
             }
 
