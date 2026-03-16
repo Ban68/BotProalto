@@ -554,6 +554,9 @@
                 <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid var(--primary);">
                     <span style="text-shadow: 0 0 2px #000;">⚡</span> Envíos
                 </button>
+                <button class="tab-btn" id="tabLeads" onclick="switchTab('leads')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid #10b981;">
+                    <span style="text-shadow: 0 0 2px #000;">🎯</span> Leads
+                </button>
             </div>
         </div>
         <div class="conversation-list" id="convList">
@@ -662,6 +665,34 @@
             <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
                 <strong>Fallos:</strong> <span id="enviosFailCount">0</span>
                 <ul id="enviosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leads Campaña State -->
+    <div class="main-chat" id="leadsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #059669; margin-bottom: 20px;">Campaña Leads: Oferta de Crédito</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Ingresa la lista de leads a los que deseas enviar la plantilla "contacto_leads". 
+            <strong>Formato:</strong> Un cliente por línea, teléfono seguido de coma y nombre (Ej: <em>573001234567, Juan Pérez</em>).
+        </p>
+        
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <textarea id="leadsInputArea" rows="10" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; resize: vertical; margin-bottom: 10px;" placeholder="573001234567, Carlos García&#10;573109876543, Maria Lopez"></textarea>
+            
+            <div style="text-align: right;">
+                <button id="btnExecuteLeads" class="btn" style="background: #10b981; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkLeads()">🎯 Enviar a Leads</button>
+            </div>
+        </div>
+        
+        <div id="leadsResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados de la Campaña:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="leadsSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="leadsFailCount">0</span>
+                <ul id="leadsErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
             </div>
         </div>
     </div>
@@ -802,7 +833,7 @@
         function switchTab(tab) {
             currentTab = tab;
             currentActivePhone = null;
-            document.getElementById('emptyState').style.display = tab === 'envios' ? 'none' : 'flex';
+            document.getElementById('emptyState').style.display = (tab === 'envios' || tab === 'leads') ? 'none' : 'flex';
             document.getElementById('mainChat').style.display = 'none';
             
             const enviosState = document.getElementById('enviosState');
@@ -811,20 +842,41 @@
                 enviosState.style.flexDirection = 'column';
             }
 
+            const leadsState = document.getElementById('leadsState');
+            if(leadsState) {
+                leadsState.style.display = tab === 'leads' ? 'flex' : 'none';
+                leadsState.style.flexDirection = 'column';
+            }
+
             // Update tab styles
             document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
             document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
+            
             const tabEnvios = document.getElementById('tabEnvios');
             if(tabEnvios) {
                 tabEnvios.classList.toggle('active-tab', tab === 'envios');
                 if(tab === 'envios') {
                     tabEnvios.style.color = "white";
-                    tabEnvios.style.background = "#4f46e5"; // Indigo para que resalte y contraste con el rayo
+                    tabEnvios.style.background = "#4f46e5";
                     tabEnvios.style.borderColor = "#4f46e5";
                 } else {
                     tabEnvios.style.color = "#fff";
-                    tabEnvios.style.background = "#1e293b"; // Slate oscuro para contraste
+                    tabEnvios.style.background = "#1e293b";
                     tabEnvios.style.borderColor = "var(--primary)";
+                }
+            }
+
+            const tabLeads = document.getElementById('tabLeads');
+            if(tabLeads) {
+                tabLeads.classList.toggle('active-tab', tab === 'leads');
+                if(tab === 'leads') {
+                    tabLeads.style.color = "white";
+                    tabLeads.style.background = "#059669";
+                    tabLeads.style.borderColor = "#059669";
+                } else {
+                    tabLeads.style.color = "#fff";
+                    tabLeads.style.background = "#1e293b";
+                    tabLeads.style.borderColor = "#10b981";
                 }
             }
 
@@ -835,6 +887,8 @@
             } else if (tab === 'envios') {
                 document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Masivos Activo.<br><br>👉 Mira el panel principal.</div>';
                 fetchPendingEnvios();
+            } else if (tab === 'leads') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Campaña Leads Activo.<br><br>👉 Mira el panel principal.</div>';
             }
         }
 
@@ -969,6 +1023,71 @@
                 alert('Hubo un error de red al intentar el envío.');
             } finally {
                 btn.innerText = '🚀 Ejecutar Envío a Todos';
+            }
+        }
+
+        async function executeBulkLeads() {
+            const inputText = document.getElementById('leadsInputArea').value;
+            if (!inputText.trim()) {
+                alert("Por favor, ingresa al menos un número y nombre en el formato indicado.");
+                return;
+            }
+
+            const lines = inputText.split('\n');
+            const users = [];
+
+            for (const line of lines) {
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    const phone = parts[0].trim();
+                    const name = parts.slice(1).join(',').trim(); // Join rest in case name has commas
+                    if (phone && name) {
+                        users.push({ phone, name });
+                    }
+                }
+            }
+
+            if (users.length === 0) {
+                alert("No se detectaron usuarios válidos. Revisa el formato: 'Teléfono, Nombre'");
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de enviar la campaña Leads a ${users.length} personas?`)) return;
+
+            const btn = document.getElementById('btnExecuteLeads');
+            btn.disabled = true;
+            btn.innerText = '⌛ Enviando... por favor espera';
+            document.getElementById('leadsResults').style.display = 'none';
+
+            try {
+                const res = await fetch('/admin/api/trigger-bulk-leads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ users })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.results) {
+                    document.getElementById('leadsResults').style.display = 'block';
+                    document.getElementById('leadsSuccessCount').innerText = data.results.success;
+                    document.getElementById('leadsFailCount').innerText = data.results.fail;
+
+                    const errorList = document.getElementById('leadsErrorList');
+                    if (data.results.errors && data.results.errors.length > 0) {
+                        errorList.innerHTML = data.results.errors.map(err => `<li>${err}</li>`).join('');
+                    } else {
+                        errorList.innerHTML = '<li>¡Perfecto! No hubo errores.</li>';
+                    }
+                } else {
+                    alert('Error en la campaña leads: ' + (data.message || 'Respuesta desconocida'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Hubo un error de red al intentar el envío a leads.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '🎯 Enviar a Leads';
             }
         }
 
