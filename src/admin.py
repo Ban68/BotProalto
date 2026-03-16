@@ -377,3 +377,13 @@ def api_trigger_bulk_leads():
         return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+@admin_bp.route('/admin/api/captured-emails')
+@requires_auth
+def api_captured_emails():
+    """Get list of all captured emails."""
+    from src.conversation_log import get_captured_emails
+    try:
+        emails = get_captured_emails()
+        return jsonify({"status": "ok", "emails": emails})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

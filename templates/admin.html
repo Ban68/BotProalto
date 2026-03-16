@@ -558,6 +558,9 @@
                 <button class="tab-btn" id="tabLeads" onclick="switchTab('leads')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid #10b981;">
                     <span style="text-shadow: 0 0 2px #000;">🎯</span> Leads
                 </button>
+                <button class="tab-btn" id="tabCorreos" onclick="switchTab('correos')" style="background: #1e293b; color: #fff; border-radius: 4px; margin-left: 4px; border: 1px solid #3b82f6;">
+                    <span style="text-shadow: 0 0 2px #000;">📧</span> Correos
+                </button>
             </div>
         </div>
         <div class="conversation-list" id="convList">
@@ -708,6 +711,37 @@
         </div>
     </div>
 
+    <!-- Correos Capturados State -->
+    <div class="main-chat" id="correosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #3b82f6; margin-bottom: 20px;">Correos Capturados</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Lista de correos electrónicos capturados durante el flujo de aprobación automática.
+        </p>
+        
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Total Capturados: <span id="correosCount">0</span></h3>
+                <button class="btn btn-outline-primary" onclick="fetchCapturedEmails()" style="border-color: #3b82f6; color: #1d4ed8;">🔄 Actualizar</button>
+            </div>
+            
+            <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #1d4ed8; color: white; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Fecha</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Email</th>
+                        </tr>
+                    </thead>
+                    <tbody id="correosTableBody">
+                        <tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Advisor Selection Modal -->
     <div id="advisorModal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -844,7 +878,10 @@
         function switchTab(tab) {
             currentTab = tab;
             currentActivePhone = null;
-            document.getElementById('emptyState').style.display = (tab === 'envios' || tab === 'leads') ? 'none' : 'flex';
+            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'archivadas') ? 'flex' : 'none';
+            if (tab === 'envios' || tab === 'leads' || tab === 'correos') {
+                document.getElementById('emptyState').style.display = 'none';
+            }
             document.getElementById('mainChat').style.display = 'none';
             
             const enviosState = document.getElementById('enviosState');
@@ -857,6 +894,12 @@
             if(leadsState) {
                 leadsState.style.display = tab === 'leads' ? 'flex' : 'none';
                 leadsState.style.flexDirection = 'column';
+            }
+
+            const correosState = document.getElementById('correosState');
+            if(correosState) {
+                correosState.style.display = tab === 'correos' ? 'flex' : 'none';
+                correosState.style.flexDirection = 'column';
             }
 
             // Update tab styles
@@ -891,6 +934,20 @@
                 }
             }
 
+            const tabCorreos = document.getElementById('tabCorreos');
+            if(tabCorreos) {
+                tabCorreos.classList.toggle('active-tab', tab === 'correos');
+                if(tab === 'correos') {
+                    tabCorreos.style.color = "white";
+                    tabCorreos.style.background = "#3b82f6";
+                    tabCorreos.style.borderColor = "#3b82f6";
+                } else {
+                    tabCorreos.style.color = "#fff";
+                    tabCorreos.style.background = "#1e293b";
+                    tabCorreos.style.borderColor = "#3b82f6";
+                }
+            }
+
             if (tab === 'activas') {
                 fetchList();
             } else if (tab === 'archivadas') {
@@ -900,6 +957,43 @@
                 fetchPendingEnvios();
             } else if (tab === 'leads') {
                 document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Campaña Leads Activo.<br><br>👉 Mira el panel principal.</div>';
+            } else if (tab === 'correos') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Lista de Correos Capturados.<br><br>👉 Mira el panel principal.</div>';
+                fetchCapturedEmails();
+            }
+        }
+
+        async function fetchCapturedEmails() {
+            const tbody = document.getElementById('correosTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
+            
+            try {
+                const res = await fetch('/admin/api/captured-emails');
+                const data = await res.json();
+                
+                if (res.ok && data.emails) {
+                    document.getElementById('correosCount').innerText = data.emails.length;
+                    
+                    if (data.emails.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
+                    } else {
+                        let rows = '';
+                        data.emails.forEach(item => {
+                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; font-size: 0.85rem;">${formatTime(item.created_at)}</td>
+                                <td style="padding: 10px;">${item.name || '---'}</td>
+                                <td style="padding: 10px;">${item.phone}</td>
+                                <td style="padding: 10px; font-weight: 600; color: #1d4ed8;">${item.email}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
             }
         }
 

@@ -207,10 +207,37 @@ class FlowHandler:
         if state == "waiting_for_email":
             email = text.strip()
             if "@" in email and "." in email:
+                # Attempt to extract name from previous messages
+                from src.conversation_log import get_conversation, save_captured_email
+                client_name = "Cliente"
+                conv_data = get_conversation(user_phone)
+                if conv_data and "messages" in conv_data:
+                    # Look for the last message that contains the name
+                    for m in reversed(conv_data["messages"]):
+                        msg_text = m.get("text", "")
+                        if "👤 *Cliente:*" in msg_text:
+                            try:
+                                client_name = msg_text.split("👤 *Cliente:*")[1].split("\n")[0].strip()
+                                break
+                            except:
+                                pass
+                        elif "¡Hola " in msg_text and "!" in msg_text:
+                            # Might be from a template like estado_verde
+                            try:
+                                client_name = msg_text.split("¡Hola ")[1].split("!")[0].strip()
+                                break
+                            except:
+                                pass
+
+                # Save to database
+                save_captured_email(user_phone, email, client_name)
+
                 WhatsAppService.send_message(user_phone, "¡Gracias! Hemos registrado tu correo electrónico. En breve te estaremos enviando el contrato de crédito.")
+                
                 # Optional: Send a notification to Admin about the email
                 try:
-                    notify_admin_agent_request(user_phone) # Or create a specific `notify_admin_email_received` in notifications.py
+                    from src.notifications import notify_admin_agent_request
+                    notify_admin_agent_request(user_phone) 
                 except Exception as e:
                     print(f"Error notifying admin: {e}")
                 

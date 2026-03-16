@@ -272,3 +272,33 @@ def mark_message_deleted(message_id: str):
     except Exception as e:
         print(f"Supabase mark_message_deleted error: {e}")
 
+def save_captured_email(phone: str, email: str, name: str):
+    """Saves a captured email to the captured_emails table."""
+    if not supabase_client:
+        print("⚠️ Supabase client not initialized. Cannot save email.")
+        return False
+    
+    try:
+        data = {
+            "phone": phone,
+            "email": email,
+            "name": name,
+            "created_at": datetime.now().isoformat()
+        }
+        supabase_client.table('captured_emails').insert(data).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error saving captured email: {e}")
+        return False
+
+def get_captured_emails():
+    """Retrieves all captured emails ordered by date."""
+    if not supabase_client:
+        return []
+    
+    try:
+        res = supabase_client.table('captured_emails').select("*").order("created_at", desc=True).execute()
+        return res.data
+    except Exception as e:
+        print(f"❌ Error fetching captured emails: {e}")
+        return []
