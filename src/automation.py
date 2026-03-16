@@ -136,6 +136,7 @@ def execute_bulk_leads_notifications(users_list):
         
         if response and response.get('messages'):
             results["success"] += 1
+            set_user_state(phone_str, "lead_notified")
         else:
             results["fail"] += 1
             error_msg = "No response from Meta"

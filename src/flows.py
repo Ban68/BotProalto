@@ -311,6 +311,7 @@ class FlowHandler:
 
             
         elif btn_id in ["menu_support", "Hablar con un asesor"]:
+            is_lead = (state == "lead_notified")
             set_user_state(user_phone, "agent")
             
             try:
@@ -318,12 +319,19 @@ class FlowHandler:
                 notify_admin_agent_request(user_phone)
             except Exception as e:
                 print(f"Error notifying admin: {e}")
+            
+            if is_lead:
+                msg = (
+                    "¡Excelente elección! 🚀 Me alegra mucho tu interés en ProAlto. \n\n"
+                    "Dame un momento mientras te asigno con un asesor comercial para brindarte una atención personalizada y ayudarte con tu solicitud de inmediato."
+                )
+            else:
+                msg = (
+                    "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
+                    "_Si deseas volver al menú del bot, escribe *salir*._"
+                )
                 
-            WhatsAppService.send_message(
-                user_phone,
-                "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
-                "_Si deseas volver al menú del bot, escribe *salir*._"
-            )
+            WhatsAppService.send_message(user_phone, msg)
 
         elif btn_id == "Ahora no, gracias":
             set_user_state(user_phone, "active")
