@@ -322,8 +322,8 @@ class FlowHandler:
             
             if is_lead:
                 msg = (
-                    "¡Excelente elección! 🚀 Me alegra mucho tu interés en ProAlto. \n\n"
-                    "Dame un momento mientras te asigno con un asesor comercial para brindarte una atención personalizada y ayudarte con tu solicitud de inmediato."
+                    "¡Claro que sí! 🚀 Me alegra tu interés en ProAlto. \n\n"
+                    "En un momento un asesor comercial te atenderá para brindarte información personalizada y ayudarte con tu solicitud."
                 )
             else:
                 msg = (
