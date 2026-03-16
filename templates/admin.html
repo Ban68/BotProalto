@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #fec05c;
@@ -678,9 +679,19 @@
         </p>
         
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <textarea id="leadsInputArea" rows="10" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; resize: vertical; margin-bottom: 10px;" placeholder="573001234567, Carlos García&#10;573109876543, Maria Lopez"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 1rem;">Lista de Destinatarios</h3>
+                <div style="display: flex; gap: 8px;">
+                    <input type="file" id="leadsFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleLeadsFileUpload(event)">
+                    <button class="btn btn-outline-secondary" style="font-size: 0.85rem; padding: 5px 12px; border: 1px solid #10b981; color: #059669;" onclick="document.getElementById('leadsFileInput').click()">📂 Cargar Excel/CSV</button>
+                    <button class="btn btn-outline-secondary" style="font-size: 0.85rem; padding: 5px 12px;" onclick="document.getElementById('leadsInputArea').value = ''">🗑️ Limpiar</button>
+                </div>
+            </div>
+
+            <textarea id="leadsInputArea" rows="10" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-family: monospace; font-size: 0.9rem; resize: vertical; margin-bottom: 10px;" placeholder="573001234567, Carlos García&#10;573109876543, Maria Lopez"></textarea>
             
-            <div style="text-align: right;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="leadsStatusText" style="font-size: 0.9rem; color: #666;">Listo para procesar.</span>
                 <button id="btnExecuteLeads" class="btn" style="background: #10b981; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkLeads()">🎯 Enviar a Leads</button>
             </div>
         </div>
@@ -1033,14 +1044,15 @@
                 return;
             }
 
-            const lines = inputText.split('\n');
+            const lines = inputText.trim().split('\n');
             const users = [];
 
             for (const line of lines) {
+                if (!line.trim()) continue;
                 const parts = line.split(',');
                 if (parts.length >= 2) {
-                    const phone = parts[0].trim();
-                    const name = parts.slice(1).join(',').trim(); // Join rest in case name has commas
+                    const phone = parts[0].replace(/\D/g, '').trim();
+                    const name = parts.slice(1).join(',').trim(); 
                     if (phone && name) {
                         users.push({ phone, name });
                     }
@@ -1055,8 +1067,11 @@
             if (!confirm(`¿Estás seguro de enviar la campaña Leads a ${users.length} personas?`)) return;
 
             const btn = document.getElementById('btnExecuteLeads');
+            const statusText = document.getElementById('leadsStatusText');
+            
             btn.disabled = true;
-            btn.innerText = '⌛ Enviando... por favor espera';
+            btn.innerText = '⌛ Enviando...';
+            statusText.innerText = "Procesando envío masivo...";
             document.getElementById('leadsResults').style.display = 'none';
 
             try {
@@ -1079,16 +1094,71 @@
                     } else {
                         errorList.innerHTML = '<li>¡Perfecto! No hubo errores.</li>';
                     }
+                    statusText.innerText = "Campaña finalizada con éxito.";
                 } else {
                     alert('Error en la campaña leads: ' + (data.message || 'Respuesta desconocida'));
+                    statusText.innerText = "Error en el envío.";
                 }
             } catch (e) {
                 console.error(e);
                 alert('Hubo un error de red al intentar el envío a leads.');
+                statusText.innerText = "Error de red.";
             } finally {
                 btn.disabled = false;
                 btn.innerText = '🎯 Enviar a Leads';
             }
+        }
+
+        function handleLeadsFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusText = document.getElementById('leadsStatusText');
+            statusText.innerText = "Leyendo archivo...";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Supongamos que los datos están en la primera pestaña
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convertir a JSON (array de arrays suele ser más directo para este caso)
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    let resultText = "";
+                    let count = 0;
+                    
+                    for (let i = 0; i < json.length; i++) {
+                        const row = json[i];
+                        if (row.length >= 2) {
+                            let phone = String(row[0] || "").replace(/\D/g, '').trim();
+                            let name = String(row[1] || "").trim();
+                            
+                            // Saltar si es el encabezado (comprobar si 'phone' es solo texto o muy corto)
+                            if (i === 0 && (phone === "telefono" || phone === "phone" || isNaN(phone))) continue;
+
+                            if (phone && name) {
+                                resultText += `${phone}, ${name}\n`;
+                                count++;
+                            }
+                        }
+                    }
+                    
+                    document.getElementById('leadsInputArea').value = resultText;
+                    statusText.innerText = `Se cargaron ${count} leads exitosamente.`;
+                    // Reset file input
+                    event.target.value = '';
+                } catch (err) {
+                    console.error("Error al leer Excel:", err);
+                    alert("Error al leer el archivo. Asegúrate de que las dos primeras columnas sean Teléfono y Nombre.");
+                    statusText.innerText = "Error de lectura.";
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
 
