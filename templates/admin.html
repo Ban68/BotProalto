@@ -1049,10 +1049,12 @@
 
             for (const line of lines) {
                 if (!line.trim()) continue;
-                const parts = line.split(',');
+                // Soporta Tab (Excel), Comma (CSV) o Semicolon
+                let parts = line.includes('\t') ? line.split('\t') : (line.includes(',') ? line.split(',') : line.split(';'));
+                
                 if (parts.length >= 2) {
                     const phone = parts[0].replace(/\D/g, '').trim();
-                    const name = parts.slice(1).join(',').trim(); 
+                    const name = parts.slice(1).join(' ').trim(); 
                     if (phone && name) {
                         users.push({ phone, name });
                     }
@@ -1122,44 +1124,62 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    // Supongamos que los datos están en la primera pestaña
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // Convertir a JSON (array de arrays suele ser más directo para este caso)
                     const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
                     let resultText = "";
                     let count = 0;
-                    
                     for (let i = 0; i < json.length; i++) {
                         const row = json[i];
                         if (row.length >= 2) {
                             let phone = String(row[0] || "").replace(/\D/g, '').trim();
                             let name = String(row[1] || "").trim();
-                            
-                            // Saltar si es el encabezado (comprobar si 'phone' es solo texto o muy corto)
                             if (i === 0 && (phone === "telefono" || phone === "phone" || isNaN(phone))) continue;
-
                             if (phone && name) {
                                 resultText += `${phone}, ${name}\n`;
                                 count++;
                             }
                         }
                     }
-                    
                     document.getElementById('leadsInputArea').value = resultText;
                     statusText.innerText = `Se cargaron ${count} leads exitosamente.`;
-                    // Reset file input
                     event.target.value = '';
                 } catch (err) {
                     console.error("Error al leer Excel:", err);
-                    alert("Error al leer el archivo. Asegúrate de que las dos primeras columnas sean Teléfono y Nombre.");
+                    alert("Error al leer el archivo.");
                     statusText.innerText = "Error de lectura.";
                 }
             };
             reader.readAsArrayBuffer(file);
         }
+
+        // Detectar pegado desde Excel (Tabs) y convertir a formato Comma
+        document.getElementById('leadsInputArea').addEventListener('paste', (e) => {
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('Text');
+
+            if (pastedData.includes('\t')) {
+                e.preventDefault();
+                const lines = pastedData.split(/\r?\n/);
+                const formatted = lines.map(line => {
+                    if (!line.trim()) return "";
+                    const parts = line.split('\t');
+                    if (parts.length >= 2) {
+                        return `${parts[0].trim()}, ${parts.slice(1).join(' ').trim()}`;
+                    }
+                    return line;
+                }).filter(l => l !== "").join('\n');
+
+                const textarea = e.target;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const value = textarea.value;
+                textarea.value = value.substring(0, start) + formatted + value.substring(end);
+                
+                document.getElementById('leadsStatusText').innerText = "Datos de Excel pegados y formateados.";
+            }
+        });
 
 
         function playBeep() {
