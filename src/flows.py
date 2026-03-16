@@ -298,16 +298,19 @@ class FlowHandler:
             set_user_state(user_phone, "waiting_for_cedula")
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu solicitud:")
 
-        elif btn_id == "menu_credito":
+        elif btn_id in ["menu_credito", "Solicitar crédito"]:
             set_user_state(user_phone, "active")
-            WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
+            
+            # Optional: A slightly different prefix if it was a quick reply from the template
+            prefix = "¡Excelente elección! " if btn_id == "Solicitar crédito" else ""
+            WhatsAppService.send_message(user_phone, f"{prefix}Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id == "menu_saldo":
             set_user_state(user_phone, "waiting_for_cedula_saldo")
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
 
             
-        elif btn_id == "menu_support":
+        elif btn_id in ["menu_support", "Hablar con un asesor"]:
             set_user_state(user_phone, "agent")
             
             try:
@@ -320,6 +323,13 @@ class FlowHandler:
                 user_phone,
                 "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
                 "_Si deseas volver al menú del bot, escribe *salir*._"
+            )
+
+        elif btn_id == "Ahora no, gracias":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Entendido, agradecemos tu tiempo. Estaremos aquí cuando nos necesites."
             )
 
         elif btn_id == "menu_main":

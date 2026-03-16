@@ -360,3 +360,20 @@ def api_trigger_bulk_send():
         return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@admin_bp.route('/admin/api/trigger-bulk-leads', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_leads():
+    """Execute bulk send for a configured list of leads."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+    
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+        
+    from src.automation import execute_bulk_leads_notifications
+    try:
+        results = execute_bulk_leads_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

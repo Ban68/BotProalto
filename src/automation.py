@@ -100,6 +100,51 @@ def execute_bulk_approved_notifications(users_list):
             
     return results
 
+def execute_bulk_leads_notifications(users_list):
+    """
+    Sends the 'contacto_leads' template to a list of leads.
+    Returns summary of results.
+    """
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+    
+    for user in users_list:
+        phone_str = str(user.get("phone", "")).strip()
+        # Clean phone number
+        phone_str = "".join(filter(str.isdigit, phone_str))
+        if not phone_str:
+            continue
+            
+        if not phone_str.startswith("57"):
+            phone_str = f"57{phone_str}"
+
+        nombre = user.get("name", "Cliente").strip()
+        
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text", 
+                        "text": nombre,
+                        "parameter_name": "nombre"
+                    }
+                ]
+            }
+        ]
+        
+        response = WhatsAppService.send_template(phone_str, "contacto_leads", components=components)
+        
+        if response and response.get('messages'):
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+            
+    return results
+
 # --- Scheduler Logic for future automation ---
 def scheduled_task():
     print(f"[{datetime.now()}] Checking for pending approved notifications...")
