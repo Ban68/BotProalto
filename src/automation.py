@@ -116,6 +116,11 @@ def execute_bulk_approved_notifications(users_list):
         if response and response.get('messages'):
             # Only update state if Meta successfully accepted the message
             set_user_state(phone_str, "waiting_for_email")
+            
+            # Log a hidden greeting so the name scraper can find it later
+            from src.conversation_log import log_message
+            log_message(phone_str, "outbound", f"¡Hola {nombre}! (Auto-notificación)", "text")
+            
             results["success"] += 1
         else:
             results["fail"] += 1
@@ -163,6 +168,10 @@ def execute_bulk_leads_notifications(users_list):
         if response and response.get('messages'):
             results["success"] += 1
             set_user_state(phone_str, "lead_notified")
+            
+            # Log a greeting for name scraping
+            from src.conversation_log import log_message
+            log_message(phone_str, "outbound", f"¡Hola {nombre}!", "text")
         else:
             results["fail"] += 1
             error_msg = "No response from Meta"
