@@ -649,7 +649,10 @@
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Clientes listos para notificar: <span id="enviosCount">0</span></h3>
-                <button id="btnRefreshEnvios" class="btn btn-outline-danger" onclick="fetchPendingEnvios()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Refrescar Lista</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClients()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
+                    <button id="btnRefreshEnvios" class="btn btn-outline-danger" onclick="fetchPendingEnvios()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Refrescar Lista</button>
+                </div>
             </div>
             
             <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
@@ -1111,6 +1114,14 @@
                 console.error(e);
                 tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
             }
+        }
+
+        function selectOnlyNewClients() {
+            document.querySelectorAll('.envio-check').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                cb.checked = pendingUsersData[idx].send_count === 0;
+            });
+            updateSelectedCount();
         }
 
         function toggleAllChecks(masterCb) {
