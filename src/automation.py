@@ -6,7 +6,8 @@ from src.database import get_aprobados_por_el_cliente, get_falta_documento
 from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
-    get_notified_phones_rojo_batch, get_template_stats_batch_rojo
+    get_notified_phones_rojo_batch, get_template_stats_batch_rojo,
+    get_phones_with_email, get_phones_with_docs_completos
 )
 
 # --- TEST MODE CONFIG ---
@@ -59,9 +60,10 @@ def get_pending_approved_notifications():
 
     # SINGLE query to Supabase for all phones
     notified_today = get_notified_phones_batch(phones_to_check)
-    
-    # Filter out those already notified
-    eligible_users = [u for u in raw_users if u["phone"] not in notified_today]
+    already_emailed = get_phones_with_email(phones_to_check)
+
+    # Filter out those already notified today OR who already sent their email
+    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in already_emailed]
 
     # Enrich with total send count and last send timestamp
     eligible_phones = [u["phone"] for u in eligible_users]
@@ -233,7 +235,10 @@ def get_pending_falta_documento_notifications():
         return []
 
     notified_today = get_notified_phones_rojo_batch(phones_to_check)
-    eligible_users = [u for u in raw_users if u["phone"] not in notified_today]
+    docs_completos = get_phones_with_docs_completos(phones_to_check)
+
+    # Filter out those already notified today OR whose docs are marked as complete
+    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in docs_completos]
 
     eligible_phones = [u["phone"] for u in eligible_users]
     stats = get_template_stats_batch_rojo(eligible_phones)

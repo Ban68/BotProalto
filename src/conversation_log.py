@@ -356,6 +356,51 @@ def get_captured_emails():
         return []
 
 
+def get_phones_with_email(phones: list) -> set:
+    """Returns a set of phones that have already submitted their email."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('captured_emails')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_phones_with_email error: {e}")
+        return set()
+
+
+def get_phones_with_docs_completos(phones: list) -> set:
+    """Returns a set of phones marked as docs_completos = true."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('bot_conversations')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("docs_completos", True)\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_phones_with_docs_completos error: {e}")
+        return set()
+
+
+def mark_docs_completos(phone: str):
+    """Marks a client as having submitted all required documents."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('bot_conversations').upsert({
+            "phone": phone,
+            "docs_completos": True,
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"Supabase mark_docs_completos error: {e}")
+
+
 def get_template_stats_batch_rojo(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_rojo template sends.

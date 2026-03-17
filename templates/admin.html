@@ -836,8 +836,6 @@
                     <thead style="background: #b45309; color: white; position: sticky; top: 0;">
                         <tr>
                             <th style="padding: 10px; text-align: left;">Fecha/Hora</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
                             <th style="padding: 10px; text-align: left;">Archivo</th>
                             <th style="padding: 10px; text-align: left;">Tipo</th>
                             <th style="padding: 10px; text-align: center;">Estado</th>
@@ -845,7 +843,7 @@
                         </tr>
                     </thead>
                     <tbody id="docsTableBody">
-                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando documentos...</td></tr>
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando documentos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1321,7 +1319,7 @@
         // ── Documentos Recibidos ──────────────────────────────────────
         async function fetchReceivedDocuments() {
             const tbody = document.getElementById('docsTableBody');
-            tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando documentos...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando documentos...</td></tr>';
 
             try {
                 const res = await fetch('/admin/api/received-documents');
@@ -1343,45 +1341,68 @@
                     }
 
                     if (docs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: #777;">No se han recibido documentos aún.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #777;">No se han recibido documentos aún.</td></tr>';
                         return;
                     }
 
-                    let rows = '';
+                    // Group docs by phone
+                    const groups = {};
                     docs.forEach(doc => {
-                        const fecha = doc.received_at
-                            ? new Date(doc.received_at).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
-                            : '---';
-                        const tipoLabel = doc.mime_type
-                            ? (doc.mime_type.startsWith('image') ? '🖼️ Imagen' : '📄 Documento')
-                            : '📎 Archivo';
-                        const estadoBadge = doc.reviewed
-                            ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Revisado</span>'
-                            : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>';
-                        const accionBtn = doc.reviewed
-                            ? '<span style="color:#9ca3af;font-size:0.8rem;">—</span>'
-                            : `<button onclick="markDocReviewed('${doc.id}', this)" style="background:#10b981;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Marcar revisado</button>`;
-                        const archivoLink = doc.storage_url
-                            ? `<a href="${doc.storage_url}" target="_blank" style="color:var(--primary-dark);text-decoration:underline;font-size:0.85rem;">${doc.filename || 'Ver archivo'}</a>`
-                            : (doc.filename || '---');
+                        if (!groups[doc.phone]) groups[doc.phone] = { info: doc, docs: [] };
+                        groups[doc.phone].docs.push(doc);
+                    });
 
-                        rows += `<tr style="border-bottom: 1px solid #eee; ${doc.reviewed ? 'opacity:0.6;' : ''}">
-                            <td style="padding: 10px; font-size: 0.85rem;">${fecha}</td>
-                            <td style="padding: 10px;">${doc.client_name || '---'}</td>
-                            <td style="padding: 10px;">${doc.phone}</td>
-                            <td style="padding: 10px;">${archivoLink}</td>
-                            <td style="padding: 10px;">${tipoLabel}</td>
-                            <td style="padding: 10px; text-align: center;">${estadoBadge}</td>
-                            <td style="padding: 10px; text-align: center;">${accionBtn}</td>
+                    let rows = '';
+                    Object.values(groups).forEach(group => {
+                        const { info, docs: clientDocs } = group;
+                        const docsCompletos = info.docs_completos;
+                        const completosBadge = docsCompletos
+                            ? '<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>'
+                            : `<button onclick="markDocsCompletos('${info.phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Docs completos</button>`;
+
+                        // Client header row
+                        rows += `<tr style="background:#fef3c7; border-top: 2px solid #b45309;">
+                            <td colspan="3" style="padding: 10px 12px; font-weight: 600;">
+                                👤 ${info.client_name || '---'} &nbsp;·&nbsp; <span style="color:#666;font-weight:400;">${info.phone}</span>
+                                &nbsp;&nbsp; <span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:999px;font-size:0.8rem;">${clientDocs.length} archivo${clientDocs.length > 1 ? 's' : ''}</span>
+                            </td>
+                            <td colspan="2" style="padding: 10px 12px; text-align: right;">${completosBadge}</td>
                         </tr>`;
+
+                        // Individual doc rows
+                        clientDocs.forEach(doc => {
+                            const fecha = doc.received_at
+                                ? new Date(doc.received_at).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
+                                : '---';
+                            const tipoLabel = doc.mime_type
+                                ? (doc.mime_type.startsWith('image') ? '🖼️ Imagen' : '📄 Documento')
+                                : '📎 Archivo';
+                            const estadoBadge = doc.reviewed
+                                ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Revisado</span>'
+                                : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>';
+                            const accionBtn = doc.reviewed
+                                ? '<span style="color:#9ca3af;font-size:0.8rem;">—</span>'
+                                : `<button onclick="markDocReviewed('${doc.id}', this)" style="background:#10b981;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Revisado</button>`;
+                            const archivoLink = doc.storage_url
+                                ? `<a href="${doc.storage_url}" target="_blank" style="color:var(--primary-dark);text-decoration:underline;font-size:0.85rem;">${doc.filename || 'Ver archivo'}</a>`
+                                : (doc.filename || '---');
+
+                            rows += `<tr style="border-bottom: 1px solid #eee; ${doc.reviewed ? 'opacity:0.6;' : ''}">
+                                <td style="padding: 8px 10px 8px 24px; font-size: 0.85rem; color:#666;">${fecha}</td>
+                                <td style="padding: 8px 10px;">${archivoLink}</td>
+                                <td style="padding: 8px 10px;">${tipoLabel}</td>
+                                <td style="padding: 8px 10px; text-align: center;">${estadoBadge}</td>
+                                <td style="padding: 8px 10px; text-align: center;">${accionBtn}</td>
+                            </tr>`;
+                        });
                     });
                     tbody.innerHTML = rows;
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
             } catch (e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
             }
         }
 
@@ -1399,12 +1420,36 @@
                 } else {
                     alert('Error al marcar como revisado.');
                     btn.disabled = false;
-                    btn.innerText = '✓ Marcar revisado';
+                    btn.innerText = '✓ Revisado';
                 }
             } catch (e) {
                 alert('Error de conexión.');
                 btn.disabled = false;
-                btn.innerText = '✓ Marcar revisado';
+                btn.innerText = '✓ Revisado';
+            }
+        }
+
+        async function markDocsCompletos(phone, btn) {
+            if (!confirm(`¿Confirmas que ${phone} ya envió todos los documentos requeridos? No recibirá más notificaciones de documentos faltantes.`)) return;
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch('/admin/api/mark-docs-completos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                if (res.ok) {
+                    await fetchReceivedDocuments();
+                } else {
+                    alert('Error al marcar docs completos.');
+                    btn.disabled = false;
+                    btn.innerText = '☑ Docs completos';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '☑ Docs completos';
             }
         }
 

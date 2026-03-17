@@ -447,3 +447,21 @@ def api_mark_document_reviewed():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
+@requires_auth
+def api_mark_docs_completos():
+    """Mark a client's documents as complete — excludes them from future estado_rojo bulk sends."""
+    body = request.get_json() or {}
+    phone = body.get("phone")
+
+    if not phone:
+        return jsonify({"status": "error", "message": "No phone provided."}), 400
+
+    from src.conversation_log import mark_docs_completos
+    try:
+        mark_docs_completos(phone)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
