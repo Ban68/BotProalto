@@ -10,7 +10,7 @@ from src.conversation_log import (
 )
 
 # --- TEST MODE CONFIG ---
-TEST_MODE = True  # SET TO FALSE BEFORE PRODUCTION
+TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
 TEST_NUMBER = "573106176713"
 # -------------------------
 
