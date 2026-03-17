@@ -1,4 +1,6 @@
 import time
+import hmac
+import hashlib
 from flask import Blueprint, request, jsonify, current_app
 from config import Config
 from src.flows import FlowHandler
@@ -46,11 +48,35 @@ def verify_webhook():
             return 'Forbidden', 403
     return 'Bad Request', 400
 
+def _verify_signature(request) -> bool:
+    """Verify X-Hub-Signature-256 from Meta. Returns True if valid or APP_SECRET not configured."""
+    app_secret = Config.APP_SECRET
+    if not app_secret:
+        return True  # Si no está configurado, no bloquea (modo permisivo)
+
+    signature_header = request.headers.get("X-Hub-Signature-256", "")
+    if not signature_header.startswith("sha256="):
+        return False
+
+    received = signature_header[len("sha256="):]
+    expected = hmac.new(
+        app_secret.encode("utf-8"),
+        request.get_data(),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(expected, received)
+
+
 @webhook_bp.route('/webhook', methods=['POST'])
 def receive_message():
     """
     Endpoint to receive messages from WhatsApp Cloud API.
     """
+    if not _verify_signature(request):
+        print("⚠️  Webhook rejected: invalid X-Hub-Signature-256")
+        return jsonify({"status": "unauthorized"}), 401
+
     try:
         data = request.get_json()
         print(f"Received webhook data: {data}") # Debug logging

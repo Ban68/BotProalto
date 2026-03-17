@@ -6,6 +6,7 @@ load_dotenv()
 class Config:
     # Meta (Facebok) Config
     WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "proalto_secure_token")
+    APP_SECRET = os.getenv("APP_SECRET", "")
     API_TOKEN = os.getenv("API_TOKEN")
     BUSINESS_PHONE = os.getenv("BUSINESS_PHONE")
     API_VERSION = "v21.0"
