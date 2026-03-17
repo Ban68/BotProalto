@@ -68,6 +68,7 @@ def get_pending_approved_notifications():
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
 
+    eligible_users.sort(key=lambda u: u["send_count"])
     return eligible_users
 
 def execute_bulk_approved_notifications(users_list):

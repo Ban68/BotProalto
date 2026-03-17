@@ -737,7 +737,11 @@
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Total Capturados: <span id="correosCount">0</span></h3>
-                <button class="btn btn-outline-danger" onclick="fetchCapturedEmails()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Actualizar</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-outline-danger" onclick="copyEmailsToClipboard()" style="border-color: #6b7280; color: #374151;" title="Copiar para pegar en Excel o Google Sheets">📋 Copiar</button>
+                    <button class="btn btn-outline-danger" onclick="exportEmailsCSV()" style="border-color: #059669; color: #065f46;" title="Descargar como archivo CSV">⬇️ Exportar CSV</button>
+                    <button class="btn btn-outline-danger" onclick="fetchCapturedEmails()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Actualizar</button>
+                </div>
             </div>
             
             <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
@@ -979,6 +983,37 @@
             }
         }
 
+        let capturedEmailsData = [];
+
+        function copyEmailsToClipboard() {
+            if (capturedEmailsData.length === 0) { alert('No hay correos para copiar.'); return; }
+            const header = 'Fecha\tNombre\tTeléfono\tEmail';
+            const rows = capturedEmailsData.map(item =>
+                `${formatTime(item.created_at)}\t${item.name || ''}\t${item.phone}\t${item.email}`
+            );
+            navigator.clipboard.writeText([header, ...rows].join('\n'))
+                .then(() => alert(`✅ ${capturedEmailsData.length} registros copiados. Pega directamente en Excel o Google Sheets.`))
+                .catch(() => alert('Error al copiar. Intenta exportar como CSV.'));
+        }
+
+        function exportEmailsCSV() {
+            if (capturedEmailsData.length === 0) { alert('No hay correos para exportar.'); return; }
+            const header = 'Fecha,Nombre,Teléfono,Email';
+            const rows = capturedEmailsData.map(item => {
+                const fecha = formatTime(item.created_at);
+                const nombre = `"${(item.name || '').replace(/"/g, '""')}"`;
+                return `${fecha},${nombre},${item.phone},${item.email}`;
+            });
+            const csv = '\uFEFF' + [header, ...rows].join('\n'); // BOM for Excel UTF-8
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `correos_capturados_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         async function fetchCapturedEmails() {
             const tbody = document.getElementById('correosTableBody');
             tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
@@ -988,8 +1023,9 @@
                 const data = await res.json();
                 
                 if (res.ok && data.emails) {
+                    capturedEmailsData = data.emails;
                     document.getElementById('correosCount').innerText = data.emails.length;
-                    
+
                     if (data.emails.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
                     } else {
@@ -999,7 +1035,7 @@
                                 <td style="padding: 10px; font-size: 0.85rem;">${formatTime(item.created_at)}</td>
                                 <td style="padding: 10px;">${item.name || '---'}</td>
                                 <td style="padding: 10px;">${item.phone}</td>
-                                <td style="padding: 10px; font-weight: 600; color: #1d4ed8;">${item.email}</td>
+                                <td style="padding: 10px; font-weight: 600; color: var(--primary-dark);">${item.email}</td>
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
