@@ -729,7 +729,7 @@
 
     <!-- Correos Capturados State -->
     <div class="main-chat" id="correosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #3b82f6; margin-bottom: 20px;">Correos Capturados</h2>
+        <h2 style="color: var(--primary-dark); margin-bottom: 20px;">Correos Capturados</h2>
         <p style="color: var(--text-muted); margin-bottom: 20px;">
             Lista de correos electrónicos capturados durante el flujo de aprobación automática.
         </p>
@@ -737,12 +737,12 @@
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Total Capturados: <span id="correosCount">0</span></h3>
-                <button class="btn btn-outline-primary" onclick="fetchCapturedEmails()" style="border-color: #3b82f6; color: #1d4ed8;">🔄 Actualizar</button>
+                <button class="btn btn-outline-danger" onclick="fetchCapturedEmails()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Actualizar</button>
             </div>
             
             <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #1d4ed8; color: white; position: sticky; top: 0;">
+                    <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0;">
                         <tr>
                             <th style="padding: 10px; text-align: left;">Fecha</th>
                             <th style="padding: 10px; text-align: left;">Nombre</th>
