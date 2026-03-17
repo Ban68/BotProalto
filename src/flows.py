@@ -1,7 +1,7 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet
-from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, log_received_document
+from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
 import json
@@ -184,7 +184,8 @@ class FlowHandler:
                     )
                     WhatsAppService.send_message(user_phone, instruction_msg)
                     
-                    # 3. Set state to wait for email
+                    # 3. Set state to wait for email (and store name for email capture)
+                    set_client_name(user_phone, nombre)
                     set_user_state(user_phone, "waiting_for_email")
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
