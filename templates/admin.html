@@ -571,6 +571,12 @@
                 <button class="tab-btn" id="tabCorreos" onclick="switchTab('correos')" style="background: #1e293b; color: #fff; border: 1px solid #3b82f6;">
                     <span style="text-shadow: 0 0 2px #000;">📧</span> Correos
                 </button>
+                <button class="tab-btn" id="tabRojo" onclick="switchTab('rojo')" style="background: #1e293b; color: #fff; border: 1px solid #ef4444;">
+                    <span style="text-shadow: 0 0 2px #000;">🔴</span> Falta Doc
+                </button>
+                <button class="tab-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')" style="background: #1e293b; color: #fff; border: 1px solid #f59e0b;">
+                    <span style="text-shadow: 0 0 2px #000;">📥</span> Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 6px; font-size:0.75rem; margin-left:3px;">0</span>
+                </button>
             </div>
         </div>
         <div class="conversation-list" id="convList">
@@ -762,6 +768,90 @@
         </div>
     </div>
 
+    <!-- Envíos Masivos: Falta Documento State -->
+    <div class="main-chat" id="rojoState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #dc2626; margin-bottom: 20px;">Envíos Masivos: Falta Algún Documento</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Notifica a los clientes cuyo proceso está detenido por documentos faltantes. Se enviará el template <strong>estado_rojo</strong> con la lista completa de documentos requeridos.
+        </p>
+
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Clientes listos para notificar: <span id="rojoCount">0</span></h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsRojo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
+                    <button id="btnRefreshRojo" class="btn btn-outline-danger" onclick="fetchPendingRojo()" style="border-color: #dc2626; color: #991b1b;">🔄 Refrescar Lista</button>
+                </div>
+            </div>
+
+            <div id="rojoListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #dc2626; color: white; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAllRojo" onchange="toggleAllChecksRojo(this)" checked title="Seleccionar todos"></th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_rojo">Envíos</th>
+                            <th style="padding: 10px; text-align: left;">Último Envío</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rojoTableBody">
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
+            <button id="btnExecuteRojo" class="btn" style="background: #dc2626; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkRojo()" disabled>🔴 Ejecutar Envío a Seleccionados</button>
+        </div>
+
+        <div id="rojoResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="rojoSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="rojoFailCount">0</span>
+                <ul id="rojoErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentos Recibidos State -->
+    <div class="main-chat" id="docRecibidosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #b45309; margin-bottom: 20px;">Documentos Recibidos</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Clientes que enviaron documentos después de recibir el template <strong>estado_rojo</strong>. Haz clic en el archivo para abrirlo.
+        </p>
+
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Total recibidos: <span id="docsCount">0</span> &nbsp;|&nbsp; Pendientes de revisión: <span id="docsPendientesCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                <button class="btn btn-outline-danger" onclick="fetchReceivedDocuments()" style="border-color: #f59e0b; color: #92400e;">🔄 Actualizar</button>
+            </div>
+
+            <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #b45309; color: white; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Fecha/Hora</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Archivo</th>
+                            <th style="padding: 10px; text-align: left;">Tipo</th>
+                            <th style="padding: 10px; text-align: center;">Estado</th>
+                            <th style="padding: 10px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docsTableBody">
+                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando documentos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Advisor Selection Modal -->
     <div id="advisorModal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -899,7 +989,7 @@
             currentTab = tab;
             currentActivePhone = null;
             document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'correos') {
+            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos') {
                 document.getElementById('emptyState').style.display = 'none';
             }
             document.getElementById('mainChat').style.display = 'none';
@@ -968,6 +1058,46 @@
                 }
             }
 
+            const tabRojo = document.getElementById('tabRojo');
+            if(tabRojo) {
+                tabRojo.classList.toggle('active-tab', tab === 'rojo');
+                if(tab === 'rojo') {
+                    tabRojo.style.background = "#dc2626";
+                    tabRojo.style.borderColor = "#dc2626";
+                    tabRojo.style.color = "white";
+                } else {
+                    tabRojo.style.background = "#1e293b";
+                    tabRojo.style.borderColor = "#ef4444";
+                    tabRojo.style.color = "#fff";
+                }
+            }
+
+            const rojoState = document.getElementById('rojoState');
+            if(rojoState) {
+                rojoState.style.display = tab === 'rojo' ? 'flex' : 'none';
+                rojoState.style.flexDirection = 'column';
+            }
+
+            const tabDocRecibidos = document.getElementById('tabDocRecibidos');
+            if(tabDocRecibidos) {
+                tabDocRecibidos.classList.toggle('active-tab', tab === 'docrecibidos');
+                if(tab === 'docrecibidos') {
+                    tabDocRecibidos.style.background = "#b45309";
+                    tabDocRecibidos.style.borderColor = "#b45309";
+                    tabDocRecibidos.style.color = "white";
+                } else {
+                    tabDocRecibidos.style.background = "#1e293b";
+                    tabDocRecibidos.style.borderColor = "#f59e0b";
+                    tabDocRecibidos.style.color = "#fff";
+                }
+            }
+
+            const docRecibidosState = document.getElementById('docRecibidosState');
+            if(docRecibidosState) {
+                docRecibidosState.style.display = tab === 'docrecibidos' ? 'flex' : 'none';
+                docRecibidosState.style.flexDirection = 'column';
+            }
+
             if (tab === 'activas') {
                 fetchList();
             } else if (tab === 'archivadas') {
@@ -980,6 +1110,12 @@
             } else if (tab === 'correos') {
                 document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Lista de Correos Capturados.<br><br>👉 Mira el panel principal.</div>';
                 fetchCapturedEmails();
+            } else if (tab === 'rojo') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Falta Documento.<br><br>👉 Mira el panel principal.</div>';
+                fetchPendingRojo();
+            } else if (tab === 'docrecibidos') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Documentos Recibidos de Clientes.<br><br>👉 Mira el panel principal.</div>';
+                fetchReceivedDocuments();
             }
         }
 
@@ -1046,6 +1182,229 @@
             } catch (e) {
                 console.error(e);
                 tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+            }
+        }
+
+        // ── Estado Rojo: Falta Documento ──────────────────────────────
+        let pendingRojoData = [];
+
+        async function fetchPendingRojo(hideResults = true) {
+            const tbody = document.getElementById('rojoTableBody');
+            const btn = document.getElementById('btnExecuteRojo');
+            if (hideResults) {
+                document.getElementById('rojoResults').style.display = 'none';
+            }
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
+            btn.disabled = true;
+            pendingRojoData = [];
+
+            try {
+                const res = await fetch('/admin/api/pending-falta-documento');
+                const data = await res.json();
+
+                if (res.ok && data.pending) {
+                    pendingRojoData = data.pending;
+
+                    if (pendingRojoData.length === 0) {
+                        document.getElementById('rojoCount').innerText = '0';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar hoy.</td></tr>';
+                    } else {
+                        let rows = '';
+                        pendingRojoData.forEach((user, idx) => {
+                            const lastSent = user.last_sent
+                                ? new Date(user.last_sent).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
+                                : 'Nunca';
+                            const sendCount = user.send_count || 0;
+                            const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; text-align: center;"><input type="checkbox" class="rojo-check" data-idx="${idx}" checked onchange="updateSelectedCountRojo()"></td>
+                                <td style="padding: 10px;">${user.phone}</td>
+                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
+                                <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                        updateSelectedCountRojo();
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
+            }
+        }
+
+        function selectOnlyNewClientsRojo() {
+            document.querySelectorAll('.rojo-check').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                cb.checked = pendingRojoData[idx].send_count === 0;
+            });
+            updateSelectedCountRojo();
+        }
+
+        function toggleAllChecksRojo(masterCb) {
+            document.querySelectorAll('.rojo-check').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCountRojo();
+        }
+
+        function updateSelectedCountRojo() {
+            const total = document.querySelectorAll('.rojo-check').length;
+            const selected = document.querySelectorAll('.rojo-check:checked').length;
+            document.getElementById('rojoCount').innerText = `${selected} / ${total}`;
+            document.getElementById('btnExecuteRojo').disabled = selected === 0;
+            const masterCb = document.getElementById('checkAllRojo');
+            if (masterCb) {
+                masterCb.indeterminate = selected > 0 && selected < total;
+                masterCb.checked = selected === total;
+            }
+        }
+
+        async function executeBulkRojo() {
+            const checked = document.querySelectorAll('.rojo-check:checked');
+            const selectedUsers = Array.from(checked).map(cb => pendingRojoData[parseInt(cb.dataset.idx)]);
+            if (selectedUsers.length === 0) return;
+            if (!confirm(`¿Estás seguro de enviar el template "estado_rojo" a ${selectedUsers.length} clientes seleccionados?`)) return;
+
+            const btn = document.getElementById('btnExecuteRojo');
+            btn.disabled = true;
+            btn.innerText = '⌛ Procesando...';
+
+            let totalSuccess = 0, totalFailed = 0, allErrors = [];
+            const batchSize = 15;
+            const totalUsers = selectedUsers.length;
+
+            document.getElementById('rojoResults').style.display = 'block';
+
+            for (let i = 0; i < totalUsers; i += batchSize) {
+                const chunk = selectedUsers.slice(i, i + batchSize);
+                btn.innerText = `⌛ Enviando ${i + 1} - ${Math.min(i + batchSize, totalUsers)} de ${totalUsers}...`;
+
+                try {
+                    const res = await fetch('/admin/api/trigger-bulk-rojo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ users: chunk })
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.results) {
+                        totalSuccess += data.results.success;
+                        totalFailed += data.results.fail || 0;
+                        if (data.results.errors) allErrors = allErrors.concat(data.results.errors);
+
+                        document.getElementById('rojoSuccessCount').innerText = totalSuccess;
+                        document.getElementById('rojoFailCount').innerText = totalFailed;
+
+                        const errorList = document.getElementById('rojoErrorList');
+                        errorList.innerHTML = allErrors.length > 0
+                            ? allErrors.map(err => `<li>${err}</li>`).join('')
+                            : '<li>Sin errores en este lote.</li>';
+                    } else {
+                        totalFailed += chunk.length;
+                        allErrors.push(`Lote: ${data.message || 'Error de servidor'}`);
+                    }
+                } catch (e) {
+                    totalFailed += chunk.length;
+                    allErrors.push('Red: Error de conexión');
+                }
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            btn.innerText = '🔴 Ejecutar Envío a Seleccionados';
+            btn.disabled = false;
+            await fetchPendingRojo(false);
+            alert(`Proceso finalizado.\nÉxitos: ${totalSuccess}\nFallos: ${totalFailed}`);
+        }
+
+        // ── Documentos Recibidos ──────────────────────────────────────
+        async function fetchReceivedDocuments() {
+            const tbody = document.getElementById('docsTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando documentos...</td></tr>';
+
+            try {
+                const res = await fetch('/admin/api/received-documents');
+                const data = await res.json();
+
+                if (res.ok && data.documents !== undefined) {
+                    const docs = data.documents;
+                    document.getElementById('docsCount').innerText = docs.length;
+
+                    const pendientes = docs.filter(d => !d.reviewed).length;
+                    document.getElementById('docsPendientesCount').innerText = pendientes;
+
+                    const badge = document.getElementById('badgeDocsPendientes');
+                    if (pendientes > 0) {
+                        badge.style.display = 'inline';
+                        badge.innerText = pendientes;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+
+                    if (docs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: #777;">No se han recibido documentos aún.</td></tr>';
+                        return;
+                    }
+
+                    let rows = '';
+                    docs.forEach(doc => {
+                        const fecha = doc.received_at
+                            ? new Date(doc.received_at).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
+                            : '---';
+                        const tipoLabel = doc.mime_type
+                            ? (doc.mime_type.startsWith('image') ? '🖼️ Imagen' : '📄 Documento')
+                            : '📎 Archivo';
+                        const estadoBadge = doc.reviewed
+                            ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Revisado</span>'
+                            : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>';
+                        const accionBtn = doc.reviewed
+                            ? '<span style="color:#9ca3af;font-size:0.8rem;">—</span>'
+                            : `<button onclick="markDocReviewed('${doc.id}', this)" style="background:#10b981;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Marcar revisado</button>`;
+                        const archivoLink = doc.storage_url
+                            ? `<a href="${doc.storage_url}" target="_blank" style="color:var(--primary-dark);text-decoration:underline;font-size:0.85rem;">${doc.filename || 'Ver archivo'}</a>`
+                            : (doc.filename || '---');
+
+                        rows += `<tr style="border-bottom: 1px solid #eee; ${doc.reviewed ? 'opacity:0.6;' : ''}">
+                            <td style="padding: 10px; font-size: 0.85rem;">${fecha}</td>
+                            <td style="padding: 10px;">${doc.client_name || '---'}</td>
+                            <td style="padding: 10px;">${doc.phone}</td>
+                            <td style="padding: 10px;">${archivoLink}</td>
+                            <td style="padding: 10px;">${tipoLabel}</td>
+                            <td style="padding: 10px; text-align: center;">${estadoBadge}</td>
+                            <td style="padding: 10px; text-align: center;">${accionBtn}</td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = rows;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+            }
+        }
+
+        async function markDocReviewed(docId, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch('/admin/api/mark-document-reviewed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: docId })
+                });
+                if (res.ok) {
+                    await fetchReceivedDocuments();
+                } else {
+                    alert('Error al marcar como revisado.');
+                    btn.disabled = false;
+                    btn.innerText = '✓ Marcar revisado';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '✓ Marcar revisado';
             }
         }
 
@@ -1563,6 +1922,8 @@
             currentActivePhone = phone;
             document.getElementById('emptyState').style.display = 'none';
             document.getElementById('enviosState').style.display = 'none';
+            document.getElementById('rojoState').style.display = 'none';
+            document.getElementById('docRecibidosState').style.display = 'none';
             document.getElementById('mainChat').style.display = 'flex';
             document.getElementById('currentPhone').innerText = phone;
 

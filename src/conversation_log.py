@@ -347,10 +347,106 @@ def get_captured_emails():
     """Retrieves all captured emails ordered by date."""
     if not supabase_client:
         return []
-    
+
     try:
         res = supabase_client.table('captured_emails').select("*").order("created_at", desc=True).execute()
         return res.data
     except Exception as e:
         print(f"❌ Error fetching captured emails: {e}")
         return []
+
+
+def get_template_stats_batch_rojo(phones: list) -> dict:
+    """
+    Returns a dict mapping phone -> {count, last_sent} for estado_rojo template sends.
+    """
+    if not supabase_client or not phones:
+        return {}
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: estado_rojo]")\
+            .order("created_at", desc=True)\
+            .execute()
+        stats = {}
+        for item in res.data:
+            p = item["phone"]
+            if p not in stats:
+                stats[p] = {"count": 0, "last_sent": None}
+            stats[p]["count"] += 1
+            if stats[p]["last_sent"] is None:
+                stats[p]["last_sent"] = item["created_at"]
+        return stats
+    except Exception as e:
+        print(f"Supabase get_template_stats_batch_rojo error: {e}")
+        return {}
+
+
+def get_notified_phones_rojo_batch(phones: list) -> set:
+    """
+    Given a list of phone numbers, returns a SET of those that
+    HAVE already received estado_rojo today.
+    """
+    if not supabase_client or not phones:
+        return set()
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .eq("text", "[Template: estado_rojo]")\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_notified_phones_rojo_batch error: {e}")
+        return set()
+
+
+def log_received_document(phone: str, client_name: str, filename: str, mime_type: str, storage_url: str):
+    """Logs a received document to the received_documents table."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('received_documents').insert({
+            "phone": phone,
+            "client_name": client_name,
+            "filename": filename,
+            "mime_type": mime_type,
+            "storage_url": storage_url,
+            "triggered_by": "estado_rojo",
+            "reviewed": False
+        }).execute()
+    except Exception as e:
+        print(f"Supabase log_received_document error: {e}")
+
+
+def get_received_documents() -> list:
+    """Retrieves all received documents ordered by most recent first."""
+    if not supabase_client:
+        return []
+    try:
+        res = supabase_client.table('received_documents')\
+            .select("*")\
+            .order("received_at", desc=True)\
+            .execute()
+        return res.data
+    except Exception as e:
+        print(f"Supabase get_received_documents error: {e}")
+        return []
+
+
+def mark_document_reviewed(doc_id: str):
+    """Marks a received document as reviewed."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('received_documents')\
+            .update({"reviewed": True})\
+            .eq("id", doc_id)\
+            .execute()
+    except Exception as e:
+        print(f"Supabase mark_document_reviewed error: {e}")

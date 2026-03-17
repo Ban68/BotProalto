@@ -100,6 +100,44 @@ def get_aprobados_por_el_cliente():
         return None
 
 
+def get_falta_documento():
+    """
+    Queries the Cloud Run API bridge to get all applications
+    in state 'Falta algún documento'.
+    Returns a list of dicts (each representing an application) or None.
+    NOTE: The Cloud Run API must support {"tipo": "falta_documento"}.
+    """
+    if not CLOUD_RUN_URL:
+        print("❌ CLOUD_RUN_URL not configured")
+        return None
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"tipo": "falta_documento"},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return data.get("clientes", [])
+            return []
+        else:
+            print(f"❌ Cloud Run API Error ({response.status_code}): {response.text}")
+            return None
+    except requests.exceptions.Timeout:
+        print("❌ Cloud Run API: Request timed out for get_falta_documento")
+        return None
+    except Exception as e:
+        print(f"❌ Cloud Run API Error for get_falta_documento: {e}")
+        return None
+
+
 def test_cloud_run_connection():
     """
     Quick health check: sends a dummy cedula to verify the

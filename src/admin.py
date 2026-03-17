@@ -387,3 +387,63 @@ def api_captured_emails():
         return jsonify({"status": "ok", "emails": emails})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/pending-falta-documento')
+@requires_auth
+def api_pending_falta_documento():
+    """Get list of users eligible for 'Falta algún documento' bulk send today."""
+    from src.automation import get_pending_falta_documento_notifications
+    try:
+        pending = get_pending_falta_documento_notifications()
+        return jsonify({"status": "ok", "pending": pending})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/trigger-bulk-rojo', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_rojo():
+    """Execute bulk send of estado_rojo template for users with missing documents."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_falta_documento_notifications
+    try:
+        results = execute_bulk_falta_documento_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/received-documents')
+@requires_auth
+def api_received_documents():
+    """Get list of all documents received from clients after estado_rojo send."""
+    from src.conversation_log import get_received_documents
+    try:
+        docs = get_received_documents()
+        return jsonify({"status": "ok", "documents": docs})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/mark-document-reviewed', methods=['POST'])
+@requires_auth
+def api_mark_document_reviewed():
+    """Mark a received document as reviewed."""
+    body = request.get_json() or {}
+    doc_id = body.get("id")
+
+    if not doc_id:
+        return jsonify({"status": "error", "message": "No document id provided."}), 400
+
+    from src.conversation_log import mark_document_reviewed
+    try:
+        mark_document_reviewed(doc_id)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

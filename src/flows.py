@@ -1,7 +1,7 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet
-from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state
+from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, log_received_document
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
 import json
@@ -72,7 +72,12 @@ class FlowHandler:
                         final_path = public_url if public_url else f"/static/uploads/{user_phone}/{filename}"
                         
                         log_message(user_phone, "inbound", final_path, msg_type, wamid=msg_id)
-                        
+
+                        # Track documents received after estado_rojo bulk send
+                        if current_state == "waiting_for_docs_rojo":
+                            client_name = get_client_name(user_phone)
+                            log_received_document(user_phone, client_name, filename, mime_type, final_path)
+
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:
                             try:

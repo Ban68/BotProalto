@@ -2,9 +2,12 @@ import time
 import atexit
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.database import get_aprobados_por_el_cliente
+from src.database import get_aprobados_por_el_cliente, get_falta_documento
 from src.services import WhatsAppService
-from src.conversation_log import get_notified_phones_batch, set_user_state, get_template_stats_batch
+from src.conversation_log import (
+    get_notified_phones_batch, set_user_state, get_template_stats_batch,
+    get_notified_phones_rojo_batch, get_template_stats_batch_rojo
+)
 
 # --- TEST MODE CONFIG ---
 TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
@@ -187,6 +190,101 @@ def execute_bulk_leads_notifications(users_list):
             results["errors"].append(f"{phone_str}: {error_msg}")
             
     return results
+
+REQUIRED_DOCUMENTS = [
+    "2 últimos desprendibles de pago de nómina",
+    "Certificado laboral vigente",
+    "Foto de cédula (ambos lados)",
+    "Recibo de servicio público reciente (agua, luz, gas o telefonía)"
+]
+
+def get_pending_falta_documento_notifications():
+    """
+    Returns a list of applications in 'Falta algún documento' state
+    who are eligible to receive a notification today.
+    """
+    clientes = get_falta_documento()
+    if not clientes:
+        return []
+
+    raw_users = []
+    phones_to_check = []
+
+    for user in clientes:
+        telefono = user.get("telefono")
+        nombre = user.get("nombre_completo", "Cliente")
+
+        phone_str = str(telefono).split(".")[0]
+        phone_str = "".join(filter(str.isdigit, phone_str))
+
+        if not phone_str:
+            continue
+
+        if not phone_str.startswith("57"):
+            phone_str = f"57{phone_str}"
+
+        raw_users.append({"phone": phone_str, "name": nombre})
+        phones_to_check.append(phone_str)
+
+    if not phones_to_check:
+        return []
+
+    notified_today = get_notified_phones_rojo_batch(phones_to_check)
+    eligible_users = [u for u in raw_users if u["phone"] not in notified_today]
+
+    eligible_phones = [u["phone"] for u in eligible_users]
+    stats = get_template_stats_batch_rojo(eligible_phones)
+    for user in eligible_users:
+        s = stats.get(user["phone"], {})
+        user["send_count"] = s.get("count", 0)
+        user["last_sent"] = s.get("last_sent", None)
+
+    return eligible_users
+
+
+def execute_bulk_falta_documento_notifications(users_list):
+    """
+    Sends the 'estado_rojo' template to a list of users with missing documents.
+    Returns summary of results.
+    """
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+
+    for user in users_list:
+        phone_str = user.get("phone")
+        nombre = user.get("name")
+
+        if not phone_str:
+            continue
+
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": nombre,
+                        "parameter_name": "nombre"
+                    }
+                ]
+            }
+        ]
+
+        response = WhatsAppService.send_template(phone_str, "estado_rojo", components=components)
+
+        if response and response.get('messages'):
+            set_user_state(phone_str, "waiting_for_docs_rojo")
+            from src.conversation_log import set_client_name
+            set_client_name(phone_str, nombre)
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+
+    return results
+
 
 # --- Scheduler Logic for future automation ---
 def scheduled_task():
