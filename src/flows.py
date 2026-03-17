@@ -5,6 +5,7 @@ from src.conversation_log import log_message, set_agent_mode, get_user_state, se
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
 import json
+import re
 
 # Pre-load status mapping for optimization throughout the lifecycle
 MAPPING_PATH = os.path.join(os.path.dirname(__file__), 'status_mapping.json')
@@ -205,8 +206,9 @@ class FlowHandler:
 
         # 2a. Check if waiting for Email
         if state == "waiting_for_email":
-            email = text.strip()
-            if "@" in email and "." in email:
+            email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+            email = email_match.group(0) if email_match else None
+            if email:
                 from src.conversation_log import save_captured_email, get_client_name
                 client_name = get_client_name(user_phone)
 
