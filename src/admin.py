@@ -449,6 +449,33 @@ def api_mark_document_reviewed():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/download-doc')
+@requires_auth
+def api_download_doc():
+    """Proxy download for client-uploaded documents — forces attachment download and handles CORS for images."""
+    import requests as req_lib
+    from flask import stream_with_context
+
+    url = request.args.get('url')
+    filename = request.args.get('filename', 'archivo')
+
+    if not url:
+        return jsonify({"status": "error", "message": "No URL provided."}), 400
+
+    try:
+        r = req_lib.get(url, stream=True, timeout=30)
+        r.raise_for_status()
+        content_type = r.headers.get('Content-Type', 'application/octet-stream')
+        safe_filename = filename.replace('"', '_')
+        return Response(
+            stream_with_context(r.iter_content(chunk_size=8192)),
+            content_type=content_type,
+            headers={'Content-Disposition': f'attachment; filename="{safe_filename}"'}
+        )
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
 @requires_auth
 def api_mark_docs_completos():
