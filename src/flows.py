@@ -234,7 +234,26 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Por favor ingresa un correo electrónico válido (ejemplo: correo@email.com):")
             return
 
-        # 2b. Check if waiting for Cedula (Saldo / Balance)
+        # 2b. Check if waiting for docs after estado_rojo
+        if state == "waiting_for_docs_rojo":
+            if text.lower().strip() in ["asesor", "asesor humano", "ayuda", "help"]:
+                set_agent_mode(user_phone, "agent")
+                WhatsAppService.send_message(user_phone, "Te conectamos con un asesor. En breve te atenderemos.")
+                from src.notifications import notify_admin_agent_request
+                notify_admin_agent_request(user_phone)
+            else:
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Recuerda que puedes enviarnos los documentos directamente aquí por WhatsApp (foto o PDF):\n\n"
+                    "📄 2 últimos desprendibles de pago de nómina\n"
+                    "📄 Certificado laboral vigente\n"
+                    "🪪 Foto de tu cédula (ambos lados)\n"
+                    "🏠 Recibo de servicio público reciente (agua, luz, gas o telefonía)\n\n"
+                    "Si tienes alguna duda o ya los enviaste anteriormente, escribe *asesor* para hablar con alguien de nuestro equipo."
+                )
+            return
+
+        # 2c. Check if waiting for Cedula (Saldo / Balance)
         if state == "waiting_for_cedula_saldo":
             if not text.isdigit():
                 WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
