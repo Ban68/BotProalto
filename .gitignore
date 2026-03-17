@@ -9,3 +9,4 @@ myenv/
 data/
 test_*.py
 old_reqs.txt
+.claude/
