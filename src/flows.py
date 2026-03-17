@@ -238,19 +238,21 @@ class FlowHandler:
         if state == "waiting_for_docs_rojo":
             if text.lower().strip() in ["asesor", "asesor humano", "ayuda", "help"]:
                 set_agent_mode(user_phone, "agent")
-                WhatsAppService.send_message(user_phone, "Te conectamos con un asesor. En breve te atenderemos.")
-                from src.notifications import notify_admin_agent_request
+                WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
                 notify_admin_agent_request(user_phone)
             else:
-                WhatsAppService.send_message(
+                WhatsAppService.send_interactive_button(
                     user_phone,
                     "Recuerda que puedes enviarnos los documentos directamente aquí por WhatsApp (foto o PDF):\n\n"
                     "📄 2 últimos desprendibles de pago de nómina\n"
                     "📄 Certificado laboral vigente\n"
                     "🪪 Foto de tu cédula (ambos lados)\n"
-                    "🏠 Recibo de servicio público reciente (agua, luz, gas o telefonía)\n\n"
-                    "〰〰〰〰〰〰〰〰〰\n"
-                    "💬 ¿Ya los enviaste o tienes alguna duda? Escribe *ASESOR* y te atendemos de inmediato."
+                    "🏠 Recibo de servicio público reciente (agua, luz, gas o telefonía)",
+                    [
+                        {"id": "cargar_documentos", "title": "Cargar documentos"},
+                        {"id": "ya_envie_docs", "title": "Ya los envié"},
+                        {"id": "hablar_asesor_docs", "title": "Hablar con un asesor"},
+                    ]
                 )
             return
 
@@ -345,7 +347,20 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
 
             
-        elif btn_id in ["menu_support", "Hablar con un asesor"]:
+        elif btn_id in ["cargar_documentos", "Cargar documentos"]:
+            WhatsAppService.send_message(
+                user_phone,
+                "Para enviarnos tus documentos, simplemente adjunta el archivo o foto directamente en este chat, como si fuera una imagen normal. 📎\n\n"
+                "Puedes enviar varios archivos por separado, uno a la vez."
+            )
+
+        elif btn_id in ["ya_envie_docs", "Ya los envié"]:
+            WhatsAppService.send_message(
+                user_phone,
+                "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto."
+            )
+
+        elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
             is_lead = (state == "lead_notified")
             set_user_state(user_phone, "agent")
             
