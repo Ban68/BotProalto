@@ -470,7 +470,7 @@ def log_received_document(phone: str, client_name: str, filename: str, mime_type
 
 
 def get_received_documents() -> list:
-    """Retrieves all received documents ordered by most recent first."""
+    """Retrieves all received documents ordered by most recent first, with docs_completos from bot_conversations."""
     if not supabase_client:
         return []
     try:
@@ -478,7 +478,22 @@ def get_received_documents() -> list:
             .select("*")\
             .order("received_at", desc=True)\
             .execute()
-        return res.data
+        docs = res.data
+        if not docs:
+            return docs
+
+        # Merge docs_completos from bot_conversations for all unique phones
+        phones = list({d["phone"] for d in docs if d.get("phone")})
+        conv_res = supabase_client.table('bot_conversations')\
+            .select("phone, docs_completos")\
+            .in_("phone", phones)\
+            .execute()
+        docs_completos_map = {r["phone"]: r.get("docs_completos", False) for r in conv_res.data}
+
+        for doc in docs:
+            doc["docs_completos"] = docs_completos_map.get(doc.get("phone"), False)
+
+        return docs
     except Exception as e:
         print(f"Supabase get_received_documents error: {e}")
         return []

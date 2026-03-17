@@ -1456,7 +1456,8 @@
                     body: JSON.stringify({ phone })
                 });
                 if (res.ok) {
-                    await fetchReceivedDocuments();
+                    // Feedback inmediato: reemplazar el botón por el badge verde
+                    btn.outerHTML = '<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>';
                 } else {
                     alert('Error al marcar docs completos.');
                     btn.disabled = false;
