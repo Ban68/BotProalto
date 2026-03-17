@@ -249,7 +249,8 @@ class FlowHandler:
                     "📄 Certificado laboral vigente\n"
                     "🪪 Foto de tu cédula (ambos lados)\n"
                     "🏠 Recibo de servicio público reciente (agua, luz, gas o telefonía)\n\n"
-                    "Si tienes alguna duda o ya los enviaste anteriormente, escribe *asesor* para hablar con alguien de nuestro equipo."
+                    "〰〰〰〰〰〰〰〰〰\n"
+                    "💬 ¿Ya los enviaste o tienes alguna duda? Escribe *ASESOR* y te atendemos de inmediato."
                 )
             return
 
