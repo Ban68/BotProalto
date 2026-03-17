@@ -1369,8 +1369,9 @@
                         const { info, docs: clientDocs } = group;
                         const docsCompletos = info.docs_completos;
                         const completosBadge = docsCompletos
-                            ? '<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>'
-                            : `<button onclick="markDocsCompletos('${info.phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Docs completos</button>`;
+                            ? `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>
+                               <button onclick="unmarkDocsCompletos('${info.phone}', this)" style="background:transparent;color:#9ca3af;border:1px solid #d1d5db;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-left:6px;" title="Desmarcar">✕ Desmarcar</button>`
+                            : `<button onclick="markDocsCompletos('${info.phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Marcar docs completos</button>`;
 
                         // Client header row
                         rows += `<tr style="background:#fef3c7; border-top: 2px solid #b45309;">
@@ -1453,20 +1454,46 @@
                 const res = await fetch('/admin/api/mark-docs-completos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone })
+                    body: JSON.stringify({ phone, value: true })
                 });
                 if (res.ok) {
-                    // Feedback inmediato: reemplazar el botón por el badge verde
-                    btn.outerHTML = '<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>';
+                    btn.outerHTML = `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.8rem;font-weight:600;">✓ Docs completos</span>
+                                    <button onclick="unmarkDocsCompletos('${phone}', this)" style="background:transparent;color:#9ca3af;border:1px solid #d1d5db;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-left:6px;" title="Desmarcar">✕ Desmarcar</button>`;
                 } else {
                     alert('Error al marcar docs completos.');
                     btn.disabled = false;
-                    btn.innerText = '☑ Docs completos';
+                    btn.innerText = '☑ Marcar docs completos';
                 }
             } catch (e) {
                 alert('Error de conexión.');
                 btn.disabled = false;
-                btn.innerText = '☑ Docs completos';
+                btn.innerText = '☑ Marcar docs completos';
+            }
+        }
+
+        async function unmarkDocsCompletos(phone, btn) {
+            if (!confirm(`¿Desmarcar a ${phone}? Volverá a aparecer como pendiente de docs completos.`)) return;
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch('/admin/api/mark-docs-completos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, value: false })
+                });
+                if (res.ok) {
+                    // Reemplazar el badge + botón desmarcar por el botón de marcar
+                    const cell = btn.closest('td');
+                    cell.innerHTML = `<button onclick="markDocsCompletos('${phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Marcar docs completos</button>`;
+                } else {
+                    alert('Error al desmarcar.');
+                    btn.disabled = false;
+                    btn.innerText = '✕ Desmarcar';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '✕ Desmarcar';
             }
         }
 

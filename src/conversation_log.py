@@ -387,14 +387,14 @@ def get_phones_with_docs_completos(phones: list) -> set:
         return set()
 
 
-def mark_docs_completos(phone: str):
-    """Marks a client as having submitted all required documents."""
+def mark_docs_completos(phone: str, value: bool = True):
+    """Marks or unmarks a client as having submitted all required documents."""
     if not supabase_client:
         return
     try:
         supabase_client.table('bot_conversations').upsert({
             "phone": phone,
-            "docs_completos": True,
+            "docs_completos": value,
             "updated_at": datetime.now().isoformat()
         }, on_conflict="phone").execute()
     except Exception as e:

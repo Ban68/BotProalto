@@ -479,16 +479,17 @@ def api_download_doc():
 @admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
 @requires_auth
 def api_mark_docs_completos():
-    """Mark a client's documents as complete — excludes them from future estado_rojo bulk sends."""
+    """Mark or unmark a client's documents as complete."""
     body = request.get_json() or {}
     phone = body.get("phone")
+    value = body.get("value", True)
 
     if not phone:
         return jsonify({"status": "error", "message": "No phone provided."}), 400
 
     from src.conversation_log import mark_docs_completos
     try:
-        mark_docs_completos(phone)
+        mark_docs_completos(phone, value)
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
