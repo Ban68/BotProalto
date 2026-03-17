@@ -207,31 +207,8 @@ class FlowHandler:
         if state == "waiting_for_email":
             email = text.strip()
             if "@" in email and "." in email:
-                # Attempt to extract name from previous messages
-                from src.conversation_log import get_conversation, save_captured_email
-                client_name = "Cliente"
-                conv_data = get_conversation(user_phone)
-                if conv_data and "messages" in conv_data:
-                    # Look for the last message that contains the name
-                    for m in reversed(conv_data["messages"]):
-                        msg_text = m.get("text", "")
-                        if not msg_text:
-                            continue
-
-                        if "👤 *Cliente:*" in msg_text:
-                            try:
-                                client_name = msg_text.split("👤 *Cliente:*")[1].split("\n")[0].strip()
-                                if client_name: break
-                            except: pass
-                        elif "¡Hola " in msg_text:
-                            # Matches "¡Hola Juan!" or "¡Hola Juan! (Auto-notificación)"
-                            try:
-                                # Split by "¡Hola " then by "!" or "!"
-                                part = msg_text.split("¡Hola ")[1]
-                                # Get everything until the first '!'
-                                client_name = part.split("!")[0].strip()
-                                if client_name: break
-                            except: pass
+                from src.conversation_log import save_captured_email, get_client_name
+                client_name = get_client_name(user_phone)
 
                 # Save to database
                 save_captured_email(user_phone, email, client_name)

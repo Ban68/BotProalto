@@ -96,6 +96,30 @@ def set_user_state(phone: str, state: str):
         print(f"Supabase set_user_state error: {e}")
 
 
+def set_client_name(phone: str, name: str):
+    """Store the client name in bot_conversations for reliable retrieval."""
+    try:
+        supabase_client.table('bot_conversations').upsert({
+            "phone": phone,
+            "client_name": name,
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"Supabase set_client_name error: {e}")
+
+
+def get_client_name(phone: str) -> str:
+    """Retrieve the stored client name from bot_conversations."""
+    try:
+        res = supabase_client.table('bot_conversations').select("client_name").eq("phone", phone).execute()
+        if res.data:
+            return res.data[0].get("client_name") or "Cliente"
+        return "Cliente"
+    except Exception as e:
+        print(f"Supabase get_client_name error: {e}")
+        return "Cliente"
+
+
 def set_agent_mode(phone: str, status: str = "agent"):
     """Set the conversation status precisely (agent, agent_silent, active)."""
     set_user_state(phone, status)
