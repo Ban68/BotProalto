@@ -656,19 +656,22 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0;">
                         <tr>
+                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAll" onchange="toggleAllChecks(this)" checked title="Seleccionar todos"></th>
                             <th style="padding: 10px; text-align: left;">Teléfono</th>
                             <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_verde">Envíos</th>
+                            <th style="padding: 10px; text-align: left;">Último Envío</th>
                         </tr>
                     </thead>
                     <tbody id="enviosTableBody">
-                        <tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
         
         <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
-            <button id="btnExecuteEnvios" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 24px;" onclick="executeBulkSend()" disabled>🚀 Ejecutar Envío a Todos</button>
+            <button id="btnExecuteEnvios" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 24px;" onclick="executeBulkSend()" disabled>🚀 Ejecutar Envío a Seleccionados</button>
         </div>
         
         <div id="enviosResults" style="margin-top: 20px; display: none;">
@@ -1068,56 +1071,86 @@
                 document.getElementById('enviosResults').style.display = 'none';
             }
             
-            tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingUsersData = [];
-            
+
             try {
                 const res = await fetch('/admin/api/pending-notifications');
                 const data = await res.json();
-                
+
                 if (res.ok && data.pending) {
                     pendingUsersData = data.pending;
-                    document.getElementById('enviosCount').innerText = pendingUsersData.length;
-                    
+
                     if (pendingUsersData.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar hoy.</td></tr>';
+                        document.getElementById('enviosCount').innerText = '0';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar hoy.</td></tr>';
                     } else {
                         let rows = '';
-                        pendingUsersData.forEach(user => {
-                            rows += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px;">${user.phone}</td><td style="padding: 10px;">${user.name}</td></tr>`;
+                        pendingUsersData.forEach((user, idx) => {
+                            const lastSent = user.last_sent
+                                ? new Date(user.last_sent).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
+                                : 'Nunca';
+                            const sendCount = user.send_count || 0;
+                            const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; text-align: center;"><input type="checkbox" class="envio-check" data-idx="${idx}" checked onchange="updateSelectedCount()"></td>
+                                <td style="padding: 10px;">${user.phone}</td>
+                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
+                                <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
+                            </tr>`;
                         });
                         tbody.innerHTML = rows;
-                        btn.disabled = false;
+                        updateSelectedCount();
                     }
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
             } catch (e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="2" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
+            }
+        }
+
+        function toggleAllChecks(masterCb) {
+            document.querySelectorAll('.envio-check').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const total = document.querySelectorAll('.envio-check').length;
+            const selected = document.querySelectorAll('.envio-check:checked').length;
+            document.getElementById('enviosCount').innerText = `${selected} / ${total}`;
+            document.getElementById('btnExecuteEnvios').disabled = selected === 0;
+            const masterCb = document.getElementById('checkAll');
+            if (masterCb) {
+                masterCb.indeterminate = selected > 0 && selected < total;
+                masterCb.checked = selected === total;
             }
         }
         
         async function executeBulkSend() {
-            if (pendingUsersData.length === 0) return;
-            if (!confirm(`¿Estás seguro de enviar la notificación de Aprobado a ${pendingUsersData.length} clientes?`)) return;
-            
+            const checked = document.querySelectorAll('.envio-check:checked');
+            const selectedUsers = Array.from(checked).map(cb => pendingUsersData[parseInt(cb.dataset.idx)]);
+            if (selectedUsers.length === 0) return;
+            if (!confirm(`¿Estás seguro de enviar la notificación de Aprobado a ${selectedUsers.length} clientes seleccionados?`)) return;
+
             const btn = document.getElementById('btnExecuteEnvios');
             btn.disabled = true;
             btn.innerText = '⌛ Procesando...';
-            
+
             let totalSuccess = 0;
             let totalFailed = 0;
             let allErrors = [];
-            
+
             const batchSize = 15;
-            const totalUsers = pendingUsersData.length;
+            const totalUsers = selectedUsers.length;
             
             document.getElementById('enviosResults').style.display = 'block';
 
             for (let i = 0; i < totalUsers; i += batchSize) {
-                const chunk = pendingUsersData.slice(i, i + batchSize);
+                const chunk = selectedUsers.slice(i, i + batchSize);
                 btn.innerText = `⌛ Enviando ${i + 1} - ${Math.min(i + batchSize, totalUsers)} de ${totalUsers}...`;
                 
                 try {
@@ -1163,7 +1196,7 @@
                 await new Promise(r => setTimeout(r, 500));
             }
             
-            btn.innerText = '🚀 Ejecutar Envío a Todos';
+            btn.innerText = '🚀 Ejecutar Envío a Seleccionados';
             btn.disabled = false;
             
             // Refresh list at the end

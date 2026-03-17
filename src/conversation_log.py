@@ -263,6 +263,34 @@ def has_sent_aprobado_msg_today(phone: str) -> bool:
         print(f"Supabase has_sent_aprobado_msg_today error: {e}")
         return False
 
+def get_template_stats_batch(phones: list) -> dict:
+    """
+    Returns a dict mapping phone -> {count, last_sent} for estado_verde template sends.
+    """
+    if not supabase_client or not phones:
+        return {}
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: estado_verde]")\
+            .order("created_at", desc=True)\
+            .execute()
+        stats = {}
+        for item in res.data:
+            p = item["phone"]
+            if p not in stats:
+                stats[p] = {"count": 0, "last_sent": None}
+            stats[p]["count"] += 1
+            if stats[p]["last_sent"] is None:
+                stats[p]["last_sent"] = item["created_at"]
+        return stats
+    except Exception as e:
+        print(f"Supabase get_template_stats_batch error: {e}")
+        return {}
+
+
 def get_notified_phones_batch(phones: list) -> set:
     """
     Given a list of phone numbers, returns a SET of those that 

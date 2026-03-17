@@ -4,7 +4,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from src.database import get_aprobados_por_el_cliente
 from src.services import WhatsAppService
-from src.conversation_log import get_notified_phones_batch, set_user_state
+from src.conversation_log import get_notified_phones_batch, set_user_state, get_template_stats_batch
 
 # --- TEST MODE CONFIG ---
 TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
@@ -59,7 +59,15 @@ def get_pending_approved_notifications():
     
     # Filter out those already notified
     eligible_users = [u for u in raw_users if u["phone"] not in notified_today]
-        
+
+    # Enrich with total send count and last send timestamp
+    eligible_phones = [u["phone"] for u in eligible_users]
+    stats = get_template_stats_batch(eligible_phones)
+    for user in eligible_users:
+        s = stats.get(user["phone"], {})
+        user["send_count"] = s.get("count", 0)
+        user["last_sent"] = s.get("last_sent", None)
+
     return eligible_users
 
 def execute_bulk_approved_notifications(users_list):
