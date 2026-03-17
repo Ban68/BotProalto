@@ -10,7 +10,7 @@ from src.conversation_log import (
 )
 
 # --- TEST MODE CONFIG ---
-TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
+TEST_MODE = True  # SET TO FALSE BEFORE PRODUCTION
 TEST_NUMBER = "573106176713"
 # -------------------------
 
@@ -203,6 +203,9 @@ def get_pending_falta_documento_notifications():
     Returns a list of applications in 'Falta algún documento' state
     who are eligible to receive a notification today.
     """
+    if TEST_MODE:
+        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}]
+
     clientes = get_falta_documento()
     if not clientes:
         return []
