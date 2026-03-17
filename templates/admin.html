@@ -661,6 +661,9 @@
                 </div>
             </div>
             
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="enviosSearch" oninput="filterRows('enviosSearch', 'enviosTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
             <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0;">
@@ -750,6 +753,9 @@
                 </div>
             </div>
             
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="correosSearch" oninput="filterRows('correosSearch', 'correosTableBody')" placeholder="🔍 Buscar por nombre, teléfono o email..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
             <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0;">
@@ -784,6 +790,9 @@
                 </div>
             </div>
 
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="rojoSearch" oninput="filterRows('rojoSearch', 'rojoTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
             <div id="rojoListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="background: #dc2626; color: white; position: sticky; top: 0;">
@@ -826,9 +835,12 @@
         </p>
 
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3 style="margin: 0;">Total recibidos: <span id="docsCount">0</span> &nbsp;|&nbsp; Pendientes de revisión: <span id="docsPendientesCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
                 <button class="btn btn-outline-danger" onclick="fetchReceivedDocuments()" style="border-color: #f59e0b; color: #92400e;">🔄 Actualizar</button>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="docsSearch" oninput="filterDocsGroups(this.value)" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
             </div>
 
             <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
@@ -1451,6 +1463,35 @@
                 btn.disabled = false;
                 btn.innerText = '☑ Docs completos';
             }
+        }
+
+        // ── Buscadores ────────────────────────────────────────────────
+        function filterRows(inputId, tbodyId) {
+            const query = document.getElementById(inputId).value.toLowerCase().trim();
+            const rows = document.getElementById(tbodyId).querySelectorAll('tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = (!query || text.includes(query)) ? '' : 'none';
+            });
+        }
+
+        let allDocsData = [];
+
+        function filterDocsGroups(query) {
+            query = query.toLowerCase().trim();
+            const tbody = document.getElementById('docsTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            // Header rows have a yellow background (fef3c7) — identify by data-phone attribute
+            // We toggle visibility of header + following doc rows until next header
+            let showGroup = true;
+            rows.forEach(row => {
+                const isHeader = row.style.background.includes('fef3c7') || row.querySelector('td[colspan="3"]');
+                if (isHeader) {
+                    const text = row.innerText.toLowerCase();
+                    showGroup = !query || text.includes(query);
+                }
+                row.style.display = showGroup ? '' : 'none';
+            });
         }
 
         async function fetchArchivedList() {
