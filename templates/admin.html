@@ -583,6 +583,7 @@
             <!-- Loading -->
             <div style="padding: 20px; text-align: center; color: #777;">Cargando...</div>
         </div>
+        <div id="serverSearchResult"></div>
     </div>
 
     <!-- Main Chat -->
@@ -2023,17 +2024,68 @@
             filterList(); // Re-apply filter if any
         }
 
+        let searchDebounce = null;
+
         function filterList() {
-            const val = document.getElementById('searchInput').value.toLowerCase();
-            const items = document.querySelectorAll('.conv-item');
+            const val = document.getElementById('searchInput').value.toLowerCase().trim();
+            const items = document.querySelectorAll('#convList .conv-item');
+            let visibleCount = 0;
             items.forEach(item => {
                 const phone = item.querySelector('.conv-phone').innerText.toLowerCase();
                 if (phone.includes(val)) {
                     item.style.display = 'flex';
+                    visibleCount++;
                 } else {
                     item.style.display = 'none';
                 }
             });
+
+            const serverResult = document.getElementById('serverSearchResult');
+            serverResult.innerHTML = '';
+            clearTimeout(searchDebounce);
+            if (visibleCount === 0 && val.length >= 5) {
+                serverResult.innerHTML = '<div style="padding: 12px; text-align: center; color: #888; font-size: 0.85rem;">Buscando...</div>';
+                searchDebounce = setTimeout(() => searchServer(val), 500);
+            }
+        }
+
+        async function searchServer(phone) {
+            const serverResult = document.getElementById('serverSearchResult');
+            try {
+                const res = await fetch(`/admin/api/conversations/${phone}`);
+                if (!res.ok) {
+                    serverResult.innerHTML = '<div style="padding: 12px; text-align: center; color: #888; font-size: 0.85rem;">No encontrado</div>';
+                    return;
+                }
+                const data = await res.json();
+                if (data.error) {
+                    serverResult.innerHTML = '<div style="padding: 12px; text-align: center; color: #888; font-size: 0.85rem;">No encontrado</div>';
+                    return;
+                }
+                const lastMsg = data.messages && data.messages.length > 0
+                    ? data.messages[data.messages.length - 1].text
+                    : '...';
+                const preview = lastMsg.length > 60 ? lastMsg.substring(0, 60) + '…' : lastMsg;
+                let statusClass = 'status-bot';
+                let statusLabel = 'BOT';
+                if (data.status === 'agent') { statusClass = 'status-agent'; statusLabel = '🔴 ASESOR'; }
+                else if (data.status === 'agent_silent') { statusClass = 'status-silent'; statusLabel = '🔇 BOT HUMANO'; }
+                const activeClass = currentActivePhone === phone ? 'active' : '';
+                serverResult.innerHTML = `
+                    <div style="padding: 6px 10px; font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Resultado de búsqueda</div>
+                    <div class="conv-item ${activeClass}" onclick="selectConversation('${phone}')">
+                        <div class="conv-header">
+                            <span class="conv-phone">${phone}</span>
+                            <span class="conv-time">${formatTime(data.updated_at)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                            <span class="conv-preview">${preview}</span>
+                            <span class="conv-status ${statusClass}">${statusLabel}</span>
+                        </div>
+                    </div>`;
+            } catch (e) {
+                serverResult.innerHTML = '<div style="padding: 12px; text-align: center; color: #888; font-size: 0.85rem;">Error al buscar</div>';
+            }
         }
 
         async function selectConversation(phone) {
