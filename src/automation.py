@@ -2,12 +2,14 @@ import time
 import atexit
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.database import get_aprobados_por_el_cliente, get_falta_documento
+from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_listo_en_docusign
 from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
     get_notified_phones_rojo_batch, get_template_stats_batch_rojo,
-    get_phones_with_email, get_phones_with_docs_completos
+    get_phones_with_email, get_phones_with_docs_completos,
+    get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
+    get_phones_with_cuenta
 )
 
 # --- TEST MODE CONFIG ---
@@ -281,6 +283,100 @@ def execute_bulk_falta_documento_notifications(users_list):
 
         if response and response.get('messages'):
             set_user_state(phone_str, "waiting_for_docs_rojo")
+            from src.conversation_log import set_client_name
+            set_client_name(phone_str, nombre)
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+
+    return results
+
+
+def get_pending_listo_docusign_notifications():
+    """
+    Returns a list of applications in 'Listo en DocuSign' state
+    who are eligible to receive a notification today.
+    """
+    if TEST_MODE:
+        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}]
+
+    clientes = get_listo_en_docusign()
+    if not clientes:
+        return []
+
+    raw_users = []
+    phones_to_check = []
+
+    for user in clientes:
+        telefono = user.get("telefono")
+        nombre = user.get("nombre_completo", "Cliente")
+
+        phone_str = str(telefono).split(".")[0]
+        phone_str = "".join(filter(str.isdigit, phone_str))
+
+        if not phone_str:
+            continue
+
+        if not phone_str.startswith("57"):
+            phone_str = f"57{phone_str}"
+
+        raw_users.append({"phone": phone_str, "name": nombre})
+        phones_to_check.append(phone_str)
+
+    if not phones_to_check:
+        return []
+
+    notified_today = get_notified_phones_amarillo_batch(phones_to_check)
+    already_cuenta = get_phones_with_cuenta(phones_to_check)
+
+    # Filter out those already notified today OR who already sent their account number
+    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in already_cuenta]
+
+    eligible_phones = [u["phone"] for u in eligible_users]
+    stats = get_template_stats_batch_amarillo(eligible_phones)
+    for user in eligible_users:
+        s = stats.get(user["phone"], {})
+        user["send_count"] = s.get("count", 0)
+        user["last_sent"] = s.get("last_sent", None)
+
+    return eligible_users
+
+
+def execute_bulk_listo_docusign_notifications(users_list):
+    """
+    Sends the 'estado_amarillo' template to a list of users in DocuSign ready state.
+    Returns summary of results.
+    """
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+
+    for user in users_list:
+        phone_str = user.get("phone")
+        nombre = user.get("name")
+
+        if not phone_str:
+            continue
+
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": nombre,
+                        "parameter_name": "nombre"
+                    }
+                ]
+            }
+        ]
+
+        response = WhatsAppService.send_template(phone_str, "estado_amarillo", components=components)
+
+        if response and response.get('messages'):
+            set_user_state(phone_str, "waiting_for_cuenta_amarillo")
             from src.conversation_log import set_client_name
             set_client_name(phone_str, nombre)
             results["success"] += 1

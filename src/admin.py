@@ -476,6 +476,48 @@ def api_download_doc():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/pending-listo-docusign')
+@requires_auth
+def api_pending_listo_docusign():
+    """Get list of users eligible for 'Listo en DocuSign' bulk send today."""
+    from src.automation import get_pending_listo_docusign_notifications
+    try:
+        pending = get_pending_listo_docusign_notifications()
+        return jsonify({"status": "ok", "pending": pending})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/trigger-bulk-amarillo', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_amarillo():
+    """Execute bulk send of estado_amarillo template for users in DocuSign ready state."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_listo_docusign_notifications
+    try:
+        results = execute_bulk_listo_docusign_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/captured-cuentas')
+@requires_auth
+def api_captured_cuentas():
+    """Get list of all captured account numbers."""
+    from src.conversation_log import get_captured_cuentas
+    try:
+        cuentas = get_captured_cuentas()
+        return jsonify({"status": "ok", "cuentas": cuentas})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
 @requires_auth
 def api_mark_docs_completos():

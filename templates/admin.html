@@ -574,6 +574,9 @@
                 <button class="tab-btn" id="tabRojo" onclick="switchTab('rojo')" style="background: #1e293b; color: #fff; border: 1px solid #ef4444;">
                     <span style="text-shadow: 0 0 2px #000;">🔴</span> Falta Doc
                 </button>
+                <button class="tab-btn" id="tabAmarillo" onclick="switchTab('amarillo')" style="background: #1e293b; color: #fff; border: 1px solid #f59e0b;">
+                    <span style="text-shadow: 0 0 2px #000;">🟡</span> DocuSign
+                </button>
                 <button class="tab-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')" style="background: #1e293b; color: #fff; border: 1px solid #f59e0b;">
                     <span style="text-shadow: 0 0 2px #000;">📥</span> Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 6px; font-size:0.75rem; margin-left:3px;">0</span>
                 </button>
@@ -769,6 +772,86 @@
                     </thead>
                     <tbody id="correosTableBody">
                         <tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Envíos Masivos: Listo en DocuSign (Amarillo) -->
+    <div class="main-chat" id="amarilloState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #d97706; margin-bottom: 20px;">Envíos Masivos: Listo en DocuSign</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Notifica a los clientes cuya solicitud está lista en DocuSign para solicitar su número de cuenta. Se enviará el template <strong>estado_amarillo</strong>.
+        </p>
+
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Clientes listos para notificar: <span id="amarilloCount">0</span></h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsAmarillo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
+                    <button id="btnRefreshAmarillo" class="btn" onclick="fetchPendingAmarillo()" style="border-color: #d97706; color: #92400e; background: white; border: 1px solid #d97706;">🔄 Refrescar Lista</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="amarilloSearch" oninput="filterRows('amarilloSearch', 'amarilloTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
+            <div id="amarilloListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #d97706; color: white; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAllAmarillo" onchange="toggleAllChecksAmarillo(this)" checked title="Seleccionar todos"></th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_amarillo">Envíos</th>
+                            <th style="padding: 10px; text-align: left;">Último Envío</th>
+                        </tr>
+                    </thead>
+                    <tbody id="amarilloTableBody">
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
+            <button id="btnExecuteAmarillo" class="btn" style="background: #d97706; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkAmarillo()" disabled>🟡 Ejecutar Envío a Seleccionados</button>
+        </div>
+
+        <div id="amarilloResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="amarilloSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="amarilloFailCount">0</span>
+                <ul id="amarilloErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
+        </div>
+
+        <!-- Cuentas Capturadas -->
+        <div style="margin-top: 30px; border-top: 2px solid #fef3c7; padding-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #92400e; margin: 0;">Números de Cuenta Recibidos <span id="cuentasCount" style="font-size: 0.9rem; color: #d97706;"></span></h3>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="copyCuentasToClipboard()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">📋 Copiar</button>
+                    <button onclick="exportCuentasCSV()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">⬇️ CSV</button>
+                    <button onclick="fetchCapturedCuentas()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">🔄 Actualizar</button>
+                </div>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #92400e; color: white; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Fecha</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Número de Cuenta</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuentasTableBody">
+                        <tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1069,6 +1152,26 @@
                 }
             }
 
+            const tabAmarillo = document.getElementById('tabAmarillo');
+            if(tabAmarillo) {
+                tabAmarillo.classList.toggle('active-tab', tab === 'amarillo');
+                if(tab === 'amarillo') {
+                    tabAmarillo.style.background = "#d97706";
+                    tabAmarillo.style.borderColor = "#d97706";
+                    tabAmarillo.style.color = "white";
+                } else {
+                    tabAmarillo.style.background = "#1e293b";
+                    tabAmarillo.style.borderColor = "#f59e0b";
+                    tabAmarillo.style.color = "#fff";
+                }
+            }
+
+            const amarilloState = document.getElementById('amarilloState');
+            if(amarilloState) {
+                amarilloState.style.display = tab === 'amarillo' ? 'flex' : 'none';
+                amarilloState.style.flexDirection = 'column';
+            }
+
             const tabRojo = document.getElementById('tabRojo');
             if(tabRojo) {
                 tabRojo.classList.toggle('active-tab', tab === 'rojo');
@@ -1121,6 +1224,10 @@
             } else if (tab === 'correos') {
                 document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Lista de Correos Capturados.<br><br>👉 Mira el panel principal.</div>';
                 fetchCapturedEmails();
+            } else if (tab === 'amarillo') {
+                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos DocuSign.<br><br>👉 Mira el panel principal.</div>';
+                fetchPendingAmarillo();
+                fetchCapturedCuentas();
             } else if (tab === 'rojo') {
                 document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Falta Documento.<br><br>👉 Mira el panel principal.</div>';
                 fetchPendingRojo();
@@ -1327,6 +1434,202 @@
             btn.disabled = false;
             await fetchPendingRojo(false);
             alert(`Proceso finalizado.\nÉxitos: ${totalSuccess}\nFallos: ${totalFailed}`);
+        }
+
+        // ── Estado Amarillo: Listo en DocuSign ───────────────────────
+        let pendingAmarilloData = [];
+        let capturedCuentasData = [];
+
+        async function fetchPendingAmarillo(hideResults = true) {
+            const tbody = document.getElementById('amarilloTableBody');
+            const btn = document.getElementById('btnExecuteAmarillo');
+            if (hideResults) {
+                document.getElementById('amarilloResults').style.display = 'none';
+            }
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
+            btn.disabled = true;
+            pendingAmarilloData = [];
+
+            try {
+                const res = await fetch('/admin/api/pending-listo-docusign');
+                const data = await res.json();
+
+                if (res.ok && data.pending) {
+                    pendingAmarilloData = data.pending;
+
+                    if (pendingAmarilloData.length === 0) {
+                        document.getElementById('amarilloCount').innerText = '0';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar hoy.</td></tr>';
+                    } else {
+                        let rows = '';
+                        pendingAmarilloData.forEach((user, idx) => {
+                            const lastSent = user.last_sent
+                                ? new Date(user.last_sent).toLocaleString('es-CO', {timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})
+                                : 'Nunca';
+                            const sendCount = user.send_count || 0;
+                            const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; text-align: center;"><input type="checkbox" class="amarillo-check" data-idx="${idx}" checked onchange="updateSelectedCountAmarillo()"></td>
+                                <td style="padding: 10px;">${user.phone}</td>
+                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
+                                <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                        updateSelectedCountAmarillo();
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión al cargar.</td></tr>';
+            }
+        }
+
+        function selectOnlyNewClientsAmarillo() {
+            document.querySelectorAll('.amarillo-check').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                cb.checked = pendingAmarilloData[idx].send_count === 0;
+            });
+            updateSelectedCountAmarillo();
+        }
+
+        function toggleAllChecksAmarillo(masterCb) {
+            document.querySelectorAll('.amarillo-check').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCountAmarillo();
+        }
+
+        function updateSelectedCountAmarillo() {
+            const total = document.querySelectorAll('.amarillo-check').length;
+            const selected = document.querySelectorAll('.amarillo-check:checked').length;
+            document.getElementById('amarilloCount').innerText = `${selected} / ${total}`;
+            document.getElementById('btnExecuteAmarillo').disabled = selected === 0;
+            const masterCb = document.getElementById('checkAllAmarillo');
+            if (masterCb) {
+                masterCb.indeterminate = selected > 0 && selected < total;
+                masterCb.checked = selected === total;
+            }
+        }
+
+        async function executeBulkAmarillo() {
+            const checked = document.querySelectorAll('.amarillo-check:checked');
+            const selectedUsers = Array.from(checked).map(cb => pendingAmarilloData[parseInt(cb.dataset.idx)]);
+            if (selectedUsers.length === 0) return;
+            if (!confirm(`¿Estás seguro de enviar el template "estado_amarillo" a ${selectedUsers.length} clientes seleccionados?`)) return;
+
+            const btn = document.getElementById('btnExecuteAmarillo');
+            btn.disabled = true;
+            btn.innerText = '⌛ Procesando...';
+
+            let totalSuccess = 0, totalFailed = 0, allErrors = [];
+            const batchSize = 15;
+            const totalUsers = selectedUsers.length;
+
+            document.getElementById('amarilloResults').style.display = 'block';
+
+            for (let i = 0; i < totalUsers; i += batchSize) {
+                const chunk = selectedUsers.slice(i, i + batchSize);
+                btn.innerText = `⌛ Enviando ${i + 1} - ${Math.min(i + batchSize, totalUsers)} de ${totalUsers}...`;
+
+                try {
+                    const res = await fetch('/admin/api/trigger-bulk-amarillo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ users: chunk })
+                    });
+                    const data = await res.json();
+
+                    if (res.ok && data.results) {
+                        totalSuccess += data.results.success;
+                        totalFailed += data.results.fail || 0;
+                        if (data.results.errors) allErrors = allErrors.concat(data.results.errors);
+
+                        document.getElementById('amarilloSuccessCount').innerText = totalSuccess;
+                        document.getElementById('amarilloFailCount').innerText = totalFailed;
+
+                        const errorList = document.getElementById('amarilloErrorList');
+                        errorList.innerHTML = allErrors.length > 0
+                            ? allErrors.map(err => `<li>${err}</li>`).join('')
+                            : '<li>Sin errores en este lote.</li>';
+                    } else {
+                        totalFailed += chunk.length;
+                        allErrors.push(`Lote: ${data.message || 'Error de servidor'}`);
+                    }
+                } catch (e) {
+                    totalFailed += chunk.length;
+                    allErrors.push('Red: Error de conexión');
+                }
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            btn.innerText = '🟡 Ejecutar Envío a Seleccionados';
+            btn.disabled = false;
+            await fetchPendingAmarillo(false);
+            alert(`Proceso finalizado.\nÉxitos: ${totalSuccess}\nFallos: ${totalFailed}`);
+        }
+
+        async function fetchCapturedCuentas() {
+            const tbody = document.getElementById('cuentasTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando...</td></tr>';
+
+            try {
+                const res = await fetch('/admin/api/captured-cuentas');
+                const data = await res.json();
+
+                if (res.ok && data.cuentas) {
+                    capturedCuentasData = data.cuentas;
+                    document.getElementById('cuentasCount').innerText = `(${capturedCuentasData.length})`;
+
+                    if (capturedCuentasData.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Aún no se han recibido números de cuenta.</td></tr>';
+                    } else {
+                        tbody.innerHTML = capturedCuentasData.map(item => `
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${formatTime(item.created_at)}</td>
+                                <td style="padding: 10px;">${item.name || ''}</td>
+                                <td style="padding: 10px;">${item.phone}</td>
+                                <td style="padding: 10px; font-weight: bold;">${item.cuenta}</td>
+                            </tr>`).join('');
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+            }
+        }
+
+        function copyCuentasToClipboard() {
+            if (capturedCuentasData.length === 0) { alert('No hay cuentas para copiar.'); return; }
+            const header = 'Fecha\tNombre\tTeléfono\tNúmero de Cuenta';
+            const rows = capturedCuentasData.map(item =>
+                `${formatTime(item.created_at)}\t${item.name || ''}\t${item.phone}\t${item.cuenta}`
+            );
+            navigator.clipboard.writeText([header, ...rows].join('\n'))
+                .then(() => alert(`✅ ${capturedCuentasData.length} registros copiados. Pega directamente en Excel o Google Sheets.`))
+                .catch(() => alert('Error al copiar. Intenta exportar como CSV.'));
+        }
+
+        function exportCuentasCSV() {
+            if (capturedCuentasData.length === 0) { alert('No hay cuentas para exportar.'); return; }
+            const header = 'Fecha,Nombre,Teléfono,Número de Cuenta';
+            const rows = capturedCuentasData.map(item => {
+                const fecha = formatTime(item.created_at);
+                const nombre = (item.name || '').replace(/,/g, ' ');
+                const cuenta = (item.cuenta || '').replace(/,/g, ' ');
+                return `${fecha},${nombre},${item.phone},${cuenta}`;
+            });
+            const csv = [header, ...rows].join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cuentas_docusign_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         // ── Documentos Recibidos ──────────────────────────────────────
@@ -2092,6 +2395,7 @@
             currentActivePhone = phone;
             document.getElementById('emptyState').style.display = 'none';
             document.getElementById('enviosState').style.display = 'none';
+            document.getElementById('amarilloState').style.display = 'none';
             document.getElementById('rojoState').style.display = 'none';
             document.getElementById('docRecibidosState').style.display = 'none';
             document.getElementById('mainChat').style.display = 'flex';

@@ -73,8 +73,8 @@ class FlowHandler:
                         
                         log_message(user_phone, "inbound", final_path, msg_type, wamid=msg_id)
 
-                        # Track documents received after estado_rojo bulk send
-                        if current_state == "waiting_for_docs_rojo":
+                        # Track documents received after estado_rojo or estado_amarillo bulk send
+                        if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
                             client_name = get_client_name(user_phone)
                             log_received_document(user_phone, client_name, filename, mime_type, final_path)
 
@@ -257,7 +257,28 @@ class FlowHandler:
                 )
             return
 
-        # 2c. Check if waiting for Cedula (Saldo / Balance)
+        # 2c. Check if waiting for account number after estado_amarillo
+        if state == "waiting_for_cuenta_amarillo":
+            digits = "".join(filter(str.isdigit, text))
+            if len(digits) >= 5:
+                from src.conversation_log import save_captured_cuenta, get_client_name
+                client_name = get_client_name(user_phone)
+                save_captured_cuenta(user_phone, text.strip(), client_name)
+                WhatsAppService.send_message(
+                    user_phone,
+                    "✅ ¡Gracias! Hemos registrado tu número de cuenta. "
+                    "Nuestro equipo lo revisará y te contactaremos pronto para finalizar el desembolso."
+                )
+                set_user_state(user_phone, "active")
+            else:
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor envíanos el *número de cuenta* (solo dígitos). "
+                    "Si la cuenta no te pertenece, adjunta también la foto de la cédula del titular."
+                )
+            return
+
+        # 2d. Check if waiting for Cedula (Saldo / Balance)
         if state == "waiting_for_cedula_saldo":
             if not text.isdigit():
                 WhatsAppService.send_message(user_phone, "Por favor envía solo números, sin puntos ni espacios. Intenta de nuevo:")
@@ -348,6 +369,17 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
 
             
+        elif btn_id in ["enviar_numero_cuenta", "Enviar número de cuenta"]:
+            set_user_state(user_phone, "waiting_for_cuenta_amarillo")
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor escríbenos tu *número de cuenta* y el *banco* directamente aquí. 🏦\n\n"
+                "Si la cuenta no te pertenece, adjunta también:\n"
+                "• Nombre completo del titular\n"
+                "• Foto de la cédula del titular\n"
+                "• Número y tipo de cuenta"
+            )
+
         elif btn_id in ["cargar_documentos", "Cargar documentos"]:
             WhatsAppService.send_message(
                 user_phone,

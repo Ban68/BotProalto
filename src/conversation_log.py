@@ -499,6 +499,101 @@ def get_received_documents() -> list:
         return []
 
 
+def get_template_stats_batch_amarillo(phones: list) -> dict:
+    """
+    Returns a dict mapping phone -> {count, last_sent} for estado_amarillo template sends.
+    """
+    if not supabase_client or not phones:
+        return {}
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: estado_amarillo]")\
+            .order("created_at", desc=True)\
+            .execute()
+        stats = {}
+        for item in res.data:
+            p = item["phone"]
+            if p not in stats:
+                stats[p] = {"count": 0, "last_sent": None}
+            stats[p]["count"] += 1
+            if stats[p]["last_sent"] is None:
+                stats[p]["last_sent"] = item["created_at"]
+        return stats
+    except Exception as e:
+        print(f"Supabase get_template_stats_batch_amarillo error: {e}")
+        return {}
+
+
+def get_notified_phones_amarillo_batch(phones: list) -> set:
+    """
+    Given a list of phone numbers, returns a SET of those that
+    HAVE already received estado_amarillo today.
+    """
+    if not supabase_client or not phones:
+        return set()
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .eq("text", "[Template: estado_amarillo]")\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_notified_phones_amarillo_batch error: {e}")
+        return set()
+
+
+def save_captured_cuenta(phone: str, cuenta: str, name: str):
+    """Saves a captured account number to the captured_cuentas table."""
+    if not supabase_client:
+        print("⚠️ Supabase client not initialized. Cannot save cuenta.")
+        return False
+    try:
+        supabase_client.table('captured_cuentas').insert({
+            "phone": phone,
+            "cuenta": cuenta,
+            "name": name,
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error saving captured cuenta: {e}")
+        return False
+
+
+def get_captured_cuentas():
+    """Retrieves all captured account numbers ordered by date."""
+    if not supabase_client:
+        return []
+    try:
+        res = supabase_client.table('captured_cuentas').select("*").order("created_at", desc=True).execute()
+        return res.data
+    except Exception as e:
+        print(f"❌ Error fetching captured cuentas: {e}")
+        return []
+
+
+def get_phones_with_cuenta(phones: list) -> set:
+    """Returns a set of phones that have already submitted their account number."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('captured_cuentas')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_phones_with_cuenta error: {e}")
+        return set()
+
+
 def mark_document_reviewed(doc_id: str):
     """Marks a received document as reviewed."""
     if not supabase_client:
