@@ -371,6 +371,23 @@ def get_phones_with_email(phones: list) -> set:
         return set()
 
 
+def get_email_for_phone(phone: str):
+    """Returns the most recent captured email for a phone, or None."""
+    if not supabase_client:
+        return None
+    try:
+        res = supabase_client.table('captured_emails')\
+            .select("email")\
+            .eq("phone", phone)\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        return res.data[0]["email"] if res.data else None
+    except Exception as e:
+        print(f"Supabase get_email_for_phone error: {e}")
+        return None
+
+
 def get_phones_with_docs_completos(phones: list) -> set:
     """Returns a set of phones marked as docs_completos = true."""
     if not supabase_client or not phones:

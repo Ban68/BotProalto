@@ -175,18 +175,27 @@ class FlowHandler:
 
                     # 1. Send the result box
                     WhatsAppService.send_message(user_phone, response_msg)
-                    
-                    # 2. Send a second, separate, and highlighted instruction message
-                    instruction_msg = (
-                        "⚠️ *ACCIÓN NECESARIA*\n\n"
-                        "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
-                        "_Lo necesitamos para enviarte el contrato para firma electrónica._"
-                    )
-                    WhatsAppService.send_message(user_phone, instruction_msg)
-                    
-                    # 3. Set state to wait for email (and store name for email capture)
-                    set_client_name(user_phone, nombre)
-                    set_user_state(user_phone, "waiting_for_email")
+
+                    # 2. Check if email already captured
+                    from src.conversation_log import get_email_for_phone
+                    existing_email = get_email_for_phone(user_phone)
+
+                    if existing_email:
+                        WhatsAppService.send_message(
+                            user_phone,
+                            f"📧 En breve te llegará el contrato para firma electrónica al correo *{existing_email}*.\n\n"
+                            "Estamos trabajando en tu proceso. ¡Pronto tendrás noticias!"
+                        )
+                        set_user_state(user_phone, "active")
+                    else:
+                        instruction_msg = (
+                            "⚠️ *ACCIÓN NECESARIA*\n\n"
+                            "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
+                            "_Lo necesitamos para enviarte el contrato para firma electrónica._"
+                        )
+                        WhatsAppService.send_message(user_phone, instruction_msg)
+                        set_client_name(user_phone, nombre)
+                        set_user_state(user_phone, "waiting_for_email")
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)
