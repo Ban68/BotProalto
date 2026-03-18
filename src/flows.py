@@ -247,7 +247,7 @@ class FlowHandler:
             email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
             email = email_match.group(0) if email_match else None
             if email:
-                from src.conversation_log import save_captured_email, get_client_name
+                from src.conversation_log import save_captured_email
                 client_name = get_client_name(user_phone)
 
                 # Fallback: if name is still unknown, look it up by phone in Cloud Run
@@ -301,7 +301,7 @@ class FlowHandler:
         if state in ("waiting_for_numero_cuenta", "waiting_for_cuenta_amarillo"):
             digits = "".join(filter(str.isdigit, text))
             if len(digits) >= 5:
-                from src.conversation_log import save_captured_cuenta, get_client_name
+                from src.conversation_log import save_captured_cuenta
                 client_name = get_client_name(user_phone)
                 save_captured_cuenta(user_phone, digits, client_name)
                 set_user_state(user_phone, "waiting_for_banco")
