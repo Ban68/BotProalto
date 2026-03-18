@@ -6,17 +6,13 @@ Exclusively uses Supabase.
 import threading
 from datetime import datetime
 from config import Config
-from supabase import create_client, Client, ClientOptions
+from supabase import create_client, Client
 
 # Initialize Supabase client
 supabase_client = None
 if Config.SUPABASE_URL and Config.SUPABASE_KEY:
     try:
-        supabase_client: Client = create_client(
-            Config.SUPABASE_URL,
-            Config.SUPABASE_KEY,
-            options=ClientOptions(postgrest_client_timeout=5)
-        )
+        supabase_client: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
     except Exception as e:
         print(f"⚠️ Failed to initialize Supabase client: {e}")
 else:
