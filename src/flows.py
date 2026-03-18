@@ -227,6 +227,14 @@ class FlowHandler:
                 from src.conversation_log import save_captured_email, get_client_name
                 client_name = get_client_name(user_phone)
 
+                # Fallback: if name is still unknown, look it up by phone in Cloud Run
+                if not client_name or client_name == "Cliente":
+                    from src.database import get_name_by_phone
+                    resolved = get_name_by_phone(user_phone)
+                    if resolved:
+                        client_name = resolved
+                        set_client_name(user_phone, client_name)
+
                 # Save to database
                 save_captured_email(user_phone, email, client_name)
 

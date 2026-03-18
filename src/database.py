@@ -175,6 +175,32 @@ def get_listo_en_docusign():
         return None
 
 
+def get_name_by_phone(phone: str) -> str | None:
+    """
+    Queries the Cloud Run API to get the client's name by phone number.
+    Returns nombre_completo or None if not found / error.
+    """
+    if not CLOUD_RUN_URL:
+        return None
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"tipo": "por_telefono", "telefono": phone},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return data.get("nombre_completo")
+    except Exception as e:
+        print(f"❌ Cloud Run get_name_by_phone error for {phone}: {e}")
+    return None
+
+
 def test_cloud_run_connection():
     """
     Quick health check: sends a dummy cedula to verify the
