@@ -13,7 +13,7 @@ def get_solicitud(request):
     tipo = request_json.get("tipo", "solicitud") if request_json else "solicitud"
 
     cedula = request_json.get("cedula") if request_json else None
-    if tipo not in ("aprobados", "falta_documento", "por_telefono") and not cedula:
+    if tipo not in ("aprobados", "falta_documento", "por_telefono", "listo_en_docusign") and not cedula:
         return jsonify({"error": "Cedula no proporcionada"}), 400
 
     try:
@@ -82,6 +82,28 @@ def get_solicitud(request):
                 SELECT nombre_completo, telefono
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'FALTA ALGÚN DOCUMENTO'
+                  AND telefono IS NOT NULL
+                  AND telefono != ''
+            """)
+            records = cur.fetchall()
+            cur.close()
+            conn.close()
+            if records:
+                clientes = []
+                for r in records:
+                    clientes.append({
+                        "nombre_completo": r[0] or "",
+                        "telefono": r[1] or ""
+                    })
+                return jsonify({"found": True, "clientes": clientes}), 200
+            else:
+                return jsonify({"found": False, "clientes": []}), 200
+
+        elif tipo == "listo_en_docusign":
+            cur.execute("""
+                SELECT nombre_completo, telefono
+                FROM v_solicitudes_whatsapp
+                WHERE UPPER(estado_interno) = 'LISTO EN DOCUSIGN'
                   AND telefono IS NOT NULL
                   AND telefono != ''
             """)
