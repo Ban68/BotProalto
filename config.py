@@ -5,7 +5,7 @@ load_dotenv()
 
 class Config:
     # Meta (Facebok) Config
-    WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "proalto_secure_token")
+    WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "")
     APP_SECRET = os.getenv("APP_SECRET", "")
     API_TOKEN = os.getenv("API_TOKEN")
     BUSINESS_PHONE = os.getenv("BUSINESS_PHONE")
@@ -20,8 +20,8 @@ class Config:
     ADMIN_TIMEZONE = os.getenv("ADMIN_TIMEZONE", "America/Bogota")
     
     # Admin Panel Config
-    ADMIN_USER = os.getenv("ADMIN_USER", "admin")
-    ADMIN_PASS = os.getenv("ADMIN_PASS", "proalto2024")
+    ADMIN_USER = os.getenv("ADMIN_USER", "")
+    ADMIN_PASS = os.getenv("ADMIN_PASS", "")
     
     # Supabase (Chat History) Config
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
