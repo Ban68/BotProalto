@@ -31,7 +31,7 @@ def get_solicitud_status(cedula):
                 "Authorization": f"Bearer {API_TOKEN_SECRET}",
                 "Content-Type": "application/json"
             },
-            timeout=10
+            timeout=5
         )
 
         if response.status_code == 200:
@@ -190,7 +190,7 @@ def get_name_by_phone(phone: str) -> str | None:
                 "Authorization": f"Bearer {API_TOKEN_SECRET}",
                 "Content-Type": "application/json"
             },
-            timeout=10
+            timeout=5
         )
         if response.status_code == 200:
             data = response.json()
@@ -246,7 +246,7 @@ def get_saldo(cedula):
                 "Authorization": f"Bearer {API_TOKEN_SECRET}",
                 "Content-Type": "application/json"
             },
-            timeout=10
+            timeout=5
         )
 
         if response.status_code == 200:
