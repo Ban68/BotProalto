@@ -257,24 +257,41 @@ class FlowHandler:
                 )
             return
 
-        # 2c. Check if waiting for account number after estado_amarillo
-        if state == "waiting_for_cuenta_amarillo":
+        # 2c. Step 1: waiting for account number (digits only)
+        if state in ("waiting_for_numero_cuenta", "waiting_for_cuenta_amarillo"):
             digits = "".join(filter(str.isdigit, text))
             if len(digits) >= 5:
                 from src.conversation_log import save_captured_cuenta, get_client_name
                 client_name = get_client_name(user_phone)
-                save_captured_cuenta(user_phone, text.strip(), client_name)
+                save_captured_cuenta(user_phone, digits, client_name)
+                set_user_state(user_phone, "waiting_for_banco")
                 WhatsAppService.send_message(
                     user_phone,
-                    "✅ ¡Gracias! Hemos registrado tu número de cuenta. "
-                    "Nuestro equipo lo revisará y te contactaremos pronto para finalizar el desembolso."
+                    "Número registrado ✅\n\n¿En qué *banco* está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
                 )
-                set_user_state(user_phone, "active")
             else:
                 WhatsAppService.send_message(
                     user_phone,
-                    "Por favor envíanos el *número de cuenta* (solo dígitos). "
-                    "Si la cuenta no te pertenece, adjunta también la foto de la cédula del titular."
+                    "Por favor envíanos solo el *número de cuenta* (mínimo 5 dígitos, sin letras ni espacios)."
+                )
+            return
+
+        # 2d. Step 2: waiting for bank name
+        if state == "waiting_for_banco":
+            banco = text.strip()
+            if len(banco) >= 2:
+                from src.conversation_log import update_captured_cuenta_banco
+                update_captured_cuenta_banco(user_phone, banco)
+                set_user_state(user_phone, "active")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "✅ ¡Gracias! Hemos registrado tu número de cuenta y banco. "
+                    "Nuestro equipo lo revisará y te contactaremos pronto para finalizar el desembolso."
+                )
+            else:
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor escribe el nombre de tu *banco* (ej: Bancolombia, Davivienda, Nequi...)."
                 )
             return
 
@@ -370,14 +387,10 @@ class FlowHandler:
 
             
         elif btn_id in ["enviar_numero_cuenta", "Enviar número de cuenta"]:
-            set_user_state(user_phone, "waiting_for_cuenta_amarillo")
+            set_user_state(user_phone, "waiting_for_numero_cuenta")
             WhatsAppService.send_message(
                 user_phone,
-                "Por favor escríbenos tu *número de cuenta* y el *banco* directamente aquí. 🏦\n\n"
-                "Si la cuenta no te pertenece, adjunta también:\n"
-                "• Nombre completo del titular\n"
-                "• Foto de la cédula del titular\n"
-                "• Número y tipo de cuenta"
+                "Por favor escríbenos tu *número de cuenta* (solo dígitos, sin espacios ni guiones). 🏦"
             )
 
         elif btn_id in ["cargar_documentos", "Cargar documentos"]:
