@@ -1672,7 +1672,12 @@
                     });
 
                     let rows = '';
-                    Object.values(groups).forEach(group => {
+                    const sortedGroups = Object.values(groups).sort((a, b) => {
+                        const aCompleto = a.info.docs_completos ? 1 : 0;
+                        const bCompleto = b.info.docs_completos ? 1 : 0;
+                        return aCompleto - bCompleto;
+                    });
+                    sortedGroups.forEach(group => {
                         const { info, docs: clientDocs } = group;
                         const docsCompletos = info.docs_completos;
                         const completosBadge = docsCompletos
