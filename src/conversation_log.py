@@ -648,3 +648,37 @@ def mark_document_reviewed(doc_id: str):
             .execute()
     except Exception as e:
         print(f"Supabase mark_document_reviewed error: {e}")
+
+
+def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:
+    """Return recent messages formatted as an Anthropic messages array for LLM context."""
+    if not supabase_client:
+        return []
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("direction, text, msg_type")\
+            .eq("phone", phone)\
+            .neq("msg_type", "deleted")\
+            .order("created_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        messages = []
+        for m in reversed(res.data):
+            role = "user" if m["direction"] == "inbound" else "assistant"
+            text = m["text"] or ""
+            if m["msg_type"] in ("image", "document"):
+                text = "[Archivo enviado]"
+            elif len(text) > 300:
+                text = text[:300] + "..."
+            messages.append({"role": role, "content": text})
+        # Anthropic requires messages to alternate roles; collapse consecutive same-role messages
+        merged = []
+        for msg in messages:
+            if merged and merged[-1]["role"] == msg["role"]:
+                merged[-1]["content"] += "\n" + msg["content"]
+            else:
+                merged.append({"role": msg["role"], "content": msg["content"]})
+        return merged
+    except Exception as e:
+        print(f"get_recent_messages_for_llm error: {e}")
+        return []

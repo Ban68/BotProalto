@@ -125,6 +125,26 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Has salido del modo asesor. Escribe 'Hola' para ver el menú principal.")
             return
 
+        # 0b. LLM Agent Mode — all messages routed through Claude
+        if state == "agent_llm":
+            from src.llm import ask_llm
+            client_name = get_client_name(user_phone)
+            llm_response = ask_llm(user_phone, text, state, client_name)
+            if llm_response == "[HABLAR_ASESOR]":
+                set_agent_mode(user_phone, "agent")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
+                    "_Si deseas volver al menú del bot, escribe *salir*._"
+                )
+                notify_admin_agent_request(user_phone)
+            elif llm_response == "[MOSTRAR_MENU]":
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+            else:
+                WhatsAppService.send_message(user_phone, llm_response)
+            return
+
         # 1. Check Consent Flow
         if state == "pending_consent":
             FlowHandler.send_habeas_data_prompt(user_phone)
@@ -371,7 +391,7 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
         else:
-            WhatsAppService.send_message(user_phone, "No entendí tu mensaje. Escribe 'Hola' para ver el menú principal.")
+            WhatsAppService.send_message(user_phone, "No entendí tu mensaje. Escribe *Hola* para ver el menú principal.")
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):

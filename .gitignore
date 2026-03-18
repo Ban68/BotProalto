@@ -10,3 +10,6 @@ data/
 test_*.py
 old_reqs.txt
 .claude/
+
+# Datos privados de clientes — no subir al repo
+context/conversaciones_bot.md

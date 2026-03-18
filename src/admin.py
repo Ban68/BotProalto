@@ -170,6 +170,14 @@ def api_delete_message():
         return jsonify({"error": f"WhatsApp API: {result}"}), 500
 
 
+@admin_bp.route('/admin/api/set-llm-agent/<phone>', methods=['POST'])
+@requires_auth
+def api_set_llm_agent(phone):
+    """Activate LLM agent mode for a specific conversation."""
+    set_agent_mode(phone, "agent_llm")
+    return jsonify({"status": "llm_agent_activated"})
+
+
 @admin_bp.route('/admin/api/close-agent/<phone>', methods=['POST'])
 @requires_auth
 def api_close_agent(phone):

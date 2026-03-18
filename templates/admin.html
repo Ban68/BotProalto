@@ -199,6 +199,12 @@
             color: white;
         }
 
+        .status-llm {
+            background: #16a34a;
+            /* Green */
+            color: white;
+        }
+
         .conv-preview {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -281,6 +287,15 @@
 
         .btn-bot-humano:hover {
             background: #4f46e5;
+        }
+
+        .btn-llm-agent {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-llm-agent:hover {
+            background: #15803d;
         }
 
         .dropdown {
@@ -605,6 +620,8 @@
                     Control</button>
                 <button id="btnBotHumano" class="btn btn-bot-humano hidden" onclick="forceAgentSession(true)">🔇 Modo
                     Bot Humano</button>
+                <button id="btnLLMAgent" class="btn btn-llm-agent hidden" onclick="activateLLMAgent()">🤖 Agente
+                    LLM</button>
 
                 <div class="dropdown" id="dropdownDelete">
                     <button class="btn btn-outline-danger">Eliminar ▼</button>
@@ -2263,7 +2280,7 @@
 
             // Ordenar: Primero los que están en modo ASESOR o BOT HUMANO, luego el resto por fecha de actualización
             conversations.sort((a, b) => {
-                const priorityStatus = ['agent', 'agent_silent'];
+                const priorityStatus = ['agent', 'agent_silent', 'agent_llm'];
                 const aIsPriority = priorityStatus.includes(a.status);
                 const bIsPriority = priorityStatus.includes(b.status);
 
@@ -2284,6 +2301,9 @@
                 } else if (c.status === 'agent_silent') {
                     statusClass = 'status-silent';
                     statusLabel = '🔇 BOT HUMANO';
+                } else if (c.status === 'agent_llm') {
+                    statusClass = 'status-llm';
+                    statusLabel = '🤖 AGENTE LLM';
                 } else {
                     if (c.status === 'pending_consent') statusLabel = 'BOT (Habeas Data)';
                     else if (c.status === 'waiting_for_cedula') statusLabel = 'BOT (Ced. Solicitud)';
@@ -2381,6 +2401,7 @@
                 let statusLabel = 'BOT';
                 if (data.status === 'agent') { statusClass = 'status-agent'; statusLabel = '🔴 ASESOR'; }
                 else if (data.status === 'agent_silent') { statusClass = 'status-silent'; statusLabel = '🔇 BOT HUMANO'; }
+                else if (data.status === 'agent_llm') { statusClass = 'status-llm'; statusLabel = '🤖 AGENTE LLM'; }
                 const activeClass = currentActivePhone === phone ? 'active' : '';
                 serverResult.innerHTML = `
                     <div style="padding: 6px 10px; font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Resultado de búsqueda</div>
@@ -2492,7 +2513,7 @@
 
         function updateInputState(status) {
             const isArchived = currentTab === 'archivadas';
-            const isActiveAgent = (status === 'agent' || status === 'agent_silent') && !isArchived;
+            const isActiveAgent = (status === 'agent' || status === 'agent_silent' || status === 'agent_llm') && !isArchived;
 
             // Check if another advisor is in this chat
             const otherAdvisorInChat = latestActiveAdvisors.find(a => a.name !== advisorName && a.current_chat === currentActivePhone);
@@ -2503,6 +2524,7 @@
             const btnClose = document.getElementById('btnCloseAgent');
             const btnForce = document.getElementById('btnForceAgent');
             const btnBotHumano = document.getElementById('btnBotHumano');
+            const btnLLMAgent = document.getElementById('btnLLMAgent');
             const btnRestore = document.getElementById('btnRestore');
             const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
@@ -2514,6 +2536,7 @@
                 btnUpload.disabled = true;
                 btnForce.disabled = true;
                 btnBotHumano.disabled = true;
+                btnLLMAgent.disabled = true;
                 btnClose.disabled = true;
                 dropdown.classList.add('hidden'); // Better to hide it to avoid accidents
                 
@@ -2545,6 +2568,7 @@
                 btnClose.classList.remove('hidden');
                 btnForce.classList.add('hidden');
                 btnBotHumano.classList.add('hidden');
+                btnLLMAgent.classList.add('hidden');
                 dropdown.classList.remove('hidden');
 
                 if (status === 'agent_silent') {
@@ -2552,6 +2576,14 @@
                     ind.style = '';
                     ind.innerText = '🔇 MODO BOT HUMANO';
                     document.getElementById('msgInput').placeholder = 'Modo Bot Humano Activo. El cliente no sabrá que eres tú.';
+                } else if (status === 'agent_llm') {
+                    ind.className = 'conv-status status-llm';
+                    ind.style = '';
+                    ind.innerText = '🤖 AGENTE LLM ACTIVO';
+                    document.getElementById('msgInput').placeholder = 'El Agente LLM está respondiendo. Puedes escribir para intervenir manualmente.';
+                    // Allow advisor to still send messages in LLM mode
+                    msgInput.disabled = false;
+                    btnSend.disabled = false;
                 } else {
                     ind.className = 'conv-status status-agent';
                     ind.style = '';
@@ -2563,6 +2595,7 @@
                 btnClose.classList.add('hidden');
                 btnForce.classList.remove('hidden');
                 btnBotHumano.classList.remove('hidden');
+                btnLLMAgent.classList.remove('hidden');
                 dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-bot';
                 ind.style = '';
@@ -2702,6 +2735,23 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ advisor_name: advisorName, silent: silent })
+                });
+                if (res.ok) {
+                    await fetchHistory(currentActivePhone);
+                    await fetchList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function activateLLMAgent() {
+            if (!currentActivePhone) return;
+            if (!confirm('¿Activar el Agente LLM para esta conversación? El cliente será atendido por Claude hasta que termines la intervención o el LLM solicite un asesor humano.')) return;
+
+            try {
+                const res = await fetch(`/admin/api/set-llm-agent/${currentActivePhone}`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     await fetchHistory(currentActivePhone);

@@ -6,3 +6,4 @@ supabase==2.3.4
 gotrue<2.9.0
 apscheduler==3.10.4
 tzdata
+anthropic>=0.40.0
