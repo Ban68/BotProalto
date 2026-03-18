@@ -130,15 +130,18 @@ class FlowHandler:
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)
             llm_response = ask_llm(user_phone, text, state, client_name)
-            if llm_response == "[HABLAR_ASESOR]":
+
+            if "[HABLAR_ASESOR]" in llm_response:
+                # Send the human-sounding transition message the LLM wrote (if any)
+                human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+                if human_msg:
+                    WhatsAppService.send_message(user_phone, human_msg)
                 set_agent_mode(user_phone, "agent")
-                WhatsAppService.send_message(
-                    user_phone,
-                    "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
-                    "_Si deseas volver al menú del bot, escribe *salir*._"
-                )
                 notify_admin_agent_request(user_phone)
-            elif llm_response == "[MOSTRAR_MENU]":
+            elif "[MOSTRAR_MENU]" in llm_response:
+                human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
+                if human_msg:
+                    WhatsAppService.send_message(user_phone, human_msg)
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
             else:
