@@ -356,6 +356,30 @@ def get_captured_emails():
         return []
 
 
+def update_captured_email(phone: str, new_email: str) -> bool:
+    """Updates the most recent captured email for a phone."""
+    if not supabase_client:
+        return False
+    try:
+        res = supabase_client.table('captured_emails')\
+            .select("id")\
+            .eq("phone", phone)\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if not res.data:
+            return False
+        record_id = res.data[0]["id"]
+        supabase_client.table('captured_emails')\
+            .update({"email": new_email})\
+            .eq("id", record_id)\
+            .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error updating captured email: {e}")
+        return False
+
+
 def get_phones_with_email(phones: list) -> set:
     """Returns a set of phones that have already submitted their email."""
     if not supabase_client or not phones:

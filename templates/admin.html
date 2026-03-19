@@ -785,10 +785,11 @@
                             <th style="padding: 10px; text-align: left;">Nombre</th>
                             <th style="padding: 10px; text-align: left;">Teléfono</th>
                             <th style="padding: 10px; text-align: left;">Email</th>
+                            <th style="padding: 10px; text-align: left;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="correosTableBody">
-                        <tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -987,6 +988,21 @@
         </div>
     </div>
 
+    <!-- Edit Email Modal -->
+    <div id="editEmailModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Editar Correo</h3>
+            <div class="modal-form">
+                <p style="font-size: 0.9rem; color: #666;">Teléfono: <span id="editEmailPhone" style="font-weight: 600;"></span></p>
+                <input type="email" id="editEmailInput" placeholder="nuevo@correo.com" style="width: 100%; box-sizing: border-box;">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-danger" onclick="closeEditEmailModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmEditEmail()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="newChatModal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3>Iniciar Nueva Conversación</h3>
@@ -1051,6 +1067,41 @@
 
         function showNewChatModal() {
             document.getElementById('newChatModal').classList.remove('hidden');
+        }
+
+        let editEmailCurrentPhone = null;
+
+        function openEditEmailModal(phone, currentEmail) {
+            editEmailCurrentPhone = phone;
+            document.getElementById('editEmailPhone').innerText = phone;
+            document.getElementById('editEmailInput').value = currentEmail;
+            document.getElementById('editEmailModal').classList.remove('hidden');
+        }
+
+        function closeEditEmailModal() {
+            document.getElementById('editEmailModal').classList.add('hidden');
+            editEmailCurrentPhone = null;
+        }
+
+        async function confirmEditEmail() {
+            const newEmail = document.getElementById('editEmailInput').value.trim();
+            if (!newEmail) { alert('Ingresa un email válido.'); return; }
+            try {
+                const res = await fetch(`/admin/api/captured-emails/${editEmailCurrentPhone}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: newEmail })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    closeEditEmailModal();
+                    fetchCapturedEmails();
+                } else {
+                    alert('Error: ' + (data.message || 'No se pudo actualizar.'));
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+            }
         }
 
         function closeNewChatModal() {
@@ -1288,36 +1339,39 @@
 
         async function fetchCapturedEmails() {
             const tbody = document.getElementById('correosTableBody');
-            tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
-            
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
+
             try {
                 const res = await fetch('/admin/api/captured-emails');
                 const data = await res.json();
-                
+
                 if (res.ok && data.emails) {
                     capturedEmailsData = data.emails;
                     document.getElementById('correosCount').innerText = data.emails.length;
 
                     if (data.emails.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
                     } else {
                         let rows = '';
                         data.emails.forEach(item => {
+                            const emailEsc = item.email.replace(/'/g, "\\'");
+                            const phoneEsc = item.phone.replace(/'/g, "\\'");
                             rows += `<tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding: 10px; font-size: 0.85rem;">${formatTime(item.created_at)}</td>
                                 <td style="padding: 10px;">${item.name || '---'}</td>
                                 <td style="padding: 10px;">${item.phone}</td>
                                 <td style="padding: 10px; font-weight: 600; color: var(--primary-dark);">${item.email}</td>
+                                <td style="padding: 10px;"><button onclick="openEditEmailModal('${phoneEsc}', '${emailEsc}')" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
                     }
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
             } catch (e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
             }
         }
 

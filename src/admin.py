@@ -397,6 +397,21 @@ def api_captured_emails():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/captured-emails/<phone>', methods=['PUT'])
+@requires_auth
+def api_update_captured_email(phone):
+    """Update the most recent captured email for a phone."""
+    from src.conversation_log import update_captured_email
+    body = request.get_json() or {}
+    new_email = body.get("email", "").strip()
+    if not new_email:
+        return jsonify({"status": "error", "message": "Email requerido"}), 400
+    success = update_captured_email(phone, new_email)
+    if success:
+        return jsonify({"status": "ok"})
+    return jsonify({"status": "error", "message": "No se encontró el registro"}), 404
+
+
 @admin_bp.route('/admin/api/pending-falta-documento')
 @requires_auth
 def api_pending_falta_documento():
