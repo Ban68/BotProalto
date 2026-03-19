@@ -46,19 +46,19 @@
 
         /* Sidebar - Conversation List */
         .sidebar {
-            width: 350px;
+            width: 310px;
             background: #FFFFFF;
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
         }
 
         .sidebar-header {
-            padding: 24px 16px;
+            padding: 16px 16px 14px;
             background: var(--primary-dark);
             color: white;
             text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sidebar-header h2 {
@@ -89,41 +89,101 @@
             font-size: 0.9rem;
         }
 
-        .tab-buttons {
+        /* Chat filter toggle (Activas / Archivadas) */
+        .chat-filter-bar {
             display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            margin-top: 10px;
-            padding-top: 10px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
 
-        .tab-btn {
-            flex: 1 1 calc(33.33% - 8px);
-            min-width: 80px;
-            padding: 8px 4px;
-            background: #1e293b;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .chat-filter-btn {
+            flex: 1;
+            padding: 10px 0;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .chat-filter-btn:hover {
+            color: var(--primary-dark);
+            background: #f8fafc;
+        }
+
+        .chat-filter-btn.active-tab {
+            color: var(--primary-dark) !important;
+            border-bottom-color: var(--primary) !important;
+            background: var(--primary-light) !important;
+        }
+
+        /* Content wrapper (sidebar sibling) */
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Tool navigation bar */
+        .tool-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 14px;
+            background: var(--primary-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+
+        .tool-nav-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.45);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            margin-right: 6px;
+            padding-right: 10px;
+            border-right: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .tool-nav-btn {
+            padding: 6px 13px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 6px;
             color: #fff;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 600;
-            transition: all 0.2s;
-            text-align: center;
             white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .tab-btn:hover {
-            filter: brightness(1.2);
+        .tool-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
             transform: translateY(-1px);
         }
 
-        .tab-btn.active-tab {
-            background: var(--primary) !important;
-            color: #1e293b !important;
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 12px rgba(254, 192, 92, 0.3);
+        .tool-nav-btn.active-tab {
+            box-shadow: 0 0 0 1px currentColor;
+        }
+
+        /* Content area (holds all main panels) */
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
         }
 
         .archived-badge {
@@ -555,17 +615,21 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <img src="https://proalto.co/logo.png" alt="ProAlto Logo"
-                style="height: 80px; margin-bottom: 20px; filter: brightness(0) invert(1);">
+                style="height: 56px; margin-bottom: 10px; filter: brightness(0) invert(1);">
             <h2>Monitor Admin</h2>
             <p>Panel de Conversaciones</p>
             
-            <!-- Online Presence UI -->
-            <div id="onlineAdvisorsContainer" style="margin-bottom: 12px; font-size: 0.85rem; text-align: left; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <strong style="color: var(--primary);">Conectados Ahora:</strong>
-                    <button style="padding: 2px 6px; font-size: 0.7rem; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;" onclick="showAdvisorModal(() => { sendHeartbeat(); fetchList(); })">Cambiar Mi Nombre</button>
+            <!-- Online Presence - Collapsible -->
+            <div style="position: relative; margin-bottom: 10px;">
+                <button type="button" id="btnOnlineToggle" onclick="toggleOnlinePanel()"
+                    style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.15); border-radius: 5px; color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+                    <span id="onlineCount">🟢 Cargando...</span>
+                    <span id="onlineChevron" style="font-size: 0.65rem; opacity: 0.7;">▾</span>
+                </button>
+                <div id="onlineAdvisorsContainer" style="display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 200; background: #1e293b; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.5);">
+                    <div id="onlineAdvisorsList" style="color: #ddd; font-size: 0.82rem; margin-bottom: 8px;">Cargando...</div>
+                    <button type="button" style="width: 100%; padding: 4px 8px; font-size: 0.75rem; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;" onclick="showAdvisorModal(() => { sendHeartbeat(); fetchList(); toggleOnlinePanel(); })">Cambiar Mi Nombre</button>
                 </div>
-                <div id="onlineAdvisorsList" style="margin-top: 4px; color: #ddd;">Cargando...</div>
             </div>
 
             <div class="search-container" style="display: flex; gap: 8px;">
@@ -574,28 +638,11 @@
                 <button class="btn btn-primary" onclick="showNewChatModal()" title="Nueva Conversación"
                     style="padding: 8px 12px; font-size: 1.2rem;">+</button>
             </div>
-            <div class="tab-buttons">
-                <button class="tab-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
-                <button class="tab-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
-                <button class="tab-btn" id="tabEnvios" onclick="switchTab('envios')" style="background: #1e293b; color: #fff; border: 1px solid var(--primary);">
-                    <span style="text-shadow: 0 0 2px #000;">⚡</span> Envíos
-                </button>
-                <button class="tab-btn" id="tabLeads" onclick="switchTab('leads')" style="background: #1e293b; color: #fff; border: 1px solid #10b981;">
-                    <span style="text-shadow: 0 0 2px #000;">🎯</span> Leads
-                </button>
-                <button class="tab-btn" id="tabCorreos" onclick="switchTab('correos')" style="background: #1e293b; color: #fff; border: 1px solid #3b82f6;">
-                    <span style="text-shadow: 0 0 2px #000;">📧</span> Correos
-                </button>
-                <button class="tab-btn" id="tabRojo" onclick="switchTab('rojo')" style="background: #1e293b; color: #fff; border: 1px solid #ef4444;">
-                    <span style="text-shadow: 0 0 2px #000;">🔴</span> Falta Doc
-                </button>
-                <button class="tab-btn" id="tabAmarillo" onclick="switchTab('amarillo')" style="background: #1e293b; color: #fff; border: 1px solid #f59e0b;">
-                    <span style="text-shadow: 0 0 2px #000;">🟡</span> DocuSign
-                </button>
-                <button class="tab-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')" style="background: #1e293b; color: #fff; border: 1px solid #f59e0b;">
-                    <span style="text-shadow: 0 0 2px #000;">📥</span> Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 6px; font-size:0.75rem; margin-left:3px;">0</span>
-                </button>
-            </div>
+        </div>
+        <!-- Chat filter: Activas / Archivadas -->
+        <div class="chat-filter-bar">
+            <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
+            <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->
@@ -603,6 +650,19 @@
         </div>
         <div id="serverSearchResult"></div>
     </div>
+
+    <!-- Content wrapper: tool nav bar + all content panels -->
+    <div class="content-wrapper">
+        <div class="tool-nav">
+            <span class="tool-nav-label">Herramientas</span>
+            <button type="button" class="tool-nav-btn" id="tabEnvios" onclick="switchTab('envios')">⚡ Envíos</button>
+            <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
+            <button type="button" class="tool-nav-btn" id="tabCorreos" onclick="switchTab('correos')">📧 Correos</button>
+            <button type="button" class="tool-nav-btn" id="tabRojo" onclick="switchTab('rojo')">🔴 Falta Doc</button>
+            <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 DocuSign</button>
+            <button type="button" class="tool-nav-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+        </div>
+        <div class="content-area">
 
     <!-- Main Chat -->
     <div class="main-chat" id="mainChat" style="display: none;">
@@ -967,6 +1027,9 @@
         </div>
     </div>
 
+        </div><!-- /content-area -->
+    </div><!-- /content-wrapper -->
+
     <!-- Advisor Selection Modal -->
     <div id="advisorModal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -1028,6 +1091,25 @@
         let advisorName = localStorage.getItem('proalto_advisor_name');
         let currentStatus = 'bot';
         let latestActiveAdvisors = []; // To store the list from heartbeat
+
+        function toggleOnlinePanel() {
+            const panel = document.getElementById('onlineAdvisorsContainer');
+            const chevron = document.getElementById('onlineChevron');
+            const isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            if (chevron) chevron.textContent = isOpen ? '▾' : '▴';
+        }
+
+        // Close online panel when clicking outside
+        document.addEventListener('click', function(e) {
+            const toggle = document.getElementById('btnOnlineToggle');
+            const panel = document.getElementById('onlineAdvisorsContainer');
+            if (panel && toggle && !toggle.contains(e.target) && !panel.contains(e.target)) {
+                panel.style.display = 'none';
+                const chevron = document.getElementById('onlineChevron');
+                if (chevron) chevron.textContent = '▾';
+            }
+        });
 
         function toggleCustomAdvisor() {
             const select = document.getElementById('advisorSelect');
@@ -1181,59 +1263,27 @@
             document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
             document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
             
-            const tabEnvios = document.getElementById('tabEnvios');
-            if(tabEnvios) {
-                tabEnvios.classList.toggle('active-tab', tab === 'envios');
-                if(tab === 'envios') {
-                    tabEnvios.style.background = "#4f46e5";
-                    tabEnvios.style.borderColor = "#4f46e5";
-                    tabEnvios.style.color = "white";
+            // Tool nav button active states (inactive → clear inline styles so CSS takes over)
+            const toolColors = {
+                tabEnvios:      { active: '#4f46e5', tab: 'envios'       },
+                tabLeads:       { active: '#059669', tab: 'leads'        },
+                tabCorreos:     { active: '#3b82f6', tab: 'correos'      },
+                tabAmarillo:    { active: '#d97706', tab: 'amarillo'     },
+                tabRojo:        { active: '#dc2626', tab: 'rojo'         },
+                tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos' },
+            };
+            for (const [id, cfg] of Object.entries(toolColors)) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+                el.classList.toggle('active-tab', tab === cfg.tab);
+                if (tab === cfg.tab) {
+                    el.style.background  = cfg.active;
+                    el.style.border      = `1px solid ${cfg.active}`;
+                    el.style.color       = 'white';
                 } else {
-                    tabEnvios.style.background = "#1e293b";
-                    tabEnvios.style.borderColor = "var(--primary)";
-                    tabEnvios.style.color = "#fff";
-                }
-            }
-
-            const tabLeads = document.getElementById('tabLeads');
-            if(tabLeads) {
-                tabLeads.classList.toggle('active-tab', tab === 'leads');
-                if(tab === 'leads') {
-                    tabLeads.style.background = "#059669";
-                    tabLeads.style.borderColor = "#059669";
-                    tabLeads.style.color = "white";
-                } else {
-                    tabLeads.style.background = "#1e293b";
-                    tabLeads.style.borderColor = "#10b981";
-                    tabLeads.style.color = "#fff";
-                }
-            }
-
-            const tabCorreos = document.getElementById('tabCorreos');
-            if(tabCorreos) {
-                tabCorreos.classList.toggle('active-tab', tab === 'correos');
-                if(tab === 'correos') {
-                    tabCorreos.style.background = "#3b82f6";
-                    tabCorreos.style.borderColor = "#3b82f6";
-                    tabCorreos.style.color = "white";
-                } else {
-                    tabCorreos.style.background = "#1e293b";
-                    tabCorreos.style.borderColor = "#3b82f6";
-                    tabCorreos.style.color = "#fff";
-                }
-            }
-
-            const tabAmarillo = document.getElementById('tabAmarillo');
-            if(tabAmarillo) {
-                tabAmarillo.classList.toggle('active-tab', tab === 'amarillo');
-                if(tab === 'amarillo') {
-                    tabAmarillo.style.background = "#d97706";
-                    tabAmarillo.style.borderColor = "#d97706";
-                    tabAmarillo.style.color = "white";
-                } else {
-                    tabAmarillo.style.background = "#1e293b";
-                    tabAmarillo.style.borderColor = "#f59e0b";
-                    tabAmarillo.style.color = "#fff";
+                    el.style.background  = '';
+                    el.style.border      = '';
+                    el.style.color       = '';
                 }
             }
 
@@ -1243,38 +1293,10 @@
                 amarilloState.style.flexDirection = 'column';
             }
 
-            const tabRojo = document.getElementById('tabRojo');
-            if(tabRojo) {
-                tabRojo.classList.toggle('active-tab', tab === 'rojo');
-                if(tab === 'rojo') {
-                    tabRojo.style.background = "#dc2626";
-                    tabRojo.style.borderColor = "#dc2626";
-                    tabRojo.style.color = "white";
-                } else {
-                    tabRojo.style.background = "#1e293b";
-                    tabRojo.style.borderColor = "#ef4444";
-                    tabRojo.style.color = "#fff";
-                }
-            }
-
             const rojoState = document.getElementById('rojoState');
             if(rojoState) {
                 rojoState.style.display = tab === 'rojo' ? 'flex' : 'none';
                 rojoState.style.flexDirection = 'column';
-            }
-
-            const tabDocRecibidos = document.getElementById('tabDocRecibidos');
-            if(tabDocRecibidos) {
-                tabDocRecibidos.classList.toggle('active-tab', tab === 'docrecibidos');
-                if(tab === 'docrecibidos') {
-                    tabDocRecibidos.style.background = "#b45309";
-                    tabDocRecibidos.style.borderColor = "#b45309";
-                    tabDocRecibidos.style.color = "white";
-                } else {
-                    tabDocRecibidos.style.background = "#1e293b";
-                    tabDocRecibidos.style.borderColor = "#f59e0b";
-                    tabDocRecibidos.style.color = "#fff";
-                }
             }
 
             const docRecibidosState = document.getElementById('docRecibidosState');
@@ -1288,22 +1310,15 @@
             } else if (tab === 'archivadas') {
                 fetchArchivedList();
             } else if (tab === 'envios') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Masivos Activo.<br><br>👉 Mira el panel principal.</div>';
                 fetchPendingEnvios();
-            } else if (tab === 'leads') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Campaña Leads Activo.<br><br>👉 Mira el panel principal.</div>';
             } else if (tab === 'correos') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Lista de Correos Capturados.<br><br>👉 Mira el panel principal.</div>';
                 fetchCapturedEmails();
             } else if (tab === 'amarillo') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos DocuSign.<br><br>👉 Mira el panel principal.</div>';
                 fetchPendingAmarillo();
                 fetchCapturedCuentas();
             } else if (tab === 'rojo') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Control de Envíos Falta Documento.<br><br>👉 Mira el panel principal.</div>';
                 fetchPendingRojo();
             } else if (tab === 'docrecibidos') {
-                document.getElementById('convList').innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">Documentos Recibidos de Clientes.<br><br>👉 Mira el panel principal.</div>';
                 fetchReceivedDocuments();
             }
         }
@@ -3009,14 +3024,17 @@
                     const data = await res.json();
                     latestActiveAdvisors = data.active_advisors || [];
                     const listEl = document.getElementById('onlineAdvisorsList');
+                    const countEl = document.getElementById('onlineCount');
                     if (latestActiveAdvisors.length > 0) {
                         listEl.innerHTML = latestActiveAdvisors.map(a => {
-                            return `<div style="margin-bottom: 4px; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                            return `<div style="margin-bottom: 4px; padding: 3px 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">
                                 🟢 ${a.name === advisorName ? '<b>' + a.name + ' (Tú)</b>' : a.name}
                             </div>`;
                         }).join('');
+                        if (countEl) countEl.textContent = `🟢 ${latestActiveAdvisors.length} conectado${latestActiveAdvisors.length > 1 ? 's' : ''}`;
                     } else {
-                        listEl.innerHTML = "<em>Solo tú</em>";
+                        listEl.innerHTML = "<em style='opacity:0.6;'>Solo tú</em>";
+                        if (countEl) countEl.textContent = '🟢 Solo tú';
                     }
 
                     // Dynamic update of current view if someone else enters
