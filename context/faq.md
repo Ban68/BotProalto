@@ -13,7 +13,7 @@ Es un préstamo personal cuyo pago se descuenta automáticamente de tu nómina o
 Puedes acceder a hasta el doble de tu salario mensual sin necesidad de codeudor, dependiendo de tu capacidad de endeudamiento. El monto exacto lo determina un asesor al estudiar tu caso.
 
 **¿Cuáles son las tasas de interés?**
-La tasa vigente es del **24.36% E.A.** (Efectivo Anual) para créditos de libre inversión y libranzas. Adicional, hay una comisión de gestión del 4.5% del valor del crédito que cubre el estudio, consulta en centrales de riesgo y gastos administrativos. Si tu solicitud no es aprobada, no se te cobra nada.
+La tasa y las condiciones del crédito dependen del estudio realizado y de las políticas vigentes al momento de la solicitud. Para conocer la tasa exacta de tu caso, un asesor te la confirma una vez revisemos tu información.
 
 **¿En cuánto tiempo me aprueban?**
 El proceso varía según la empresa, pero generalmente toma entre 2 y 5 días hábiles una vez se tenga toda la documentación completa.

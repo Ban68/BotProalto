@@ -6,13 +6,12 @@
 Un préstamo personal cuyo pago se descuenta automáticamente de la nómina o mesada pensional del cliente. No requiere que el cliente recuerde hacer el pago; el empleador o la entidad pensional lo descuenta directamente cada mes.
 
 ### Características generales
-- **Monto:** hasta el doble del salario mensual del solicitante, sin codeudor (sujeto a evaluación de capacidad de endeudamiento)
-- **Tasa de interés:** 24.36% E.A. (Efectivo Anual) para libre inversión y libranzas generales — tasa fija, sin costos ocultos
-- **Comisión de gestión:** 4.5% del valor del crédito (cubre estudio de crédito, consulta en centrales de riesgo y gastos administrativos). Se incluye en el cálculo de la tasa máxima permitida. No se cobra si la solicitud es rechazada.
-- **Plazos:** variables según el acuerdo con la empresa empleadora
-- **Desembolso:** directo a la cuenta bancaria del cliente — siguiente día hábil si cae en fin de semana o festivo
-- **Pago:** descuento automático de nómina o pensión cada mes
-- **Respuesta:** en menos de 24 horas hábiles
+- **Monto:** hasta el doble del salario mensual del solicitante, sin codeudor (sujeto a evaluación de capacidad de endeudamiento). En ciertos convenios puede haber aprobaciones más conservadoras según política interna.
+- **Tasa de interés:** depende del estudio realizado, la empresa empleadora y las políticas vigentes al momento de la solicitud. NO dar cifras específicas — derivar al formulario o al asesor.
+- **Plazos:** variables según el caso y el acuerdo con la empresa empleadora. Frecuencia de pago: mensual, quincenal o catorcenal.
+- **Desembolso:** directo a la cuenta bancaria del cliente — puede tardar 1 a 3 días hábiles después de firmado el contrato.
+- **Pago:** descuento automático de nómina o pensión — el cliente no necesita hacer ningún pago manual.
+- **IMPORTANTE:** aprobación no significa desembolso inmediato. Entre la aprobación y el desembolso puede haber pasos operativos pendientes con la empresa pagadora.
 
 ### ¿Quién puede aplicar?
 - Empleados con **mínimo 3 meses de antigüedad** en su empresa actual
@@ -30,12 +29,18 @@ Un préstamo personal cuyo pago se descuenta automáticamente de la nómina o me
 5. **Recibo de servicio público reciente** (agua, luz, gas o telefonía — no mayor a 3 meses)
 
 ### Proceso de solicitud
-1. Cliente llena el formulario inicial (Google Forms)
-2. Equipo de ProAlto estudia la solicitud
-3. Si se aprueba, se solicita documentación completa
-4. Cliente firma el contrato por DocuSign (firma electrónica)
-5. Cliente suministra cuenta bancaria para desembolso
-6. ProAlto realiza el desembolso
+1. Cliente llega por WhatsApp, pauta digital, activación presencial o recomendación
+2. Se solicitan datos personales, laborales, bancarios y referencias
+3. Se valida si la empresa pagadora tiene convenio o si aplica ley de libranza
+4. Revisión documental: cliente y empresa entregan soportes requeridos
+5. Estudio de crédito y riesgo: capacidad de pago, estabilidad laboral, políticas internas
+6. Se confirman condiciones: monto aprobado, plazo, cuota, modalidad
+7. Autorización de descuento: se gestiona con la empresa pagadora
+8. Desembolso a la cuenta bancaria del cliente
+9. Seguimiento postdesembolso: cuotas, novedades, cartera
+
+### Empresa pagadora — rol crítico
+La empresa donde trabaja el cliente es tan importante como el cliente mismo. Muchos retrasos no son comerciales sino por demoras en la empresa pagadora (nómina, RRHH, libranzas). Datos clave que se piden a la empresa: número de empleados, frecuencia de pago, fecha de corte, correo para novedades, persona encargada de autorizar descuentos.
 
 ### Paz y Salvo
 Cuando el crédito ha sido pagado en su totalidad, el cliente puede solicitar un certificado de paz y salvo que acredita que no tiene obligaciones pendientes con ProAlto.
