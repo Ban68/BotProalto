@@ -201,6 +201,39 @@ def get_name_by_phone(phone: str) -> str | None:
     return None
 
 
+def get_client_context_by_phone(phone: str) -> dict | None:
+    """
+    Fetches full solicitud context for a phone number to inject into the LLM prompt.
+    Returns a dict with solicitud fields, or None if not found / error.
+    """
+    if not CLOUD_RUN_URL:
+        return None
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"tipo": "por_telefono_completo", "telefono": phone},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=5
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return {
+                    "nro_solicitud": data.get("nro_solicitud"),
+                    "nombre_completo": data.get("nombre_completo", ""),
+                    "fecha_de_solicitud": data.get("fecha_de_solicitud", ""),
+                    "valor_preestudiado": data.get("valor_preestudiado", 0),
+                    "estado_interno": data.get("estado_interno", ""),
+                    "plazo": data.get("plazo"),
+                }
+    except Exception as e:
+        print(f"[DB] get_client_context_by_phone error for {phone}: {e}")
+    return None
+
+
 def test_cloud_run_connection():
     """
     Quick health check: sends a dummy cedula to verify the

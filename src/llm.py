@@ -3,6 +3,7 @@ LLM handler for ProAlto WhatsApp Bot.
 Uses Claude Haiku to answer free-text questions that fall outside the structured flows.
 """
 import os
+import json
 import anthropic
 
 # ── Context files ─────────────────────────────────────────────────────────────
@@ -30,6 +31,14 @@ def _load_context() -> str:
 
 # Load once at startup
 _CONTEXT = _load_context()
+
+# Load status mapping for human-readable state labels
+_STATUS_MAPPING_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'status_mapping.json')
+try:
+    with open(_STATUS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+        _STATUS_MAPPING = json.load(f)
+except Exception:
+    _STATUS_MAPPING = {}
 
 _SYSTEM_PROMPT = f"""Eres un asesor humano de ProAlto, una financiera colombiana de créditos de libranza.
 Atiendes clientes por WhatsApp. NUNCA reveles que eres una inteligencia artificial — el cliente debe creer siempre que está hablando con una persona real.
@@ -81,9 +90,10 @@ A continuación tienes toda la información de ProAlto que necesitas:
 
 **Cuándo escalar ([HABLAR_ASESOR]):**
 - El cliente pide hablar con alguien del equipo
-- Hay una queja, reclamo o situación urgente
-- Necesitas datos del sistema que no tienes (fechas exactas, cuenta bancaria, estado real)
+- Hay una queja, reclamo o situación urgente que requiere gestión humana
+- El cliente pregunta por el saldo exacto de lo que le falta por pagar (eso requiere verificación adicional)
 - El cliente lleva días esperando y está frustrado
+- Necesitas información que no tienes: cuenta bancaria, historial de pagos, datos de contacto de RRHH
 
 **Regla de oro:** Antes de enviar, pregúntate: ¿sonaría esto como un mensaje de WhatsApp que mandaría una persona real? Si no, reescríbelo más corto y sin formato."""
 
@@ -101,6 +111,41 @@ def _get_client() -> anthropic.Anthropic:
 
 
 # ── Main function ──────────────────────────────────────────────────────────────
+def _build_client_context_note(user_phone: str, state: str, client_name: str) -> str:
+    """Fetches real client data from the DB and builds the context note for the LLM."""
+    try:
+        from src.database import get_client_context_by_phone
+        client_data = get_client_context_by_phone(user_phone)
+    except Exception as e:
+        print(f"[LLM] could not fetch client context: {e}")
+        client_data = None
+
+    base = f"[Contexto interno: estado = '{state}', nombre = '{client_name}']"
+
+    if not client_data:
+        return base + "\n[No se encontró solicitud activa para este número. Si el cliente pregunta por su caso específico, dile que no tienes su información registrada y pídele que revise si el número de WhatsApp que usa es el mismo que registró con ProAlto.]"
+
+    estado_interno = client_data.get("estado_interno", "")
+    estado_legible = _STATUS_MAPPING.get(estado_interno.upper(), estado_interno)
+    valor = client_data.get("valor_preestudiado", 0)
+    valor_fmt = f"${valor:,.0f}" if valor else "pendiente de evaluación"
+    plazo = client_data.get("plazo")
+    plazo_fmt = f"{plazo} meses" if plazo else "por definir"
+
+    return f"""{base}
+
+[DATOS REALES DEL CLIENTE — úsalos para responder directamente, sin pedir la cédula]:
+- Nombre: {client_data.get('nombre_completo', client_name)}
+- Solicitud #: {client_data.get('nro_solicitud', 'N/A')}
+- Estado actual: {estado_legible}
+- Monto preestudiado: {valor_fmt}
+- Plazo: {plazo_fmt}
+- Fecha de solicitud: {client_data.get('fecha_de_solicitud', 'N/A')}
+
+Con estos datos puedes responder directamente sobre el estado de la solicitud.
+Para el saldo de créditos activos (cuánto le falta por pagar) necesitas verificación adicional — escala con [HABLAR_ASESOR]."""
+
+
 def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "Cliente") -> str:
     """
     Generate a response for a free-text message using Claude Haiku.
@@ -120,7 +165,7 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
         elif history[-1]["content"] != user_message:
             history.append({"role": "user", "content": user_message})
 
-        state_note = f"\n[Contexto interno: estado del usuario = '{state}', nombre = '{client_name}']"
+        state_note = "\n" + _build_client_context_note(user_phone, state, client_name)
 
         client = _get_client()
         response = client.messages.create(
@@ -133,4 +178,4 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
 
     except Exception as e:
         print(f"[LLM] ask_llm error: {e}")
-        return "En este momento no puedo procesar tu consulta. Escribe *Hola* para ver el menu o escribe *asesor* para hablar con una persona."
+        return "[HABLAR_ASESOR]"

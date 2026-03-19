@@ -13,7 +13,7 @@ def get_solicitud(request):
     tipo = request_json.get("tipo", "solicitud") if request_json else "solicitud"
 
     cedula = request_json.get("cedula") if request_json else None
-    if tipo not in ("aprobados", "falta_documento", "por_telefono", "listo_en_docusign") and not cedula:
+    if tipo not in ("aprobados", "falta_documento", "por_telefono", "por_telefono_completo", "listo_en_docusign") and not cedula:
         return jsonify({"error": "Cedula no proporcionada"}), 400
 
     try:
@@ -139,6 +139,36 @@ def get_solicitud(request):
             conn.close()
             if record:
                 return jsonify({"found": True, "nombre_completo": record[0] or ""}), 200
+            else:
+                return jsonify({"found": False}), 200
+
+        elif tipo == "por_telefono_completo":
+            telefono = request_json.get("telefono") if request_json else None
+            if not telefono:
+                return jsonify({"error": "Telefono no proporcionado"}), 400
+            telefono_str = str(telefono)
+            sin_prefijo = telefono_str[2:] if telefono_str.startswith("57") else telefono_str
+            cur.execute("""
+                SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
+                       estado_interno, nombre_completo, plazo
+                FROM v_solicitudes_whatsapp
+                WHERE telefono = %s OR telefono = %s
+                ORDER BY nro_solicitud DESC
+                LIMIT 1
+            """, (telefono_str, sin_prefijo))
+            record = cur.fetchone()
+            cur.close()
+            conn.close()
+            if record:
+                return jsonify({
+                    "found": True,
+                    "nro_solicitud": record[0],
+                    "fecha_de_solicitud": str(record[1]) if record[1] else "",
+                    "valor_preestudiado": float(record[2]) if record[2] else 0,
+                    "estado_interno": record[3] or "",
+                    "nombre_completo": record[4] or "",
+                    "plazo": record[5],
+                }), 200
             else:
                 return jsonify({"found": False}), 200
 
