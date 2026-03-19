@@ -622,6 +622,8 @@
                     Bot Humano</button>
                 <button id="btnLLMAgent" class="btn btn-llm-agent hidden" onclick="activateLLMAgent()">🤖 Agente
                     LLM</button>
+                <button id="btnHumanTakeover" class="btn btn-primary hidden" onclick="humanTakeover()">👤 Tomar
+                    Control</button>
 
                 <div class="dropdown" id="dropdownDelete">
                     <button class="btn btn-outline-danger">Eliminar ▼</button>
@@ -2579,6 +2581,7 @@
             const btnForce = document.getElementById('btnForceAgent');
             const btnBotHumano = document.getElementById('btnBotHumano');
             const btnLLMAgent = document.getElementById('btnLLMAgent');
+            const btnHumanTakeover = document.getElementById('btnHumanTakeover');
             const btnRestore = document.getElementById('btnRestore');
             const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
@@ -2591,6 +2594,7 @@
                 btnForce.disabled = true;
                 btnBotHumano.disabled = true;
                 btnLLMAgent.disabled = true;
+                btnHumanTakeover.disabled = true;
                 btnClose.disabled = true;
                 dropdown.classList.add('hidden'); // Better to hide it to avoid accidents
                 
@@ -2617,32 +2621,39 @@
                 ind.style.color = 'white';
                 ind.innerText = 'ARCHIVADA';
                 document.getElementById('msgInput').placeholder = 'Solo lectura. Restaura la conversación para interactuar.';
-            } else if (status === 'agent' || status === 'agent_silent') {
+            } else if (status === 'agent' || status === 'agent_silent' || status === 'agent_llm') {
                 btnRestore.classList.add('hidden');
                 btnClose.classList.remove('hidden');
                 btnForce.classList.add('hidden');
                 btnBotHumano.classList.add('hidden');
-                btnLLMAgent.classList.add('hidden');
                 dropdown.classList.remove('hidden');
 
-                if (status === 'agent_silent') {
-                    ind.className = 'conv-status status-silent';
-                    ind.style = '';
-                    ind.innerText = '🔇 MODO BOT HUMANO';
-                    document.getElementById('msgInput').placeholder = 'Modo Bot Humano Activo. El cliente no sabrá que eres tú.';
-                } else if (status === 'agent_llm') {
+                if (status === 'agent_llm') {
+                    // In LLM mode: hide LLM button, show human takeover button
+                    btnLLMAgent.classList.add('hidden');
+                    btnHumanTakeover.classList.remove('hidden');
                     ind.className = 'conv-status status-llm';
                     ind.style = '';
                     ind.innerText = '🤖 AGENTE LLM ACTIVO';
-                    document.getElementById('msgInput').placeholder = 'El Agente LLM está respondiendo. Puedes escribir para intervenir manualmente.';
-                    // Allow advisor to still send messages in LLM mode
                     msgInput.disabled = false;
                     btnSend.disabled = false;
+                    document.getElementById('msgInput').placeholder = 'El Agente LLM está respondiendo. Puedes escribir para intervenir manualmente.';
                 } else {
-                    ind.className = 'conv-status status-agent';
-                    ind.style = '';
-                    ind.innerText = '🔴 ESPERANDO ASESOR';
-                    document.getElementById('msgInput').placeholder = 'Modo Asesor Activo. Escribe acá tu respuesta...';
+                    // In agent or agent_silent mode: show LLM button, hide takeover
+                    btnLLMAgent.classList.remove('hidden');
+                    btnHumanTakeover.classList.add('hidden');
+
+                    if (status === 'agent_silent') {
+                        ind.className = 'conv-status status-silent';
+                        ind.style = '';
+                        ind.innerText = '🔇 MODO BOT HUMANO';
+                        document.getElementById('msgInput').placeholder = 'Modo Bot Humano Activo. El cliente no sabrá que eres tú.';
+                    } else {
+                        ind.className = 'conv-status status-agent';
+                        ind.style = '';
+                        ind.innerText = '🔴 ESPERANDO ASESOR';
+                        document.getElementById('msgInput').placeholder = 'Modo Asesor Activo. Escribe acá tu respuesta...';
+                    }
                 }
             } else {
                 btnRestore.classList.add('hidden');
@@ -2650,6 +2661,7 @@
                 btnForce.classList.remove('hidden');
                 btnBotHumano.classList.remove('hidden');
                 btnLLMAgent.classList.remove('hidden');
+                btnHumanTakeover.classList.add('hidden');
                 dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-bot';
                 ind.style = '';
@@ -2789,6 +2801,21 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ advisor_name: advisorName, silent: silent })
+                });
+                if (res.ok) {
+                    await fetchHistory(currentActivePhone);
+                    await fetchList();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function humanTakeover() {
+            if (!currentActivePhone) return;
+            try {
+                const res = await fetch(`/admin/api/human-takeover/${currentActivePhone}`, {
+                    method: 'POST'
                 });
                 if (res.ok) {
                     await fetchHistory(currentActivePhone);

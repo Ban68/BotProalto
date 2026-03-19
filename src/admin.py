@@ -184,7 +184,7 @@ def api_close_agent(phone):
     """Close agent mode and return user to the bot."""
     conv = get_conversation(phone)
     is_silent = False
-    if conv and conv.get("status") == "agent_silent":
+    if conv and conv.get("status") in ("agent_silent", "agent_llm"):
         is_silent = True
 
     set_agent_mode(phone, "active")
@@ -197,6 +197,14 @@ def api_close_agent(phone):
         )
 
     return jsonify({"status": "closed"})
+
+
+@admin_bp.route('/admin/api/human-takeover/<phone>', methods=['POST'])
+@requires_auth
+def api_human_takeover(phone):
+    """Switch from agent_llm to agent mode silently — no notification to client."""
+    set_agent_mode(phone, "agent")
+    return jsonify({"status": "human_takeover"})
 
 
 @admin_bp.route('/admin/api/force-agent/<phone>', methods=['POST'])
