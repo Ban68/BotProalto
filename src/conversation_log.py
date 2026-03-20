@@ -443,12 +443,13 @@ def mark_docs_completos(phone: str, value: bool = True):
 
 
 def set_solicitud_context(phone: str, empresa: str, docs_faltantes: str, tipo_empleador: str):
-    """Store solicitud context (docs_faltantes, tipo_empleador) per phone for use in flows."""
+    """Store solicitud context (empresa, docs_faltantes, tipo_empleador) per phone for use in flows."""
     if not supabase_client:
         return
     try:
         supabase_client.table('bot_conversations').upsert({
             "phone": phone,
+            "empresa": empresa or "",
             "docs_faltantes": docs_faltantes or "",
             "tipo_empleador": tipo_empleador or "EMPRESA",
             "updated_at": datetime.now().isoformat()
@@ -544,8 +545,24 @@ def log_received_document(phone: str, client_name: str, filename: str, mime_type
         print(f"Supabase log_received_document error: {e}")
 
 
+def _enrich_empresa_background(phones: list):
+    """Background task: looks up empresa via Cloud Run for phones that don't have it yet and saves it."""
+    from src.database import get_client_context_by_phone
+    for phone in phones:
+        try:
+            ctx = get_client_context_by_phone(phone)
+            if ctx and ctx.get("empresa"):
+                supabase_client.table('bot_conversations').upsert({
+                    "phone": phone,
+                    "empresa": ctx["empresa"],
+                    "updated_at": datetime.now().isoformat()
+                }, on_conflict="phone").execute()
+        except Exception as e:
+            print(f"[enrich_empresa] error for {phone}: {e}")
+
+
 def get_received_documents() -> list:
-    """Retrieves all received documents ordered by most recent first, with docs_completos from bot_conversations."""
+    """Retrieves all received documents ordered by most recent first, with docs_completos and empresa from bot_conversations."""
     if not supabase_client:
         return []
     try:
@@ -557,16 +574,26 @@ def get_received_documents() -> list:
         if not docs:
             return docs
 
-        # Merge docs_completos from bot_conversations for all unique phones
+        # Merge docs_completos and empresa from bot_conversations for all unique phones
         phones = list({d["phone"] for d in docs if d.get("phone")})
         conv_res = supabase_client.table('bot_conversations')\
-            .select("phone, docs_completos")\
+            .select("phone, docs_completos, empresa")\
             .in_("phone", phones)\
             .execute()
-        docs_completos_map = {r["phone"]: r.get("docs_completos", False) for r in conv_res.data}
+        conv_map = {r["phone"]: r for r in conv_res.data}
+
+        phones_without_empresa = [p for p in phones if not (conv_map.get(p) or {}).get("empresa")]
+        if phones_without_empresa:
+            threading.Thread(
+                target=_enrich_empresa_background,
+                args=(phones_without_empresa,),
+                daemon=True
+            ).start()
 
         for doc in docs:
-            doc["docs_completos"] = docs_completos_map.get(doc.get("phone"), False)
+            conv = conv_map.get(doc.get("phone"), {})
+            doc["docs_completos"] = conv.get("docs_completos", False)
+            doc["empresa"] = conv.get("empresa") or ""
 
         return docs
     except Exception as e:

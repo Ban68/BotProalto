@@ -1912,10 +1912,13 @@
                             : `<button onclick="markDocsCompletos('${info.phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Marcar docs completos</button>`;
 
                         // Client header row
+                        const empresaLabel = info.empresa
+                            ? `&nbsp;&nbsp;<span style="font-size:0.78rem;color:#6b7280;font-weight:400;">🏢 ${info.empresa}</span>`
+                            : '';
                         rows += `<tr style="background:#fef3c7; border-top: 2px solid #b45309;">
                             <td colspan="3" style="padding: 10px 12px; font-weight: 600;">
                                 👤 ${info.client_name || '---'} &nbsp;·&nbsp; <span style="color:#666;font-weight:400;">${info.phone}</span>
-                                &nbsp;&nbsp; <span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:999px;font-size:0.8rem;">${clientDocs.length} archivo${clientDocs.length > 1 ? 's' : ''}</span>
+                                &nbsp;&nbsp; <span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:999px;font-size:0.8rem;">${clientDocs.length} archivo${clientDocs.length > 1 ? 's' : ''}</span>${empresaLabel}
                             </td>
                             <td colspan="2" style="padding: 10px 12px; text-align: right;">${completosBadge}</td>
                         </tr>`;
