@@ -79,7 +79,7 @@ def get_solicitud(request):
 
         elif tipo == "falta_documento":
             cur.execute("""
-                SELECT nombre_completo, telefono
+                SELECT nombre_completo, telefono, empresa, documentos_faltantes, tipo_empleador
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'FALTA ALGÚN DOCUMENTO'
                   AND telefono IS NOT NULL
@@ -93,7 +93,10 @@ def get_solicitud(request):
                 for r in records:
                     clientes.append({
                         "nombre_completo": r[0] or "",
-                        "telefono": r[1] or ""
+                        "telefono": r[1] or "",
+                        "empresa": r[2] or "",
+                        "documentos_faltantes": r[3] or "",
+                        "tipo_empleador": r[4] or "EMPRESA"
                     })
                 return jsonify({"found": True, "clientes": clientes}), 200
             else:
@@ -150,7 +153,8 @@ def get_solicitud(request):
             sin_prefijo = telefono_str[2:] if telefono_str.startswith("57") else telefono_str
             cur.execute("""
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
-                       estado_interno, nombre_completo, plazo
+                       estado_interno, nombre_completo, plazo,
+                       empresa, documentos_faltantes, tipo_empleador
                 FROM v_solicitudes_whatsapp
                 WHERE telefono = %s OR telefono = %s
                 ORDER BY nro_solicitud DESC
@@ -168,6 +172,9 @@ def get_solicitud(request):
                     "estado_interno": record[3] or "",
                     "nombre_completo": record[4] or "",
                     "plazo": record[5],
+                    "empresa": record[6] or "",
+                    "documentos_faltantes": record[7] or "",
+                    "tipo_empleador": record[8] or "EMPRESA",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
@@ -175,7 +182,8 @@ def get_solicitud(request):
         else:
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
-                       estado_interno, nombre_completo, plazo
+                       estado_interno, nombre_completo, plazo,
+                       empresa, documentos_faltantes, tipo_empleador
                 FROM v_solicitudes_whatsapp
                 WHERE cedula_nit = %s
                 ORDER BY nro_solicitud DESC
@@ -194,6 +202,9 @@ def get_solicitud(request):
                     "estado_interno": record[3] or "",
                     "nombre_completo": record[4] or "",
                     "plazo": record[5],
+                    "empresa": record[6] or "",
+                    "documentos_faltantes": record[7] or "",
+                    "tipo_empleador": record[8] or "EMPRESA",
                 }), 200
             else:
                 return jsonify({"found": False}), 200

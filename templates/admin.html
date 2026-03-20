@@ -1557,10 +1557,14 @@
                                 : 'Nunca';
                             const sendCount = user.send_count || 0;
                             const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
+                            const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#6b7280;">${user.empresa}</span>` : '';
+                            const fincaBadge = (user.tipo_empleador || '').toUpperCase() === 'FINCA'
+                                ? '<span style="margin-left:6px;padding:1px 6px;border-radius:10px;background:#d1fae5;color:#065f46;font-size:0.7rem;font-weight:600;">FINCA</span>'
+                                : '';
                             rows += `<tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding: 10px; text-align: center;"><input type="checkbox" class="rojo-check" data-idx="${idx}" checked onchange="updateSelectedCountRojo()"></td>
                                 <td style="padding: 10px;">${user.phone}</td>
-                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px;">${user.name}${fincaBadge}${empresaLabel}</td>
                                 <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
                             </tr>`;

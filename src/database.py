@@ -228,6 +228,9 @@ def get_client_context_by_phone(phone: str) -> dict | None:
                     "valor_preestudiado": data.get("valor_preestudiado", 0),
                     "estado_interno": data.get("estado_interno", ""),
                     "plazo": data.get("plazo"),
+                    "empresa": data.get("empresa", ""),
+                    "documentos_faltantes": data.get("documentos_faltantes", ""),
+                    "tipo_empleador": data.get("tipo_empleador", "EMPRESA"),
                 }
     except Exception as e:
         print(f"[DB] get_client_context_by_phone error for {phone}: {e}")

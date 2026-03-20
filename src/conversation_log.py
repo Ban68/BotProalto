@@ -442,6 +442,40 @@ def mark_docs_completos(phone: str, value: bool = True):
         print(f"Supabase mark_docs_completos error: {e}")
 
 
+def set_solicitud_context(phone: str, empresa: str, docs_faltantes: str, tipo_empleador: str):
+    """Store solicitud context (docs_faltantes, tipo_empleador) per phone for use in flows."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('bot_conversations').upsert({
+            "phone": phone,
+            "docs_faltantes": docs_faltantes or "",
+            "tipo_empleador": tipo_empleador or "EMPRESA",
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"Supabase set_solicitud_context error: {e}")
+
+
+def get_solicitud_context(phone: str) -> dict:
+    """Retrieve stored docs_faltantes and tipo_empleador for a phone."""
+    if not supabase_client:
+        return {}
+    try:
+        res = supabase_client.table('bot_conversations')\
+            .select("docs_faltantes, tipo_empleador")\
+            .eq("phone", phone)\
+            .execute()
+        if res.data:
+            return {
+                "docs_faltantes": res.data[0].get("docs_faltantes") or "",
+                "tipo_empleador": res.data[0].get("tipo_empleador") or "EMPRESA",
+            }
+    except Exception as e:
+        print(f"Supabase get_solicitud_context error: {e}")
+    return {}
+
+
 def get_template_stats_batch_rojo(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_rojo template sends.

@@ -9,7 +9,7 @@ from src.conversation_log import (
     get_notified_phones_rojo_batch, get_template_stats_batch_rojo,
     get_phones_with_email, get_phones_with_docs_completos,
     get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
-    get_phones_with_cuenta
+    get_phones_with_cuenta, set_solicitud_context
 )
 
 # --- TEST MODE CONFIG ---
@@ -202,6 +202,68 @@ REQUIRED_DOCUMENTS = [
     "Recibo de servicio público reciente (agua, luz, gas o telefonía)"
 ]
 
+# Mapeo de nombres exactos (tal como vienen del software) → texto WhatsApp
+# Los valores se comparan en MAYÚSCULAS para ser tolerantes a variaciones de capitalización
+_DOC_LABEL_MAP_EMPRESA = {
+    "CERTIFICADO LABORAL":            "📄 Certificado laboral",
+    "CERTIFICADO DE DEUDA":           "📄 Certificado de Deuda",
+    "FECHA DE INGRESO A LA EMPRESA":  "📅 Fecha de ingreso a la empresa",
+    "RECIBO PÚBLICO":                 "🏠 Recibo público (agua, luz, gas, telefonía)",
+    "RECIBO PUBLICO":                 "🏠 Recibo público (agua, luz, gas, telefonía)",
+}
+
+# Para finca/rural no aplica certificado laboral
+_DOC_LABEL_MAP_FINCA = {
+    "CERTIFICADO DE DEUDA":           "📄 Certificado de Deuda",
+    "FECHA DE INGRESO A LA EMPRESA":  "📅 Fecha de ingreso a la empresa",
+    "RECIBO PÚBLICO":                 "🏠 Recibo público",
+    "RECIBO PUBLICO":                 "🏠 Recibo público",
+}
+
+# Lista completa enviada cuando se selecciona "Todos los documentos" o el campo está vacío
+_ALL_DOCS_EMPRESA = [
+    "📄 2 últimos desprendibles de pago de nómina",
+    "📄 Certificado laboral",
+    "🪪 Foto de tu cédula (ambos lados)",
+    "🏠 Recibo público (agua, luz, gas, telefonía)",
+]
+
+_ALL_DOCS_FINCA = [
+    "📄 2 últimos desprendibles de pago de nómina",
+    "🪪 Foto de tu cédula (ambos lados)",
+    "🏠 Recibo público",
+]
+
+
+def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
+    """
+    Builds the personalized document list message for a client.
+
+    docs_faltantes: nombres de documentos separados por ';'
+                    (e.g. 'Certificado de Deuda;Certificado Laboral'),
+                    'Todos los documentos', o vacío/None para enviar la lista completa.
+    tipo_empleador: 'EMPRESA' (default) o 'FINCA'
+    """
+    is_finca = (tipo_empleador or "EMPRESA").upper() == "FINCA"
+    doc_map  = _DOC_LABEL_MAP_FINCA if is_finca else _DOC_LABEL_MAP_EMPRESA
+    all_docs = _ALL_DOCS_FINCA if is_finca else _ALL_DOCS_EMPRESA
+
+    items = [item.strip() for item in (docs_faltantes or "").split(";") if item.strip()]
+    if not items or any("TODOS" in item.upper() for item in items):
+        selected = all_docs
+    else:
+        selected = [doc_map[item.upper()] for item in items if item.upper() in doc_map]
+        if not selected:
+            selected = all_docs  # fallback si ningún nombre coincide
+
+    doc_list = "\n".join(selected)
+    return (
+        "Para agilizar tu proceso, necesitamos que nos envíes:\n\n"
+        f"{doc_list}\n\n"
+        "Puedes enviárnoslos directamente aquí por WhatsApp (foto o PDF)."
+    )
+
+
 def get_pending_falta_documento_notifications():
     """
     Returns a list of applications in 'Falta algún documento' state
@@ -230,7 +292,13 @@ def get_pending_falta_documento_notifications():
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
 
-        raw_users.append({"phone": phone_str, "name": nombre})
+        raw_users.append({
+            "phone": phone_str,
+            "name": nombre,
+            "empresa": user.get("empresa", ""),
+            "docs_faltantes": user.get("documentos_faltantes", ""),
+            "tipo_empleador": user.get("tipo_empleador", "EMPRESA"),
+        })
         phones_to_check.append(phone_str)
 
     if not phones_to_check:
@@ -285,6 +353,17 @@ def execute_bulk_falta_documento_notifications(users_list):
             set_user_state(phone_str, "waiting_for_docs_rojo")
             from src.conversation_log import set_client_name
             set_client_name(phone_str, nombre)
+            set_solicitud_context(
+                phone_str,
+                user.get("empresa", ""),
+                user.get("docs_faltantes", ""),
+                user.get("tipo_empleador", "EMPRESA"),
+            )
+            docs_msg = build_docs_message(
+                user.get("docs_faltantes", ""),
+                user.get("tipo_empleador", "EMPRESA"),
+            )
+            WhatsAppService.send_message(phone_str, docs_msg)
             results["success"] += 1
         else:
             results["fail"] += 1

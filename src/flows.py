@@ -282,13 +282,16 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
                 notify_admin_agent_request(user_phone)
             else:
+                from src.conversation_log import get_solicitud_context
+                from src.automation import build_docs_message
+                ctx = get_solicitud_context(user_phone)
+                docs_reminder = build_docs_message(
+                    ctx.get("docs_faltantes", ""),
+                    ctx.get("tipo_empleador", "EMPRESA"),
+                )
                 WhatsAppService.send_interactive_button(
                     user_phone,
-                    "Recuerda que puedes enviarnos los documentos directamente aquí por WhatsApp (foto o PDF):\n\n"
-                    "📄 2 últimos desprendibles de pago de nómina\n"
-                    "📄 Certificado laboral vigente\n"
-                    "🪪 Foto de tu cédula (ambos lados)\n"
-                    "🏠 Recibo de servicio público reciente (agua, luz, gas o telefonía)",
+                    docs_reminder,
                     [
                         {"id": "cargar_documentos", "title": "Cargar documentos"},
                         {"id": "ya_envie_docs", "title": "Ya los envié"},
