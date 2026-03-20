@@ -927,6 +927,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0; z-index: 2;">
                         <tr>
+                            <th style="padding: 10px; text-align: center; width: 44px;">Ok</th>
                             <th style="padding: 10px; text-align: left;">Fecha</th>
                             <th style="padding: 10px; text-align: left;">Nombre</th>
                             <th style="padding: 10px; text-align: left;">Teléfono</th>
@@ -935,7 +936,7 @@
                         </tr>
                     </thead>
                     <tbody id="correosTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
+                        <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1409,6 +1410,54 @@
 
         let capturedEmailsData = [];
 
+        function getProcessedEmails() {
+            try { return new Set(JSON.parse(localStorage.getItem('processedEmails') || '[]')); }
+            catch { return new Set(); }
+        }
+
+        function toggleEmailProcessed(phone) {
+            const processed = getProcessedEmails();
+            if (processed.has(phone)) { processed.delete(phone); } else { processed.add(phone); }
+            localStorage.setItem('processedEmails', JSON.stringify([...processed]));
+            renderEmailsTable(capturedEmailsData);
+        }
+
+        function renderEmailsTable(emails) {
+            const tbody = document.getElementById('correosTableBody');
+            if (emails.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
+                document.getElementById('correosCount').innerText = 0;
+                return;
+            }
+            const processed = getProcessedEmails();
+            // Sort: pendientes primero, luego por fecha más vieja primero
+            const sorted = [...emails].sort((a, b) => {
+                const ap = processed.has(a.phone), bp = processed.has(b.phone);
+                if (ap !== bp) return ap ? 1 : -1;
+                return new Date(a.created_at) - new Date(b.created_at);
+            });
+            let rows = '';
+            sorted.forEach(item => {
+                const isDone = processed.has(item.phone);
+                const emailEsc = item.email.replace(/'/g, "\\'");
+                const phoneEsc = item.phone.replace(/'/g, "\\'");
+                const strike = isDone ? 'text-decoration: line-through; color: #9ca3af;' : '';
+                const rowBg = isDone ? 'background: #f9fafb;' : '';
+                rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}">
+                    <td style="padding: 10px; text-align: center;">
+                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed('${phoneEsc}')" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
+                    </td>
+                    <td style="padding: 10px; font-size: 0.85rem; ${strike}">${formatTime(item.created_at)}</td>
+                    <td style="padding: 10px; ${strike}">${item.name || '---'}</td>
+                    <td style="padding: 10px; ${strike}">${item.phone}</td>
+                    <td style="padding: 10px; font-weight: 600; ${isDone ? 'color: #9ca3af;' : 'color: var(--primary-dark);'} ${strike}">${item.email}</td>
+                    <td style="padding: 10px;"><button onclick="openEditEmailModal('${phoneEsc}', '${emailEsc}')" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = rows;
+            document.getElementById('correosCount').innerText = emails.length;
+        }
+
         function copyEmailsToClipboard() {
             if (capturedEmailsData.length === 0) { alert('No hay correos para copiar.'); return; }
             const header = 'Fecha\tNombre\tTeléfono\tEmail';
@@ -1440,39 +1489,19 @@
 
         async function fetchCapturedEmails() {
             const tbody = document.getElementById('correosTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
-
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando correos...</td></tr>';
             try {
                 const res = await fetch('/admin/api/captured-emails');
                 const data = await res.json();
-
                 if (res.ok && data.emails) {
                     capturedEmailsData = data.emails;
-                    document.getElementById('correosCount').innerText = data.emails.length;
-
-                    if (data.emails.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #777;">No se han capturado correos aún.</td></tr>';
-                    } else {
-                        let rows = '';
-                        data.emails.forEach(item => {
-                            const emailEsc = item.email.replace(/'/g, "\\'");
-                            const phoneEsc = item.phone.replace(/'/g, "\\'");
-                            rows += `<tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 10px; font-size: 0.85rem;">${formatTime(item.created_at)}</td>
-                                <td style="padding: 10px;">${item.name || '---'}</td>
-                                <td style="padding: 10px;">${item.phone}</td>
-                                <td style="padding: 10px; font-weight: 600; color: var(--primary-dark);">${item.email}</td>
-                                <td style="padding: 10px;"><button onclick="openEditEmailModal('${phoneEsc}', '${emailEsc}')" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
-                            </tr>`;
-                        });
-                        tbody.innerHTML = rows;
-                    }
+                    renderEmailsTable(data.emails);
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
             } catch (e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
             }
         }
 
