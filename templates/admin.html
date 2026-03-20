@@ -57,18 +57,67 @@
         }
 
         .sidebar-header {
-            padding: 12px 16px 14px;
-            background: var(--primary-dark);
+            padding: 16px 16px 14px;
+            background: linear-gradient(160deg, #283e52 0%, #1e3044 100%);
             color: white;
             text-align: center;
+            border-bottom: 2px solid rgba(254, 192, 92, 0.35);
         }
 
         .sidebar-logo {
             display: block;
-            height: 36px;
-            margin: 0 auto 12px;
+            height: 44px;
+            margin: 0 auto 6px;
             opacity: 0.92;
             filter: brightness(0) invert(1);
+        }
+
+        .sidebar-brand-title {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--primary);
+            opacity: 0.9;
+            margin-bottom: 14px;
+        }
+
+        .online-btn {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            transition: background 0.2s;
+        }
+
+        .online-btn:hover {
+            background: rgba(255,255,255,0.13);
+        }
+
+        .sidebar-header input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            color: white;
+            border-radius: 6px;
+        }
+
+        .sidebar-header input::placeholder {
+            color: rgba(255,255,255,0.45);
+        }
+
+        .sidebar-header input:focus {
+            background: rgba(255,255,255,0.15);
+            outline: none;
+            border-color: rgba(254,192,92,0.5) !important;
         }
 
         .search-container {
@@ -205,13 +254,14 @@
         }
 
         .conv-item {
-            padding: 16px;
+            padding: 12px 14px;
             border-bottom: 1px solid var(--border);
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 12px;
         }
 
         .conv-item:hover {
@@ -223,6 +273,26 @@
             box-shadow: inset 4px 0 0 var(--primary);
         }
 
+        .conv-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .conv-body {
+            flex: 1;
+            min-width: 0;
+        }
+
         .conv-header {
             display: flex;
             justify-content: space-between;
@@ -230,19 +300,22 @@
         }
 
         .conv-phone {
-            font-weight: 600;
+            font-size: 0.87rem;
+            font-weight: 700;
         }
 
         .conv-time {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
+            white-space: nowrap;
         }
 
         .conv-status {
-            font-size: 0.75rem;
-            padding: 2px 6px;
+            font-size: 0.7rem;
+            padding: 2px 5px;
             border-radius: 10px;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         .status-bot {
@@ -627,10 +700,10 @@
         <div class="sidebar-header">
             <!-- Logo - always visible -->
             <img src="https://proalto.co/logo.png" alt="ProAlto" class="sidebar-logo">
+            <div class="sidebar-brand-title">Monitor Admin</div>
             <!-- Online Presence - Collapsible -->
             <div style="position: relative; margin-bottom: 10px;">
-                <button type="button" id="btnOnlineToggle" onclick="toggleOnlinePanel()"
-                    style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.15); border-radius: 5px; color: white; cursor: pointer; font-size: 0.8rem; font-weight: 600;">
+                <button type="button" id="btnOnlineToggle" onclick="toggleOnlinePanel()" class="online-btn">
                     <span id="onlineCount">🟢 Cargando...</span>
                     <span id="onlineChevron" style="font-size: 0.65rem; opacity: 0.7;">▾</span>
                 </button>
@@ -2347,6 +2420,12 @@
             }
         }
 
+        function getAvatarColor(phone) {
+            const colors = ['#ef4444','#f97316','#d97706','#16a34a','#0891b2','#7c3aed','#db2777','#0284c7'];
+            const idx = phone.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
+            return colors[idx];
+        }
+
         function renderList(conversations) {
             const listEl = document.getElementById('convList');
             if (conversations.length === 0) {
@@ -2415,15 +2494,18 @@
 
                 html += `
     <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" onclick="selectConversation('${c.phone}')">
-        <div class="conv-header">
-            <span class="conv-phone">${c.phone}</span>
-            <span class="conv-time">${formatTime(c.updated_at)}</span>
+        <div class="conv-avatar" style="background: ${getAvatarColor(c.phone)}">${c.phone.slice(-3)}</div>
+        <div class="conv-body">
+            <div class="conv-header">
+                <span class="conv-phone">${c.phone}</span>
+                <span class="conv-time">${formatTime(c.updated_at)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px;">
+                <span class="conv-preview">${c.last_message || '...'}</span>
+                <span class="conv-status ${statusClass}">${statusLabel.replace('🔴 ','').replace('🔇 ','').replace('🤖 ','')}</span>
+            </div>
+            ${advisorIcons}
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-            <span class="conv-preview">${c.last_message || '...'}</span>
-            <span class="conv-status ${statusClass}">${statusLabel}</span>
-        </div>
-        ${advisorIcons}
     </div>
     `;
             });
