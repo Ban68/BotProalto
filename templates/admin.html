@@ -850,10 +850,13 @@
             </div>
             
             <div style="margin-bottom: 10px; display: flex; gap: 8px;">
-                <input type="text" id="enviosSearch" oninput="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <select id="enviosEmpresaFilter" onchange="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaFilter')" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
-                    <option value="">🏢 Todas las empresas</option>
-                </select>
+                <input type="text" id="enviosSearch" oninput="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <div class="empresa-multi-wrap" data-search="enviosSearch" data-tbody="enviosTableBody" style="position:relative; min-width:180px;">
+                    <button type="button" id="enviosEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('enviosEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
+                    </button>
+                    <div id="enviosEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+                </div>
             </div>
             <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -984,10 +987,13 @@
             </div>
 
             <div style="margin-bottom: 10px; display: flex; gap: 8px;">
-                <input type="text" id="amarilloSearch" oninput="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <select id="amarilloEmpresaFilter" onchange="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaFilter')" title="Filtrar por empresa" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
-                    <option value="">🏢 Todas las empresas</option>
-                </select>
+                <input type="text" id="amarilloSearch" oninput="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <div class="empresa-multi-wrap" data-search="amarilloSearch" data-tbody="amarilloTableBody" style="position:relative; min-width:180px;">
+                    <button type="button" id="amarilloEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('amarilloEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
+                    </button>
+                    <div id="amarilloEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+                </div>
             </div>
             <div id="amarilloListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -1068,10 +1074,13 @@
             </div>
 
             <div style="margin-bottom: 10px; display: flex; gap: 8px;">
-                <input type="text" id="rojoSearch" oninput="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <select id="rojoEmpresaFilter" onchange="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaFilter')" title="Filtrar por empresa" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
-                    <option value="">🏢 Todas las empresas</option>
-                </select>
+                <input type="text" id="rojoSearch" oninput="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <div class="empresa-multi-wrap" data-search="rojoSearch" data-tbody="rojoTableBody" style="position:relative; min-width:180px;">
+                    <button type="button" id="rojoEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('rojoEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
+                    </button>
+                    <div id="rojoEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+                </div>
             </div>
             <div id="rojoListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -1121,9 +1130,12 @@
             </div>
             <div style="margin-bottom: 10px; display: flex; gap: 8px;">
                 <input type="text" id="docsSearch" oninput="applyDocsFilters()" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <select id="docsEmpresaFilter" onchange="applyDocsFilters()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
-                    <option value="">🏢 Todas las empresas</option>
-                </select>
+                <div class="empresa-multi-wrap" style="position:relative; min-width:180px;">
+                    <button type="button" id="docsEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('docsEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
+                    </button>
+                    <div id="docsEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+                </div>
             </div>
 
             <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
@@ -1582,7 +1594,7 @@
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
-                        populatePanelEmpresaFilter(pendingRojoData, 'rojoEmpresaFilter');
+                        populatePanelEmpresaFilter(pendingRojoData, 'rojoEmpresaDrop');
                         updateSelectedCountRojo();
                     }
                 } else {
@@ -1718,7 +1730,7 @@
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
-                        populatePanelEmpresaFilter(pendingAmarilloData, 'amarilloEmpresaFilter');
+                        populatePanelEmpresaFilter(pendingAmarilloData, 'amarilloEmpresaDrop');
                         updateSelectedCountAmarillo();
                     }
                 } else {
@@ -1971,18 +1983,8 @@
                     });
                     tbody.innerHTML = rows;
 
-                    // Populate empresa dropdown with unique non-empty values
-                    const empresas = [...new Set(docs.map(d => d.empresa).filter(Boolean))].sort();
-                    const sel = document.getElementById('docsEmpresaFilter');
-                    const current = sel.value;
-                    sel.innerHTML = '<option value="">🏢 Todas las empresas</option>';
-                    empresas.forEach(e => {
-                        const opt = document.createElement('option');
-                        opt.value = e.toLowerCase();
-                        opt.textContent = e;
-                        if (e.toLowerCase() === current) opt.selected = true;
-                        sel.appendChild(opt);
-                    });
+                    // Populate empresa multi-select dropdown
+                    populatePanelEmpresaFilter(docs, 'docsEmpresaDrop');
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -2076,42 +2078,88 @@
             });
         }
 
-        function applyPanelFilter(searchId, tbodyId, selectId) {
-            const query   = (document.getElementById(searchId).value || '').toLowerCase().trim();
-            const empresa = (document.getElementById(selectId).value || '').toLowerCase().trim();
-            const rows    = document.getElementById(tbodyId).querySelectorAll('tr');
+        function toggleEmpresaDrop(dropId) {
+            document.querySelectorAll('.empresa-drop').forEach(d => {
+                if (d.id !== dropId) d.style.display = 'none';
+            });
+            const drop = document.getElementById(dropId);
+            drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.empresa-multi-wrap')) {
+                document.querySelectorAll('.empresa-drop').forEach(d => d.style.display = 'none');
+            }
+        });
+
+        function getEmpresaChecked(dropId) {
+            const drop = document.getElementById(dropId);
+            if (!drop) return [];
+            return Array.from(drop.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+        }
+
+        function updateEmpresaBtn(dropId) {
+            const drop = document.getElementById(dropId);
+            if (!drop) return;
+            const span = drop.closest('.empresa-multi-wrap')?.querySelector('.empresa-btn span');
+            if (!span) return;
+            const n = drop.querySelectorAll('input:checked').length;
+            span.textContent = n === 0 ? '🏢 Todas las empresas' : `🏢 ${n} empresa${n > 1 ? 's' : ''}`;
+        }
+
+        function onEmpresaChange(cb) {
+            const drop = cb.closest('.empresa-drop');
+            const wrap = drop.closest('.empresa-multi-wrap');
+            updateEmpresaBtn(drop.id);
+            if (wrap && wrap.dataset.search) {
+                applyPanelFilter(wrap.dataset.search, wrap.dataset.tbody, drop.id);
+            } else {
+                applyDocsFilters();
+            }
+        }
+
+        function applyPanelFilter(searchId, tbodyId, dropId) {
+            const query    = (document.getElementById(searchId).value || '').toLowerCase().trim();
+            const selected = getEmpresaChecked(dropId);
+            const rows     = document.getElementById(tbodyId).querySelectorAll('tr');
             rows.forEach(row => {
                 const text       = row.innerText.toLowerCase();
                 const rowEmpresa = (row.getAttribute('data-empresa') || '').toLowerCase();
-                const matchText    = !query   || text.includes(query);
-                const matchEmpresa = !empresa || rowEmpresa === empresa;
+                const matchText    = !query    || text.includes(query);
+                const matchEmpresa = selected.length === 0 || selected.includes(rowEmpresa);
                 row.style.display = (matchText && matchEmpresa) ? '' : 'none';
             });
         }
 
-        function populatePanelEmpresaFilter(data, selectId) {
-            const sel = document.getElementById(selectId);
-            if (!sel) return;
-            const current = sel.value;
+        function populatePanelEmpresaFilter(data, dropId) {
+            const drop = document.getElementById(dropId);
+            if (!drop) return;
+            const checked = new Set(Array.from(drop.querySelectorAll('input:checked')).map(cb => cb.value));
             const empresas = [...new Set(data.map(u => u.empresa || '').filter(Boolean))].sort();
-            sel.innerHTML = '<option value="">🏢 Todas las empresas</option>' +
-                empresas.map(e => `<option value="${e.toLowerCase()}"${e.toLowerCase()===current?'selected':''}>${e}</option>`).join('');
+            drop.innerHTML = empresas.map(e => {
+                const val = e.toLowerCase();
+                return `<label style="display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:0.9rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+                    <input type="checkbox" value="${val}" ${checked.has(val)?'checked':''} onchange="onEmpresaChange(this)">
+                    ${e}
+                </label>`;
+            }).join('');
+            updateEmpresaBtn(dropId);
         }
 
         let allDocsData = [];
 
         function applyDocsFilters() {
-            const query   = (document.getElementById('docsSearch').value || '').toLowerCase().trim();
-            const empresa = (document.getElementById('docsEmpresaFilter').value || '').toLowerCase().trim();
-            const tbody   = document.getElementById('docsTableBody');
-            let showGroup = true;
+            const query    = (document.getElementById('docsSearch').value || '').toLowerCase().trim();
+            const selected = getEmpresaChecked('docsEmpresaDrop');
+            const tbody    = document.getElementById('docsTableBody');
+            let showGroup  = true;
             tbody.querySelectorAll('tr').forEach(row => {
                 const isHeader = row.hasAttribute('data-empresa');
                 if (isHeader) {
-                    const text        = row.innerText.toLowerCase();
-                    const rowEmpresa  = row.getAttribute('data-empresa') || '';
-                    const matchText   = !query   || text.includes(query);
-                    const matchEmpresa = !empresa || rowEmpresa === empresa;
+                    const text       = row.innerText.toLowerCase();
+                    const rowEmpresa = (row.getAttribute('data-empresa') || '').toLowerCase();
+                    const matchText    = !query    || text.includes(query);
+                    const matchEmpresa = selected.length === 0 || selected.includes(rowEmpresa);
                     showGroup = matchText && matchEmpresa;
                 }
                 row.style.display = showGroup ? '' : 'none';
@@ -2213,7 +2261,7 @@
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
-                        populatePanelEmpresaFilter(pendingUsersData, 'enviosEmpresaFilter');
+                        populatePanelEmpresaFilter(pendingUsersData, 'enviosEmpresaDrop');
                         updateSelectedCount();
                     }
                 } else {
