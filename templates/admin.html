@@ -849,8 +849,11 @@
                 </div>
             </div>
             
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="enviosSearch" oninput="filterRows('enviosSearch', 'enviosTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+                <input type="text" id="enviosSearch" oninput="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <select id="enviosEmpresaFilter" onchange="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaFilter')" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
+                    <option value="">🏢 Todas las empresas</option>
+                </select>
             </div>
             <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -980,8 +983,11 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="amarilloSearch" oninput="filterRows('amarilloSearch', 'amarilloTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+                <input type="text" id="amarilloSearch" oninput="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <select id="amarilloEmpresaFilter" onchange="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaFilter')" title="Filtrar por empresa" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
+                    <option value="">🏢 Todas las empresas</option>
+                </select>
             </div>
             <div id="amarilloListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -1061,8 +1067,11 @@
                 </div>
             </div>
 
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="rojoSearch" oninput="filterRows('rojoSearch', 'rojoTableBody')" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+                <input type="text" id="rojoSearch" oninput="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaFilter')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <select id="rojoEmpresaFilter" onchange="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaFilter')" title="Filtrar por empresa" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; color: #374151; background: white; min-width: 180px;">
+                    <option value="">🏢 Todas las empresas</option>
+                </select>
             </div>
             <div id="rojoListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -1564,7 +1573,7 @@
                             const fincaBadge = (user.tipo_empleador || '').toUpperCase() === 'FINCA'
                                 ? '<span style="margin-left:6px;padding:1px 6px;border-radius:10px;background:#d1fae5;color:#065f46;font-size:0.7rem;font-weight:600;">FINCA</span>'
                                 : '';
-                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                            rows += `<tr style="border-bottom: 1px solid #eee;" data-empresa="${(user.empresa||'').toLowerCase()}">
                                 <td style="padding: 10px; text-align: center;"><input type="checkbox" class="rojo-check" data-idx="${idx}" checked onchange="updateSelectedCountRojo()"></td>
                                 <td style="padding: 10px;">${user.phone}</td>
                                 <td style="padding: 10px;">${user.name}${fincaBadge}${empresaLabel}</td>
@@ -1573,6 +1582,7 @@
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
+                        populatePanelEmpresaFilter(pendingRojoData, 'rojoEmpresaFilter');
                         updateSelectedCountRojo();
                     }
                 } else {
@@ -1698,15 +1708,17 @@
                                 : 'Nunca';
                             const sendCount = user.send_count || 0;
                             const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
-                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                            const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#6b7280;">${user.empresa}</span>` : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;" data-empresa="${(user.empresa||'').toLowerCase()}">
                                 <td style="padding: 10px; text-align: center;"><input type="checkbox" class="amarillo-check" data-idx="${idx}" checked onchange="updateSelectedCountAmarillo()"></td>
                                 <td style="padding: 10px;">${user.phone}</td>
-                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px;">${user.name}${empresaLabel}</td>
                                 <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
+                        populatePanelEmpresaFilter(pendingAmarilloData, 'amarilloEmpresaFilter');
                         updateSelectedCountAmarillo();
                     }
                 } else {
@@ -2064,6 +2076,28 @@
             });
         }
 
+        function applyPanelFilter(searchId, tbodyId, selectId) {
+            const query   = (document.getElementById(searchId).value || '').toLowerCase().trim();
+            const empresa = (document.getElementById(selectId).value || '').toLowerCase().trim();
+            const rows    = document.getElementById(tbodyId).querySelectorAll('tr');
+            rows.forEach(row => {
+                const text       = row.innerText.toLowerCase();
+                const rowEmpresa = (row.getAttribute('data-empresa') || '').toLowerCase();
+                const matchText    = !query   || text.includes(query);
+                const matchEmpresa = !empresa || rowEmpresa === empresa;
+                row.style.display = (matchText && matchEmpresa) ? '' : 'none';
+            });
+        }
+
+        function populatePanelEmpresaFilter(data, selectId) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            const current = sel.value;
+            const empresas = [...new Set(data.map(u => u.empresa || '').filter(Boolean))].sort();
+            sel.innerHTML = '<option value="">🏢 Todas las empresas</option>' +
+                empresas.map(e => `<option value="${e.toLowerCase()}"${e.toLowerCase()===current?'selected':''}>${e}</option>`).join('');
+        }
+
         let allDocsData = [];
 
         function applyDocsFilters() {
@@ -2169,15 +2203,17 @@
                                 : 'Nunca';
                             const sendCount = user.send_count || 0;
                             const countColor = sendCount >= 3 ? 'color:#dc2626;font-weight:bold;' : sendCount >= 1 ? 'color:#d97706;' : '';
-                            rows += `<tr style="border-bottom: 1px solid #eee;">
+                            const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#6b7280;">${user.empresa}</span>` : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;" data-empresa="${(user.empresa||'').toLowerCase()}">
                                 <td style="padding: 10px; text-align: center;"><input type="checkbox" class="envio-check" data-idx="${idx}" checked onchange="updateSelectedCount()"></td>
                                 <td style="padding: 10px;">${user.phone}</td>
-                                <td style="padding: 10px;">${user.name}</td>
+                                <td style="padding: 10px;">${user.name}${empresaLabel}</td>
                                 <td style="padding: 10px; text-align: center; ${countColor}">${sendCount}</td>
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${lastSent}</td>
                             </tr>`;
                         });
                         tbody.innerHTML = rows;
+                        populatePanelEmpresaFilter(pendingUsersData, 'enviosEmpresaFilter');
                         updateSelectedCount();
                     }
                 } else {

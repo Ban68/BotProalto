@@ -50,10 +50,11 @@ def get_pending_approved_notifications():
             phone_str = f"57{phone_str}"
             
         raw_users.append({
-            "phone": phone_str, 
+            "phone": phone_str,
             "name": nombre,
             "monto": user.get("valor_preestudiado", 0),
-            "plazo": user.get("plazo", 0)
+            "plazo": user.get("plazo", 0),
+            "empresa": user.get("empresa", ""),
         })
         phones_to_check.append(phone_str)
 
@@ -403,7 +404,11 @@ def get_pending_listo_docusign_notifications():
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
 
-        raw_users.append({"phone": phone_str, "name": nombre})
+        raw_users.append({
+            "phone": phone_str,
+            "name": nombre,
+            "empresa": user.get("empresa", ""),
+        })
         phones_to_check.append(phone_str)
 
     if not phones_to_check:

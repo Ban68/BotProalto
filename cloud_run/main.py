@@ -54,7 +54,7 @@ def get_solicitud(request):
         elif tipo == "aprobados":
             cur.execute("""
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
-                       estado_interno, nombre_completo, plazo, telefono
+                       estado_interno, nombre_completo, plazo, telefono, empresa
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'APROBADO POR EL CLIENTE'
             """)
@@ -71,7 +71,8 @@ def get_solicitud(request):
                         "estado_interno": r[3] or "",
                         "nombre_completo": r[4] or "",
                         "plazo": r[5] if r[5] else 0,
-                        "telefono": r[6] if len(r) > 6 and r[6] else ""
+                        "telefono": r[6] if len(r) > 6 and r[6] else "",
+                        "empresa": r[7] or ""
                     })
                 return jsonify({"found": True, "aprobados": aprobados}), 200
             else:
@@ -104,7 +105,7 @@ def get_solicitud(request):
 
         elif tipo == "listo_en_docusign":
             cur.execute("""
-                SELECT nombre_completo, telefono
+                SELECT nombre_completo, telefono, empresa
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'LISTO EN DOCUSIGN'
                   AND telefono IS NOT NULL
@@ -118,7 +119,8 @@ def get_solicitud(request):
                 for r in records:
                     clientes.append({
                         "nombre_completo": r[0] or "",
-                        "telefono": r[1] or ""
+                        "telefono": r[1] or "",
+                        "empresa": r[2] or ""
                     })
                 return jsonify({"found": True, "clientes": clientes}), 200
             else:
