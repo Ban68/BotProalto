@@ -47,6 +47,8 @@
         /* Sidebar - Conversation List */
         .sidebar {
             width: 310px;
+            min-width: 220px;
+            max-width: 520px;
             background: #FFFFFF;
             border-right: 1px solid var(--border);
             display: flex;
@@ -54,6 +56,24 @@
             flex-shrink: 0;
             box-shadow: 2px 0 12px rgba(0, 0, 0, 0.07);
             z-index: 10;
+            position: relative;
+        }
+
+        .sidebar-resize-handle {
+            position: absolute;
+            right: -4px;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: col-resize;
+            z-index: 30;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+
+        .sidebar-resize-handle:hover,
+        .sidebar-resize-handle.dragging {
+            background: rgba(254, 192, 92, 0.55);
         }
 
         .sidebar-header {
@@ -730,6 +750,7 @@
             <div style="padding: 20px; text-align: center; color: #777;">Cargando...</div>
         </div>
         <div id="serverSearchResult"></div>
+        <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
     </div>
 
     <!-- Content wrapper: tool nav bar + all content panels -->
@@ -3183,6 +3204,41 @@
         } else {
             sendHeartbeat(); // Send first heartbeat if already logged in using localStorage
         }
+
+        // ── Sidebar resize ────────────────────────────────────────────
+        (function() {
+            const STORAGE_KEY = 'sidebarWidth';
+            const MIN = 220, MAX = 520;
+            const sidebar = document.querySelector('.sidebar');
+            const handle  = document.getElementById('sidebarResizeHandle');
+
+            const saved = parseInt(localStorage.getItem(STORAGE_KEY));
+            if (saved && saved >= MIN && saved <= MAX) sidebar.style.width = saved + 'px';
+
+            handle.addEventListener('mousedown', function(e) {
+                const startX = e.clientX;
+                const startW = sidebar.offsetWidth;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                function onMove(e) {
+                    const w = Math.min(MAX, Math.max(MIN, startW + e.clientX - startX));
+                    sidebar.style.width = w + 'px';
+                }
+                function onUp() {
+                    localStorage.setItem(STORAGE_KEY, sidebar.offsetWidth);
+                    handle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+                e.preventDefault();
+            });
+        })();
     </script>
 </body>
 
