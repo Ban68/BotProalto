@@ -79,7 +79,7 @@ def get_solicitud(request):
 
         elif tipo == "falta_documento":
             cur.execute("""
-                SELECT nombre_completo, telefono, empresa, documentos_faltantes, tipo_empleador
+                SELECT nombre_completo, telefono, empresa, documentos_faltantes
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'FALTA ALGÚN DOCUMENTO'
                   AND telefono IS NOT NULL
@@ -96,7 +96,7 @@ def get_solicitud(request):
                         "telefono": r[1] or "",
                         "empresa": r[2] or "",
                         "documentos_faltantes": r[3] or "",
-                        "tipo_empleador": r[4] or "EMPRESA"
+                        "tipo_empleador": "EMPRESA"
                     })
                 return jsonify({"found": True, "clientes": clientes}), 200
             else:
@@ -154,7 +154,7 @@ def get_solicitud(request):
             cur.execute("""
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
-                       empresa, documentos_faltantes, tipo_empleador
+                       empresa, documentos_faltantes
                 FROM v_solicitudes_whatsapp
                 WHERE telefono = %s OR telefono = %s
                 ORDER BY nro_solicitud DESC
@@ -174,7 +174,7 @@ def get_solicitud(request):
                     "plazo": record[5],
                     "empresa": record[6] or "",
                     "documentos_faltantes": record[7] or "",
-                    "tipo_empleador": record[8] or "EMPRESA",
+                    "tipo_empleador": "EMPRESA",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
@@ -183,7 +183,7 @@ def get_solicitud(request):
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
-                       empresa, documentos_faltantes, tipo_empleador
+                       empresa, documentos_faltantes
                 FROM v_solicitudes_whatsapp
                 WHERE cedula_nit = %s
                 ORDER BY nro_solicitud DESC
@@ -204,7 +204,7 @@ def get_solicitud(request):
                     "plazo": record[5],
                     "empresa": record[6] or "",
                     "documentos_faltantes": record[7] or "",
-                    "tipo_empleador": record[8] or "EMPRESA",
+                    "tipo_empleador": "EMPRESA",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
