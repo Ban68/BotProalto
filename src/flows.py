@@ -235,15 +235,7 @@ class FlowHandler:
                         + "📋 *Estado:* Tu proceso está detenido porque te faltan los siguientes documentos:\n\n"
                         + docs_part.split("\n\n", 1)[1]
                     )
-                    WhatsAppService.send_interactive_button(
-                        user_phone,
-                        combined,
-                        [
-                            {"id": "cargar_documentos", "title": "Cargar documentos"},
-                            {"id": "ya_envie_docs", "title": "Ya los envié"},
-                            {"id": "hablar_asesor_docs", "title": "Hablar con un asesor"},
-                        ]
-                    )
+                    WhatsAppService.send_message(user_phone, combined)
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)
