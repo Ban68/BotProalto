@@ -735,6 +735,50 @@ def mark_document_reviewed(doc_id: str):
         print(f"Supabase mark_document_reviewed error: {e}")
 
 
+def save_llm_request(phone: str, client_name: str, tipo: str, detalle: str = ""):
+    """Saves a special request captured by the LLM agent to llm_requests table."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('llm_requests').insert({
+            "phone": phone,
+            "client_name": client_name or "Cliente",
+            "tipo": tipo,
+            "detalle": detalle[:500] if detalle else "",
+            "created_at": datetime.now().isoformat(),
+            "resolved": False,
+        }).execute()
+    except Exception as e:
+        print(f"Supabase save_llm_request error: {e}")
+
+
+def get_llm_requests(only_pending: bool = False) -> list:
+    """Retrieves all LLM-captured requests, optionally only unresolved ones."""
+    if not supabase_client:
+        return []
+    try:
+        q = supabase_client.table('llm_requests').select("*").order("created_at", desc=True)
+        if only_pending:
+            q = q.eq("resolved", False)
+        return q.execute().data
+    except Exception as e:
+        print(f"Supabase get_llm_requests error: {e}")
+        return []
+
+
+def resolve_llm_request(request_id: str):
+    """Marks an LLM request as resolved."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('llm_requests').update({
+            "resolved": True,
+            "resolved_at": datetime.now().isoformat(),
+        }).eq("id", request_id).execute()
+    except Exception as e:
+        print(f"Supabase resolve_llm_request error: {e}")
+
+
 def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:
     """Return recent messages formatted as an Anthropic messages array for LLM context."""
     if not supabase_client:

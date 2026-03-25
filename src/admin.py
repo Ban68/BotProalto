@@ -549,6 +549,31 @@ def api_captured_cuentas():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/llm-requests')
+@requires_auth
+def api_llm_requests():
+    """Get list of LLM-captured special requests."""
+    only_pending = request.args.get('pending', 'false').lower() == 'true'
+    from src.conversation_log import get_llm_requests
+    try:
+        items = get_llm_requests(only_pending=only_pending)
+        return jsonify({"status": "ok", "requests": items})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/llm-requests/<request_id>/resolve', methods=['POST'])
+@requires_auth
+def api_resolve_llm_request(request_id):
+    """Mark an LLM request as resolved."""
+    from src.conversation_log import resolve_llm_request
+    try:
+        resolve_llm_request(request_id)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
 @requires_auth
 def api_mark_docs_completos():

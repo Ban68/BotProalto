@@ -763,6 +763,7 @@
             <button type="button" class="tool-nav-btn" id="tabRojo" onclick="switchTab('rojo')">🔴 Falta Doc</button>
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
             <button type="button" class="tool-nav-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+            <button type="button" class="tool-nav-btn" id="tabLLMRequests" onclick="switchTab('llmrequests')">🤖 Solicitudes <span id="badgeLLMPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
         </div>
         <div class="content-area">
 
@@ -1157,6 +1158,44 @@
         </div>
     </div>
 
+    <!-- Solicitudes LLM State -->
+    <div class="main-chat" id="llmRequestsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #7c3aed; margin-bottom: 20px;">🤖 Solicitudes del Agente LLM</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Requerimientos registrados por el agente LLM que requieren seguimiento del equipo.
+        </p>
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">Total: <span id="llmReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="llmReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" id="llmOnlyPending" onchange="fetchLLMRequests()" style="cursor: pointer;">
+                        Solo pendientes
+                    </label>
+                    <button class="btn btn-outline-danger" onclick="fetchLLMRequests()" style="border-color: #7c3aed; color: #7c3aed;">🔄 Actualizar</button>
+                </div>
+            </div>
+            <div style="max-height: 520px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #7c3aed; color: white; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left; white-space: nowrap;">Fecha</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Cliente</th>
+                            <th style="padding: 10px; text-align: left;">Tipo</th>
+                            <th style="padding: 10px; text-align: left;">Detalle</th>
+                            <th style="padding: 10px; text-align: center;">Estado</th>
+                            <th style="padding: 10px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="llmReqTableBody">
+                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando solicitudes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
         </div><!-- /content-area -->
     </div><!-- /content-wrapper -->
 
@@ -1366,7 +1405,7 @@
             currentTab = tab;
             currentActivePhone = null;
             document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos') {
+            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests') {
                 document.getElementById('emptyState').style.display = 'none';
             }
             document.getElementById('mainChat').style.display = 'none';
@@ -1401,6 +1440,7 @@
                 tabAmarillo:    { active: '#d97706', tab: 'amarillo'     },
                 tabRojo:        { active: '#dc2626', tab: 'rojo'         },
                 tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos' },
+                tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests'  },
             };
             for (const [id, cfg] of Object.entries(toolColors)) {
                 const el = document.getElementById(id);
@@ -1435,6 +1475,12 @@
                 docRecibidosState.style.flexDirection = 'column';
             }
 
+            const llmRequestsState = document.getElementById('llmRequestsState');
+            if(llmRequestsState) {
+                llmRequestsState.style.display = tab === 'llmrequests' ? 'flex' : 'none';
+                llmRequestsState.style.flexDirection = 'column';
+            }
+
             if (tab === 'activas') {
                 fetchList();
             } else if (tab === 'archivadas') {
@@ -1450,6 +1496,8 @@
                 fetchPendingRojo();
             } else if (tab === 'docrecibidos') {
                 fetchReceivedDocuments();
+            } else if (tab === 'llmrequests') {
+                fetchLLMRequests();
             }
         }
 
@@ -2065,6 +2113,83 @@
                 alert('Error de conexión.');
                 btn.disabled = false;
                 btn.innerText = '✕ Desmarcar';
+            }
+        }
+
+        // ── Solicitudes LLM ───────────────────────────────────────────
+        const LLM_TIPO_LABELS = {
+            desembolso_pendiente: { label: 'Desembolso pendiente', color: '#dc2626' },
+            paz_salvo:            { label: 'Paz y salvo',          color: '#2563eb' },
+            compra_cartera:       { label: 'Compra de cartera',    color: '#d97706' },
+            error_descuento:      { label: 'Error en descuentos',  color: '#7c3aed' },
+            prepago:              { label: 'Prepago/Abono',        color: '#059669' },
+            cambio_cuenta:        { label: 'Cambio de cuenta',     color: '#0891b2' },
+            urgente:              { label: 'Urgente',              color: '#dc2626' },
+            reclamo:              { label: 'Reclamo formal',       color: '#b45309' },
+            general:              { label: 'Consulta general',     color: '#6b7280' },
+        };
+
+        async function fetchLLMRequests() {
+            const tbody = document.getElementById('llmReqTableBody');
+            if (!tbody) return;
+            const onlyPending = document.getElementById('llmOnlyPending')?.checked;
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:15px;text-align:center;color:var(--text-muted);">Cargando...</td></tr>';
+            try {
+                const url = '/admin/api/llm-requests' + (onlyPending ? '?pending=true' : '');
+                const res = await fetch(url);
+                const data = await res.json();
+                const items = data.requests || [];
+                const pending = items.filter(r => !r.resolved).length;
+                document.getElementById('llmReqCount').innerText = items.length;
+                document.getElementById('llmReqPendingCount').innerText = pending;
+                const badge = document.getElementById('badgeLLMPendientes');
+                if (badge) { badge.style.display = pending > 0 ? 'inline' : 'none'; badge.innerText = pending; }
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="padding:15px;text-align:center;color:var(--text-muted);">No hay solicitudes registradas.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = items.map(r => {
+                    const tipoInfo = LLM_TIPO_LABELS[r.tipo] || { label: r.tipo, color: '#6b7280' };
+                    const badge = `<span style="background:${tipoInfo.color}1a;color:${tipoInfo.color};border:1px solid ${tipoInfo.color}44;padding:2px 8px;border-radius:999px;font-size:0.78rem;font-weight:600;white-space:nowrap;">${tipoInfo.label}</span>`;
+                    const fecha = r.created_at ? new Date(r.created_at).toLocaleString('es-CO', {dateStyle:'short', timeStyle:'short'}) : '';
+                    const detalle = (r.detalle || '').slice(0, 120) + ((r.detalle || '').length > 120 ? '…' : '');
+                    const estadoBadge = r.resolved
+                        ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">✓ Resuelto</span>`
+                        : `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>`;
+                    const actionBtn = r.resolved
+                        ? ''
+                        : `<button onclick="resolveLLMRequest('${r.id}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Resolver</button>`;
+                    return `<tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:10px;white-space:nowrap;font-size:0.85rem;">${fecha}</td>
+                        <td style="padding:10px;font-size:0.85rem;">${r.phone}</td>
+                        <td style="padding:10px;font-size:0.85rem;">${r.client_name || ''}</td>
+                        <td style="padding:10px;">${badge}</td>
+                        <td style="padding:10px;font-size:0.85rem;color:var(--text-muted);max-width:260px;">${detalle}</td>
+                        <td style="padding:10px;text-align:center;">${estadoBadge}</td>
+                        <td style="padding:10px;text-align:center;">${actionBtn}</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:15px;text-align:center;color:#dc2626;">Error al cargar solicitudes.</td></tr>';
+            }
+        }
+
+        async function resolveLLMRequest(id, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch(`/admin/api/llm-requests/${id}/resolve`, { method: 'POST' });
+                if (res.ok) {
+                    fetchLLMRequests();
+                } else {
+                    alert('Error al resolver la solicitud.');
+                    btn.disabled = false;
+                    btn.innerText = '✓ Resolver';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '✓ Resolver';
             }
         }
 

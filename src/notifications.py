@@ -44,6 +44,28 @@ def notify_admin_agent_request(user_phone: str) -> None:
         )
         notify_admins(msg)
 
+def notify_admin_llm_request(user_phone: str, tipo: str) -> None:
+    """Notify admins that the LLM agent registered a pending request (no escalation)."""
+    tipo_labels = {
+        "desembolso_pendiente": "Desembolso pendiente",
+        "paz_salvo": "Paz y salvo",
+        "compra_cartera": "Compra de cartera",
+        "error_descuento": "Error en descuentos",
+        "prepago": "Prepago/Abono",
+        "cambio_cuenta": "Cambio de cuenta",
+        "urgente": "Urgente",
+        "reclamo": "Reclamo formal",
+        "general": "Consulta general",
+    }
+    label = tipo_labels.get(tipo, tipo)
+    msg = (
+        f"📋 *Nueva Solicitud Registrada*\n\n"
+        f"El agente LLM registró una solicitud de tipo *{label}* para el número {user_phone}.\n"
+        f"Revísala en el panel: https://bot.proalto.co/admin"
+    )
+    notify_admins(msg)
+
+
 def notify_admin_error(user_phone: str, error_msg: str) -> None:
     """Notify admins that a system error occurred while interacting with a user."""
     msg = (

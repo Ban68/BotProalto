@@ -144,6 +144,17 @@ class FlowHandler:
                     WhatsAppService.send_message(user_phone, human_msg)
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
+            elif "[REGISTRAR_SOLICITUD:" in llm_response:
+                # Extract tipo from tag, save request, keep client in agent_llm
+                match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
+                tipo = match.group(1).strip() if match else "general"
+                human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
+                if human_msg:
+                    WhatsAppService.send_message(user_phone, human_msg)
+                from src.conversation_log import save_llm_request
+                from src.notifications import notify_admin_llm_request
+                save_llm_request(user_phone, client_name, tipo, text)
+                notify_admin_llm_request(user_phone, tipo)
             else:
                 WhatsAppService.send_message(user_phone, llm_response)
             return
