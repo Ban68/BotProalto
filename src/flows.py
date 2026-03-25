@@ -220,8 +220,6 @@ class FlowHandler:
                         set_client_name(user_phone, nombre)
                         set_user_state(user_phone, "waiting_for_email")
                 elif clean_status == "FALTA ALGÚN DOCUMENTO":
-                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
-                    WhatsAppService.send_message(user_phone, response_msg)
                     from src.automation import build_docs_message
                     from src.conversation_log import set_solicitud_context
                     docs_faltantes = result.get("documentos_faltantes", "")
@@ -229,9 +227,17 @@ class FlowHandler:
                     set_client_name(user_phone, nombre)
                     set_solicitud_context(user_phone, result.get("empresa", ""), docs_faltantes, tipo_empleador)
                     set_user_state(user_phone, "waiting_for_docs_rojo")
+                    # build_docs_message returns "Para agilizar...\n\n{lista}\n\nPuedes enviárnoslos..."
+                    # We skip its intro and use our own to produce a single combined message
+                    docs_part = build_docs_message(docs_faltantes, tipo_empleador)
+                    combined = (
+                        response_msg
+                        + "📋 *Estado:* Tu proceso está detenido porque te faltan los siguientes documentos:\n\n"
+                        + docs_part.split("\n\n", 1)[1]
+                    )
                     WhatsAppService.send_interactive_button(
                         user_phone,
-                        build_docs_message(docs_faltantes, tipo_empleador),
+                        combined,
                         [
                             {"id": "cargar_documentos", "title": "Cargar documentos"},
                             {"id": "ya_envie_docs", "title": "Ya los envié"},
