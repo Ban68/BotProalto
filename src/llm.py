@@ -230,8 +230,11 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
         if cedula_context:
             estado_interno = cedula_context.get("estado_interno", "")
             estado_legible = _STATUS_MAPPING.get(estado_interno.upper(), estado_interno)
-            valor = cedula_context.get("valor_preestudiado", 0)
-            valor_fmt = f"${valor:,.0f}" if valor else "pendiente de evaluación"
+            try:
+                valor_num = float(cedula_context.get("valor_preestudiado") or 0)
+                valor_fmt = f"${valor_num:,.0f}" if valor_num else "pendiente de evaluación"
+            except (ValueError, TypeError):
+                valor_fmt = str(cedula_context.get("valor_preestudiado", "pendiente de evaluación"))
             plazo = cedula_context.get("plazo")
             plazo_fmt = f"{plazo} meses" if plazo else "por definir"
             state_note += f"""
@@ -258,4 +261,4 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
 
     except Exception as e:
         print(f"[LLM] ask_llm error: {e}")
-        return "[HABLAR_ASESOR]"
+        return "Déjame verificar eso y te confirmo en un momento."
