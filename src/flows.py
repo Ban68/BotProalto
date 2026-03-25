@@ -494,6 +494,7 @@ class FlowHandler:
                 user_phone,
                 "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto."
             )
+            set_user_state(user_phone, "active")
 
         elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
             is_lead = (state == "lead_notified")
