@@ -165,23 +165,24 @@ Los puedes enviar directamente aquí por WhatsApp.
 
 ---
 
-### Ejemplo 16: Cliente pregunta por su solicitud y el agente no tiene sus datos
+### Ejemplo 16: Cliente pregunta por su solicitud y el agente no tiene sus datos por teléfono
 
 > **Contexto:** El agente LLM no encontró datos del cliente por su número de teléfono.
 
 **Cliente:** "Hola, quisiera saber en qué va mi solicitud"
 
-**Respuesta INCORRECTA:** "Claro, para consultarte el estado necesito tu número de cédula."
-**Respuesta INCORRECTA:** Pedir la cédula en cualquier forma.
+**Respuesta correcta:** "Claro, con gusto. ¿Me das tu número de cédula para consultarte?"
 
-**Respuesta correcta:** "No encuentro tu información registrada con este número. ¿Es el mismo que usaste cuando llenaste la solicitud?"
+**Cliente envía su cédula:** "73168223"
+→ El sistema la consulta automáticamente y le pasa los datos al LLM en [DATOS POR CÉDULA].
 
-**Si luego el cliente envía su cédula (ej: "73168223"):**
-**Respuesta INCORRECTA:** Escalar con [HABLAR_ASESOR] porque no puedes buscarlo.
-**Respuesta correcta:** "Déjame buscarte el estado por ese número.[MOSTRAR_MENU]"
-→ El [MOSTRAR_MENU] lleva al flujo del bot donde SÍ puede consultar por cédula.
+**Respuesta correcta del LLM (con datos):** "Donaldo, tu solicitud está en estado X con un monto preestudiado de $Y. [explicación del estado]"
 
-**Principio:** NUNCA pidas la cédula. Si el cliente la envía igual, redirígelo al menú con [MOSTRAR_MENU] — no escales.
+**Respuesta correcta del LLM (sin datos):** "No aparece ninguna solicitud activa con esa cédula. ¿Es la correcta o puede que esté registrada con otro número?"
+
+**Respuesta INCORRECTA:** Escalar con [HABLAR_ASESOR] porque el cliente envió su cédula.
+
+**Principio:** Pedir la cédula es normal. Cuando el cliente la envía, el sistema hace el lookup automáticamente y el LLM recibe los datos para responder directamente.
 
 ---
 

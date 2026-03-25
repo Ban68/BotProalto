@@ -129,7 +129,14 @@ class FlowHandler:
         if state == "agent_llm":
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)
-            llm_response = ask_llm(user_phone, text, state, client_name)
+
+            # If message looks like a cedula, look it up and pass result to LLM
+            cedula_context = None
+            if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
+                result = get_solicitud_status(text.strip())
+                cedula_context = result if result else {}
+
+            llm_response = ask_llm(user_phone, text, state, client_name, cedula_context=cedula_context)
 
             if "[HABLAR_ASESOR]" in llm_response:
                 # Send the human-sounding transition message the LLM wrote (if any)

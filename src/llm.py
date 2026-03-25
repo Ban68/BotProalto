@@ -73,11 +73,11 @@ A continuación tienes toda la información de ProAlto que necesitas:
 - IMPORTANTE: aprobación NO es desembolso inmediato. Después de aprobar hay pasos operativos con la empresa pagadora que pueden tomar tiempo.
 
 **Datos del cliente:**
-- NUNCA pidas la cédula. Ni aunque no encuentres datos. Ni aunque el cliente pregunte por su solicitud. NUNCA.
-- Si no hay datos registrados: di "No encuentro tu información registrada con este número. ¿Es el mismo que usaste cuando llenaste la solicitud?" — eso es todo, no pidas cédula.
-- Si hay datos, úsalos directamente para responder sin preguntar lo que ya sabes.
-- Si el cliente te envía un número que parece una cédula (solo dígitos): NO puedes buscarlo directamente. Dile "Déjame verificar eso" y usa [MOSTRAR_MENU] para que el sistema consulte el estado por cédula. Ejemplo: "Déjame buscarte el estado por ese número.[MOSTRAR_MENU]"
-- NUNCA escales con [HABLAR_ASESOR] solo porque el cliente envió su número de cédula.
+- Puedes pedir la cédula cuando sea necesario (ej. el cliente pregunta por su solicitud y no tienes sus datos por teléfono).
+- Si ya tienes datos del cliente (ver sección DATOS REALES DEL CLIENTE más abajo), úsalos directamente sin volver a pedirla.
+- Cuando el cliente te envíe su cédula, el sistema la consulta automáticamente y te mostrará los datos en la sección [DATOS POR CÉDULA]. Usa esos datos para responder directamente.
+- Si no se encontró solicitud con esa cédula, dile que no aparece nada activo con ese número y pregunta si es la cédula correcta.
+- NUNCA escales con [HABLAR_ASESOR] solo porque el cliente envió su cédula.
 
 **Cuando el cliente dice "no gracias" o no le interesa:**
 - Responde brevemente y con naturalidad: "Claro, sin problema. Quedo pendiente si necesitas algo."
@@ -205,7 +205,7 @@ Con estos datos puedes responder directamente sobre el estado de la solicitud.
 Para el saldo de créditos activos (cuánto le falta por pagar) necesitas verificación adicional — escala con [HABLAR_ASESOR]."""
 
 
-def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "Cliente") -> str:
+def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "Cliente", cedula_context: dict = None) -> str:
     """
     Generate a response for a free-text message using Claude Haiku.
 
@@ -213,6 +213,7 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
         - A plain text response to send to the user.
         - "[MOSTRAR_MENU]" → the caller should show the main menu.
         - "[HABLAR_ASESOR]" → the caller should escalate to a human advisor.
+        - "[REGISTRAR_SOLICITUD:tipo]" → saves a pending request without escalating.
     """
     try:
         from src.conversation_log import get_recent_messages_for_llm
@@ -225,6 +226,27 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
             history.append({"role": "user", "content": user_message})
 
         state_note = "\n" + _build_client_context_note(user_phone, state, client_name)
+
+        # Inject cedula lookup result when available
+        if cedula_context:
+            estado_interno = cedula_context.get("estado_interno", "")
+            estado_legible = _STATUS_MAPPING.get(estado_interno.upper(), estado_interno)
+            valor = cedula_context.get("valor_preestudiado", 0)
+            valor_fmt = f"${valor:,.0f}" if valor else "pendiente de evaluación"
+            plazo = cedula_context.get("plazo")
+            plazo_fmt = f"{plazo} meses" if plazo else "por definir"
+            state_note += f"""
+
+[DATOS POR CÉDULA — el cliente acaba de enviar su cédula y el sistema la consultó. Usa esta información para responder directamente]:
+- Nombre: {cedula_context.get('nombre_completo', 'N/A')}
+- Solicitud #: {cedula_context.get('nro_solicitud', 'N/A')}
+- Estado actual: {estado_legible}
+- Monto preestudiado: {valor_fmt}
+- Plazo: {plazo_fmt}
+- Fecha de solicitud: {cedula_context.get('fecha_de_solicitud', 'N/A')}"""
+        elif cedula_context is not None:
+            # cedula_context == {} means lookup returned nothing
+            state_note += "\n[CÉDULA CONSULTADA: no se encontró solicitud activa con ese número. Dile al cliente que no aparece nada y que confirme si es la cédula correcta.]"
 
         client = _get_client()
         response = client.messages.create(
