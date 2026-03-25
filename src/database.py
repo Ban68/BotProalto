@@ -46,6 +46,9 @@ def get_solicitud_status(cedula):
                     "valor_preestudiado": data.get("valor_preestudiado", 0),
                     "estado_interno": data.get("estado_interno", ""),
                     "plazo": data.get("plazo"),
+                    "empresa": data.get("empresa", ""),
+                    "documentos_faltantes": data.get("documentos_faltantes", ""),
+                    "tipo_empleador": data.get("tipo_empleador", "EMPRESA"),
                 }
             else:
                 return None

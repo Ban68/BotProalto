@@ -219,6 +219,25 @@ class FlowHandler:
                         WhatsAppService.send_message(user_phone, instruction_msg)
                         set_client_name(user_phone, nombre)
                         set_user_state(user_phone, "waiting_for_email")
+                elif clean_status == "FALTA ALGÚN DOCUMENTO":
+                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
+                    WhatsAppService.send_message(user_phone, response_msg)
+                    from src.automation import build_docs_message
+                    from src.conversation_log import set_solicitud_context
+                    docs_faltantes = result.get("documentos_faltantes", "")
+                    tipo_empleador = result.get("tipo_empleador", "EMPRESA")
+                    set_client_name(user_phone, nombre)
+                    set_solicitud_context(user_phone, result.get("empresa", ""), docs_faltantes, tipo_empleador)
+                    set_user_state(user_phone, "waiting_for_docs_rojo")
+                    WhatsAppService.send_interactive_button(
+                        user_phone,
+                        build_docs_message(docs_faltantes, tipo_empleador),
+                        [
+                            {"id": "cargar_documentos", "title": "Cargar documentos"},
+                            {"id": "ya_envie_docs", "title": "Ya los envié"},
+                            {"id": "hablar_asesor_docs", "title": "Hablar con un asesor"},
+                        ]
+                    )
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)
@@ -237,7 +256,7 @@ class FlowHandler:
                     WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
             
             # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to type email
-            if not result or clean_status not in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
+            if not result or clean_status not in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN", "FALTA ALGÚN DOCUMENTO"]:
                 set_user_state(user_phone, "active")
                 WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
@@ -434,6 +453,24 @@ class FlowHandler:
             WhatsAppService.send_message(
                 user_phone,
                 "Por favor escríbenos tu *número de cuenta* (solo dígitos, sin espacios ni guiones). 🏦"
+            )
+
+        elif btn_id in ["consultar_docs_faltantes", "Consultar documentos faltantes"]:
+            from src.conversation_log import get_solicitud_context
+            from src.automation import build_docs_message
+            ctx = get_solicitud_context(user_phone)
+            docs_msg = build_docs_message(
+                ctx.get("docs_faltantes", ""),
+                ctx.get("tipo_empleador", "EMPRESA"),
+            )
+            WhatsAppService.send_interactive_button(
+                user_phone,
+                docs_msg,
+                [
+                    {"id": "cargar_documentos", "title": "Cargar documentos"},
+                    {"id": "ya_envie_docs", "title": "Ya los envié"},
+                    {"id": "hablar_asesor_docs", "title": "Hablar con un asesor"},
+                ]
             )
 
         elif btn_id in ["cargar_documentos", "Cargar documentos"]:

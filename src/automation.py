@@ -360,11 +360,6 @@ def execute_bulk_falta_documento_notifications(users_list):
                 user.get("docs_faltantes", ""),
                 user.get("tipo_empleador", "EMPRESA"),
             )
-            docs_msg = build_docs_message(
-                user.get("docs_faltantes", ""),
-                user.get("tipo_empleador", "EMPRESA"),
-            )
-            WhatsAppService.send_message(phone_str, docs_msg)
             results["success"] += 1
         else:
             results["fail"] += 1
