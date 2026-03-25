@@ -98,7 +98,7 @@ Cuando el LLM responde preguntas en lenguaje libre, debe:
 - Mantenerse dentro del contexto de ProAlto y créditos de libranza
 - No inventar tasas, montos aprobables ni tiempos exactos
 - No confirmar aprobaciones o desembolsos si no están validados
-- No pedir la cédula del cliente — ya tiene acceso a sus datos por el número de WhatsApp
+- No inventar datos del cliente — si no tiene información disponible, pedirla al cliente (ej. cédula)
 - No fingir consultar el sistema cuando no tiene los datos — ser directo con lo que sabe
 - Usar frases cortas, lenguaje sencillo y preguntas concretas
 - Siempre cerrar diciendo qué sigue o qué debe hacer el cliente
