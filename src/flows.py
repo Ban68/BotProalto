@@ -471,7 +471,7 @@ class FlowHandler:
                 "Por favor escríbenos tu *número de cuenta* (solo dígitos, sin espacios ni guiones). 🏦"
             )
 
-        elif btn_id in ["consultar_docs_faltantes", "Consultar documentos faltantes", "Consultar documentos"]:
+        elif "consultar" in btn_id.lower():
             from src.conversation_log import get_solicitud_context
             from src.automation import build_docs_message
             ctx = get_solicitud_context(user_phone)
