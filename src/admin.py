@@ -540,10 +540,14 @@ def api_trigger_bulk_amarillo():
 @admin_bp.route('/admin/api/captured-cuentas')
 @requires_auth
 def api_captured_cuentas():
-    """Get list of all captured account numbers."""
+    """Get list of all captured account numbers, enriched with empresa from CRM."""
     from src.conversation_log import get_captured_cuentas
+    from src.database import get_client_context_by_phone
     try:
         cuentas = get_captured_cuentas()
+        for cuenta in cuentas:
+            ctx = get_client_context_by_phone(cuenta.get("phone", ""))
+            cuenta["empresa"] = ctx.get("empresa", "") if ctx else ""
         return jsonify({"status": "ok", "cuentas": cuentas})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
