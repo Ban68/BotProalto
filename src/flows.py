@@ -109,8 +109,6 @@ class FlowHandler:
                             if public_url:
                                 client_name = get_client_name(user_phone)
                                 log_received_document(user_phone, client_name, filename, mime_type, final_path)
-                            # Acknowledge each file immediately, then schedule the final confirmation
-                            WhatsAppService.send_message(user_phone, "📎 Documento recibido.")
                             _schedule_doc_confirmation(user_phone)
 
                         # Optionally cleanup local file to save disk space if uploaded successfully
