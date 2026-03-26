@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProAlto Bot — Playbook Operativo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #fec05c;
+            --primary-dark: #283e52;
+            --primary-darker: #1e3044;
+            --primary-light: #fffbeb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --success-bg: #f0fdf4;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --info: #3b82f6;
+            --info-bg: #eff6ff;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* ── Print / PDF ── */
+        @media print {
+            body { background: white; font-size: 12px; line-height: 1.5; }
+            .no-print, #pdf-btn, #toc-toggle { display: none !important; }
+            .page-break { page-break-before: always; }
+            section { break-inside: avoid; }
+            .card { box-shadow: none !important; border: 1px solid #ddd; }
+            nav.toc-sidebar { display: none !important; }
+            .main-content { margin-left: 0 !important; }
+        }
+
+        /* ── PDF Export Button ── */
+        #pdf-btn {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+            background: var(--primary-dark); color: white;
+            border: none; padding: 14px 28px; border-radius: 50px;
+            font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+            cursor: pointer; box-shadow: 0 8px 30px rgba(40,62,82,0.35);
+            display: flex; align-items: center; gap: 10px;
+            transition: all 0.2s;
+        }
+        #pdf-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(40,62,82,0.45); }
+        #pdf-btn svg { width: 20px; height: 20px; }
+
+        /* ── TOC Sidebar ── */
+        nav.toc-sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: 280px;
+            background: var(--primary-dark); color: white; overflow-y: auto;
+            padding: 24px 16px; z-index: 100;
+            transition: transform 0.3s;
+        }
+        nav.toc-sidebar.collapsed { transform: translateX(-280px); }
+        nav.toc-sidebar h3 {
+            color: var(--primary); font-size: 13px; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        nav.toc-sidebar a {
+            display: block; color: rgba(255,255,255,0.75); text-decoration: none;
+            padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
+            transition: all 0.15s; margin-bottom: 2px;
+        }
+        nav.toc-sidebar a:hover { background: rgba(255,255,255,0.1); color: white; }
+        nav.toc-sidebar a.active { background: rgba(254,192,92,0.15); color: var(--primary); }
+
+        #toc-toggle {
+            position: fixed; left: 16px; top: 16px; z-index: 200;
+            background: var(--primary-dark); color: white; border: none;
+            width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: left 0.3s;
+            font-size: 18px;
+        }
+        #toc-toggle.shifted { left: 296px; }
+
+        /* ── Main Content ── */
+        .main-content {
+            margin-left: 280px; padding: 40px 60px 120px;
+            max-width: 1100px; transition: margin-left 0.3s;
+        }
+        .main-content.expanded { margin-left: 0; }
+
+        /* ── Header ── */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-darker) 100%);
+            color: white; padding: 50px 48px; border-radius: 20px;
+            margin-bottom: 48px; position: relative; overflow: hidden;
+        }
+        .hero::after {
+            content: ''; position: absolute; right: -60px; top: -60px;
+            width: 250px; height: 250px; background: var(--primary);
+            border-radius: 50%; opacity: 0.08;
+        }
+        .hero .badge {
+            display: inline-block; background: rgba(254,192,92,0.2);
+            color: var(--primary); padding: 6px 16px; border-radius: 50px;
+            font-size: 12px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 16px;
+        }
+        .hero h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 12px; }
+        .hero p { font-size: 1.1rem; opacity: 0.85; max-width: 650px; }
+        .hero .meta {
+            margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap;
+            font-size: 13px; opacity: 0.7;
+        }
+
+        /* ── Sections ── */
+        section { margin-bottom: 48px; }
+        section > h2 {
+            font-size: 1.5rem; font-weight: 700; color: var(--primary-dark);
+            padding-bottom: 12px; border-bottom: 3px solid var(--primary);
+            margin-bottom: 24px; display: flex; align-items: center; gap: 12px;
+        }
+        section > h2 .num {
+            background: var(--primary-dark); color: white; width: 36px; height: 36px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 16px; font-weight: 700; flex-shrink: 0;
+        }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 24px 0 12px; color: var(--primary-dark); }
+        h4 { font-size: 1rem; font-weight: 600; margin: 16px 0 8px; color: var(--text); }
+
+        /* ── Cards ── */
+        .card {
+            background: white; border-radius: var(--radius); padding: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .card.success { border-left: 4px solid var(--success); background: var(--success-bg); }
+        .card.danger { border-left: 4px solid var(--danger); background: var(--danger-bg); }
+        .card.warning { border-left: 4px solid var(--warning); background: var(--warning-bg); }
+        .card.info { border-left: 4px solid var(--info); background: var(--info-bg); }
+
+        .card-title {
+            font-weight: 700; font-size: 1rem; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%; border-collapse: collapse; margin: 16px 0;
+            background: white; border-radius: var(--radius); overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        thead { background: var(--primary-dark); color: white; }
+        th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; letter-spacing: 0.5px; }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        tbody tr:hover { background: var(--primary-light); }
+        tbody tr:last-child td { border-bottom: none; }
+
+        /* ── Lists ── */
+        ul, ol { padding-left: 24px; margin: 8px 0; }
+        li { margin-bottom: 6px; }
+
+        /* ── Flow diagram ── */
+        .flow {
+            display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+            margin: 16px 0; justify-content: center;
+        }
+        .flow-step {
+            background: white; border: 2px solid var(--primary); border-radius: 12px;
+            padding: 12px 20px; font-size: 13px; font-weight: 600; text-align: center;
+            min-width: 120px; position: relative;
+        }
+        .flow-step.highlight { background: var(--primary); color: var(--primary-dark); }
+        .flow-arrow { font-size: 20px; color: var(--primary-dark); margin: 0 4px; font-weight: 700; }
+
+        /* ── Badges ── */
+        .badge-inline {
+            display: inline-block; padding: 3px 10px; border-radius: 50px;
+            font-size: 12px; font-weight: 600; vertical-align: middle;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+
+        /* ── Kbd (keyboard) ── */
+        kbd {
+            background: var(--primary-light); border: 1px solid var(--border);
+            padding: 2px 8px; border-radius: 6px; font-size: 13px;
+            font-family: 'Outfit', sans-serif; font-weight: 500;
+        }
+
+        /* ── Columns ── */
+        .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .cols { grid-template-columns: 1fr; } }
+        .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 900px) { .cols-3 { grid-template-columns: 1fr; } }
+
+        /* ── Callout ── */
+        .callout {
+            background: var(--primary-light); border: 1px solid rgba(254,192,92,0.3);
+            border-radius: var(--radius); padding: 20px 24px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+        .callout .icon { font-size: 24px; flex-shrink: 0; }
+
+        /* ── Screenshot placeholder ── */
+        .screenshot {
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 40px; text-align: center; color: var(--text-muted);
+            font-size: 14px; margin: 16px 0;
+        }
+
+        /* ── Divider ── */
+        hr { border: none; border-top: 2px solid var(--border); margin: 40px 0; }
+
+        /* ── Chat simulation ── */
+        .chat-sim { max-width: 420px; margin: 16px auto; }
+        .chat-bubble {
+            padding: 10px 16px; border-radius: 16px; margin-bottom: 8px;
+            font-size: 14px; max-width: 85%; line-height: 1.5;
+        }
+        .chat-bubble.bot {
+            background: white; border: 1px solid var(--border);
+            border-bottom-left-radius: 4px; margin-right: auto;
+        }
+        .chat-bubble.user {
+            background: var(--primary-dark); color: white;
+            border-bottom-right-radius: 4px; margin-left: auto;
+        }
+        .chat-bubble .label {
+            font-size: 11px; font-weight: 600; margin-bottom: 4px;
+            opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: 50%; font-weight: 700;
+            font-size: 13px; flex-shrink: 0; margin-right: 8px;
+            background: var(--primary); color: var(--primary-dark);
+        }
+
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li { padding: 8px 0; display: flex; align-items: flex-start; gap: 10px; }
+        .checklist li::before { content: '☐'; font-size: 18px; color: var(--primary-dark); flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<!-- TOC Sidebar -->
+<nav class="toc-sidebar" id="toc">
+    <h3>Contenido</h3>
+    <a href="#intro">Introduccion</a>
+    <a href="#acceso">Acceso al Panel</a>
+    <a href="#dashboard">Dashboard - Vista General</a>
+    <a href="#conversaciones">Gestionar Conversaciones</a>
+    <a href="#modos">Modos del Bot</a>
+    <a href="#bulk">Envios Masivos</a>
+    <a href="#emails">Correos Capturados</a>
+    <a href="#cuentas">Cuentas Bancarias</a>
+    <a href="#documentos">Documentos Recibidos</a>
+    <a href="#solicitudes-llm">Solicitudes LLM</a>
+    <a href="#flujos-cliente">Flujos del Cliente</a>
+    <a href="#estados">Estados de Solicitud</a>
+    <a href="#puede-no-puede">Puede vs No Puede</a>
+    <a href="#faq-operador">FAQ del Operador</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#checklist">Checklist Diario</a>
+    <a href="#glosario">Glosario</a>
+</nav>
+
+<button id="toc-toggle" class="shifted" onclick="toggleToc()">☰</button>
+
+<!-- Main Content -->
+<div class="main-content" id="main">
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="badge">Playbook Operativo</div>
+        <h1>Bot WhatsApp ProAlto</h1>
+        <p>Guia completa de operacion para el equipo comercial y de servicio. Todo lo que necesitas para operar el bot, gestionar clientes y resolver cualquier situacion.</p>
+        <div class="meta">
+            <span>Version 1.0</span>
+            <span>Marzo 2026</span>
+            <span>Documento de capacitacion y referencia diaria</span>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 1. INTRODUCCION -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="intro">
+        <h2><span class="num">1</span> Que es el Bot y Para Que Sirve</h2>
+
+        <div class="card info">
+            <div class="card-title">En una frase</div>
+            <p>El Bot de WhatsApp de ProAlto es un asistente virtual que atiende clientes las 24 horas: consulta estados de solicitud, recibe documentos, captura correos y cuentas bancarias, y escala a un asesor humano cuando es necesario.</p>
+        </div>
+
+        <h3>Que hace el Bot automaticamente (sin intervencion humana)</h3>
+        <div class="cols">
+            <div class="card success">
+                <div class="card-title">Atencion 24/7</div>
+                <ul>
+                    <li>Responde saludos y muestra el menu principal</li>
+                    <li>Solicita y registra consentimiento de datos (Habeas Data)</li>
+                    <li>Consulta el estado de solicitudes con la cedula</li>
+                    <li>Consulta saldos de creditos activos</li>
+                    <li>Recibe y almacena documentos (fotos, PDFs)</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <div class="card-title">Capturas automaticas</div>
+                <ul>
+                    <li>Captura correo electronico para contrato DocuSign</li>
+                    <li>Captura numero de cuenta bancaria y nombre del banco</li>
+                    <li>Redirige al formulario de nueva solicitud de credito</li>
+                    <li>Responde preguntas frecuentes con inteligencia artificial</li>
+                    <li>Registra solicitudes especiales (paz y salvo, prepago, etc.)</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Que necesita de TI como operador</h3>
+        <div class="card warning">
+            <div class="card-title">Tu rol es critico para</div>
+            <ul>
+                <li><strong>Envios masivos:</strong> Lanzar las notificaciones diarias de estado verde, rojo y amarillo</li>
+                <li><strong>Tomar conversaciones:</strong> Atender cuando el bot escala o el cliente pide hablar con asesor</li>
+                <li><strong>Revisar documentos:</strong> Verificar los documentos que los clientes envian por WhatsApp</li>
+                <li><strong>Gestionar solicitudes:</strong> Revisar y resolver las solicitudes registradas por el agente LLM</li>
+                <li><strong>Monitorear:</strong> Revisar que todo funcione correctamente durante el dia</li>
+            </ul>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 2. ACCESO AL PANEL -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="acceso">
+        <h2><span class="num">2</span> Acceso al Panel de Administracion</h2>
+
+        <div class="card">
+            <div class="card-title">Como ingresar</div>
+            <ol>
+                <li>Abre tu navegador (Chrome recomendado)</li>
+                <li>Ve a la URL del dashboard: <kbd>https://[URL-del-bot]/admin/</kbd></li>
+                <li>Ingresa el <strong>usuario</strong> y <strong>contrasena</strong> que te asignaron</li>
+                <li>Listo — veras el panel de administracion</li>
+            </ol>
+        </div>
+
+        <div class="callout">
+            <span class="icon">🔐</span>
+            <div>
+                <strong>Importante:</strong> El usuario y contrasena son compartidos por el equipo. No los compartas con personas fuera del area operativa. Si necesitas cambiarlos, contacta al equipo tecnico.
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 3. DASHBOARD - VISTA GENERAL -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="dashboard">
+        <h2><span class="num">3</span> Dashboard - Vista General</h2>
+
+        <p>El dashboard tiene tres areas principales:</p>
+
+        <div class="cols-3">
+            <div class="card">
+                <div class="card-title">Barra Lateral (Izquierda)</div>
+                <ul>
+                    <li>Lista de todas las conversaciones</li>
+                    <li>Busqueda por numero o contenido</li>
+                    <li>Filtro: Activas vs Archivadas</li>
+                    <li>Preview del ultimo mensaje</li>
+                    <li>Contador de mensajes</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-title">Area Central</div>
+                <ul>
+                    <li>Historial completo del chat seleccionado</li>
+                    <li>Mensajes del bot, cliente y asesor</li>
+                    <li>Documentos e imagenes enviados</li>
+                    <li>Campo para escribir y enviar mensajes</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-title">Panel Superior</div>
+                <ul>
+                    <li>Pestanas: Chat, Automatizacion, Emails, Cuentas, Docs, Solicitudes LLM</li>
+                    <li>Indicador de asesores conectados</li>
+                    <li>Botones de accion del chat actual</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Pestanas del Panel</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Pestana</th>
+                    <th>Que encuentras ahi</th>
+                    <th>Cuando usarla</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Conversaciones</strong></td>
+                    <td>Chat en vivo con clientes</td>
+                    <td>Para responder clientes, tomar control del chat, ver historial</td>
+                </tr>
+                <tr>
+                    <td><strong>Automatizacion</strong></td>
+                    <td>Envios masivos (verde, rojo, amarillo, leads)</td>
+                    <td>Diariamente para notificar estados</td>
+                </tr>
+                <tr>
+                    <td><strong>Emails Capturados</strong></td>
+                    <td>Correos que los clientes enviaron para DocuSign</td>
+                    <td>Para verificar y usar en el envio de contratos</td>
+                </tr>
+                <tr>
+                    <td><strong>Cuentas</strong></td>
+                    <td>Numeros de cuenta bancaria capturados</td>
+                    <td>Para verificar datos de desembolso</td>
+                </tr>
+                <tr>
+                    <td><strong>Documentos</strong></td>
+                    <td>Fotos y PDFs enviados por clientes</td>
+                    <td>Para revisar documentacion recibida</td>
+                </tr>
+                <tr>
+                    <td><strong>Solicitudes LLM</strong></td>
+                    <td>Peticiones especiales registradas por la IA</td>
+                    <td>Para dar seguimiento a casos como prepago, paz y salvo, etc.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 4. GESTIONAR CONVERSACIONES -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="conversaciones">
+        <h2><span class="num">4</span> Gestionar Conversaciones</h2>
+
+        <h3>Ver y buscar conversaciones</h3>
+        <div class="card">
+            <ul>
+                <li>La <strong>barra lateral izquierda</strong> muestra todas las conversaciones ordenadas por actividad reciente</li>
+                <li>Usa la <strong>barra de busqueda</strong> para buscar por numero de telefono o nombre</li>
+                <li>Haz clic en cualquier conversacion para ver el historial completo</li>
+                <li>Los chats con <span class="badge-inline badge-red">estado agent</span> necesitan tu atencion</li>
+            </ul>
+        </div>
+
+        <h3>Enviar un mensaje como asesor</h3>
+        <div class="card">
+            <ol>
+                <li>Selecciona la conversacion en la barra lateral</li>
+                <li>Escribe tu mensaje en el campo inferior</li>
+                <li>Haz clic en <kbd>Enviar</kbd> — el mensaje aparecera con el prefijo "Asesor:"</li>
+                <li>Puedes activar <strong>modo silencioso</strong> para enviar sin el prefijo de asesor</li>
+            </ol>
+        </div>
+
+        <h3>Enviar archivos (imagenes o documentos)</h3>
+        <div class="card">
+            <ol>
+                <li>Haz clic en el <strong>icono de clip/adjuntar</strong> junto al campo de mensaje</li>
+                <li>Selecciona el archivo (imagen, PDF, Word)</li>
+                <li>El archivo se sube a Supabase y se envia al cliente</li>
+            </ol>
+        </div>
+
+        <h3>Borrar un mensaje enviado</h3>
+        <div class="card warning">
+            <p>Puedes borrar mensajes enviados por error. Haz clic en el icono de eliminar junto al mensaje. Esto revoca el mensaje en WhatsApp (el cliente vera "Este mensaje fue eliminado").</p>
+        </div>
+
+        <h3>Crear una nueva conversacion</h3>
+        <div class="card">
+            <ol>
+                <li>Haz clic en <kbd>+ Nuevo Chat</kbd> en la barra lateral</li>
+                <li>Ingresa el numero de telefono con codigo de pais (ej: 573101234567)</li>
+                <li>El chat se crea en modo <strong>asesor (agent)</strong> — el bot no interviene</li>
+            </ol>
+        </div>
+
+        <h3>Archivar y restaurar conversaciones</h3>
+        <div class="card">
+            <ul>
+                <li><strong>Archivar:</strong> Clic en el boton de archivar en la conversacion. Sale de la lista activa.</li>
+                <li><strong>Restaurar:</strong> Cambia el filtro a "Archivadas", selecciona el chat y haz clic en "Restaurar".</li>
+            </ul>
+        </div>
+
+        <h3>Presencia de asesores</h3>
+        <div class="card info">
+            <p>El sistema muestra que asesores estan conectados y en que chat estan trabajando. Esto evita que dos asesores respondan el mismo chat. Si ves que un colega ya esta en una conversacion, no la tomes.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 5. MODOS DEL BOT -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="modos">
+        <h2><span class="num">5</span> Modos del Bot (Como Controlar Quien Responde)</h2>
+
+        <p>Cada conversacion puede estar en uno de estos modos:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Modo</th>
+                    <th>Quien responde</th>
+                    <th>Cuando usarlo</th>
+                    <th>Como activarlo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge-inline badge-green">Bot automatico</span></td>
+                    <td>El bot responde solo (menus, consultas, capturas)</td>
+                    <td>Estado normal. La mayoria de conversaciones estan aqui.</td>
+                    <td>Clic en <kbd>Cerrar Agente</kbd> para devolver el control al bot</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-inline badge-blue">Agente LLM</span></td>
+                    <td>Claude (IA) responde en lenguaje libre</td>
+                    <td>Cuando el cliente tiene preguntas complejas pero no necesita un humano</td>
+                    <td>Clic en <kbd>Agente LLM</kbd> en el panel del chat</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-inline badge-yellow">Asesor Humano</span></td>
+                    <td>Tu (el operador) — el bot NO interviene</td>
+                    <td>Cuando el cliente pide hablar con una persona o el caso es complejo</td>
+                    <td>Clic en <kbd>Tomar Control</kbd> o el cliente lo pidio</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-inline badge-gray">Silencioso</span></td>
+                    <td>Tu — sin que el cliente sepa que cambio a humano</td>
+                    <td>Para monitorear o intervenir discretamente</td>
+                    <td>Clic en <kbd>Modo Silencioso</kbd></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">💡</span>
+            <div>
+                <strong>Regla de oro:</strong> Cuando termines de atender un cliente en modo asesor, <strong>SIEMPRE</strong> haz clic en <kbd>Cerrar Agente</kbd> para devolver el control al bot. Si no lo haces, el bot no respondera a ese cliente y quedara en silencio.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 6. ENVIOS MASIVOS -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="bulk">
+        <h2><span class="num">6</span> Envios Masivos (Automatizacion)</h2>
+
+        <p>Esta es una de tus tareas mas importantes del dia a dia. Los envios masivos notifican a los clientes sobre cambios en sus solicitudes.</p>
+
+        <h3>Tipos de envio</h3>
+
+        <!-- VERDE -->
+        <div class="card success">
+            <div class="card-title">🟢 Estado Verde — Credito Aprobado</div>
+            <table>
+                <tbody>
+                    <tr><td><strong>Que hace</strong></td><td>Notifica a clientes cuyo credito fue aprobado. Les pide el correo electronico para enviar el contrato por DocuSign.</td></tr>
+                    <tr><td><strong>Mensaje que recibe el cliente</strong></td><td>"Hola [nombre], tu credito de $[monto] a [plazo] meses fue aprobado. Confirma tu correo electronico..."</td></tr>
+                    <tr><td><strong>Que pasa despues</strong></td><td>El bot automaticamente espera y captura el email del cliente.</td></tr>
+                    <tr><td><strong>Filtros automaticos</strong></td><td>NO envia a quienes ya fueron notificados hoy, ni a quienes ya enviaron su email.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ROJO -->
+        <div class="card danger">
+            <div class="card-title">🔴 Estado Rojo — Faltan Documentos</div>
+            <table>
+                <tbody>
+                    <tr><td><strong>Que hace</strong></td><td>Notifica a clientes que tienen documentos pendientes. Les muestra cuales faltan.</td></tr>
+                    <tr><td><strong>Mensaje que recibe el cliente</strong></td><td>"Hola [nombre], tu solicitud esta detenida porque faltan documentos..."</td></tr>
+                    <tr><td><strong>Que pasa despues</strong></td><td>El bot muestra la lista de documentos faltantes y permite que el cliente los envie por WhatsApp.</td></tr>
+                    <tr><td><strong>Filtros automaticos</strong></td><td>NO envia a quienes ya fueron notificados hoy, ya consultaron su estado por el bot hoy, o ya tienen docs completos.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- AMARILLO -->
+        <div class="card warning">
+            <div class="card-title">🟡 Estado Amarillo — Listo en DocuSign</div>
+            <table>
+                <tbody>
+                    <tr><td><strong>Que hace</strong></td><td>Notifica a clientes cuyo contrato esta listo para firma. Les pide la cuenta bancaria para el desembolso.</td></tr>
+                    <tr><td><strong>Mensaje que recibe el cliente</strong></td><td>"Hola [nombre], tu contrato esta listo para firmar. Necesitamos tu cuenta bancaria para el desembolso..."</td></tr>
+                    <tr><td><strong>Que pasa despues</strong></td><td>El bot captura numero de cuenta y nombre del banco automaticamente.</td></tr>
+                    <tr><td><strong>Filtros automaticos</strong></td><td>NO envia a quienes ya fueron notificados hoy ni a quienes ya enviaron su cuenta.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- LEADS -->
+        <div class="card info">
+            <div class="card-title">📣 Contacto Leads</div>
+            <table>
+                <tbody>
+                    <tr><td><strong>Que hace</strong></td><td>Envia un mensaje de contacto a clientes potenciales (prospectos/leads).</td></tr>
+                    <tr><td><strong>Mensaje que recibe el cliente</strong></td><td>"Hola [nombre]..." (plantilla de primer contacto)</td></tr>
+                    <tr><td><strong>Uso</strong></td><td>Para campanas de prospeccion y reactivacion.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Paso a paso: Como hacer un envio masivo</h3>
+        <div class="card">
+            <ol>
+                <li><span class="step-num">1</span> Ve a la pestana <kbd>Automatizacion</kbd> en el panel</li>
+                <li><span class="step-num">2</span> Selecciona el tipo de envio (Verde, Rojo, Amarillo o Leads)</li>
+                <li><span class="step-num">3</span> El sistema carga la lista de clientes elegibles (ya filtrada)</li>
+                <li><span class="step-num">4</span> Revisa la lista — puedes ver quienes son los clientes y por que son elegibles</li>
+                <li><span class="step-num">5</span> Tambien puedes ver la lista de <strong>excluidos</strong> y la razon de exclusion</li>
+                <li><span class="step-num">6</span> Selecciona a quienes quieres enviar (o selecciona todos)</li>
+                <li><span class="step-num">7</span> Haz clic en <kbd>Enviar</kbd> y confirma</li>
+                <li><span class="step-num">8</span> El sistema muestra el resultado: cuantos exitosos y cuantos fallidos</li>
+            </ol>
+        </div>
+
+        <div class="callout">
+            <span class="icon">⚠️</span>
+            <div>
+                <strong>Importante:</strong> No hagas envios masivos mas de una vez al dia para el mismo tipo. El sistema tiene filtros, pero es buena practica respetar un envio por tipo por dia.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 7. CORREOS CAPTURADOS -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="emails">
+        <h2><span class="num">7</span> Correos Electronicos Capturados</h2>
+
+        <div class="card">
+            <p>Cuando un cliente en estado <span class="badge-inline badge-green">Verde (Aprobado)</span> recibe la notificacion, el bot le pide su correo electronico para enviarle el contrato por DocuSign.</p>
+
+            <h4>Que ves en esta seccion</h4>
+            <table>
+                <thead>
+                    <tr><th>Campo</th><th>Descripcion</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Telefono</td><td>Numero de WhatsApp del cliente</td></tr>
+                    <tr><td>Email</td><td>Correo capturado (validado por formato)</td></tr>
+                    <tr><td>Nombre</td><td>Nombre del cliente</td></tr>
+                    <tr><td>Fecha</td><td>Cuando fue capturado</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Que puedes hacer</h4>
+            <ul>
+                <li><strong>Editar:</strong> Si el cliente envio un correo incorrecto y te pide corregirlo, puedes actualizarlo</li>
+                <li><strong>Usar para DocuSign:</strong> Toma el correo de aqui para enviarlo al sistema de firma digital</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 8. CUENTAS BANCARIAS -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="cuentas">
+        <h2><span class="num">8</span> Cuentas Bancarias Capturadas</h2>
+
+        <div class="card">
+            <p>Cuando un cliente en estado <span class="badge-inline badge-yellow">Amarillo (DocuSign)</span> recibe la notificacion, el bot le pide su cuenta bancaria en dos pasos: primero el numero de cuenta, luego el banco.</p>
+
+            <h4>Que ves en esta seccion</h4>
+            <table>
+                <thead>
+                    <tr><th>Campo</th><th>Descripcion</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Telefono</td><td>Numero de WhatsApp del cliente</td></tr>
+                    <tr><td>Numero de Cuenta</td><td>Numero de cuenta bancaria capturado</td></tr>
+                    <tr><td>Banco</td><td>Nombre del banco (Bancolombia, Nequi, Daviplata, etc.)</td></tr>
+                    <tr><td>Empresa</td><td>Empresa donde trabaja el cliente (enriquecido del CRM)</td></tr>
+                    <tr><td>Fecha</td><td>Cuando fue capturado</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Uso</h4>
+            <ul>
+                <li>Verificar la informacion antes de procesar el desembolso</li>
+                <li>Si el cliente pide cambio de cuenta despues, debe tramitarse con un asesor (el bot no lo permite)</li>
+            </ul>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 9. DOCUMENTOS RECIBIDOS -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="documentos">
+        <h2><span class="num">9</span> Documentos Recibidos</h2>
+
+        <div class="card">
+            <p>Los clientes en estado <span class="badge-inline badge-red">Rojo (Faltan Docs)</span> o <span class="badge-inline badge-yellow">Amarillo</span> pueden enviar documentos directamente por WhatsApp. El bot los recibe, almacena y registra aqui.</p>
+
+            <h4>Que ves en esta seccion</h4>
+            <table>
+                <thead>
+                    <tr><th>Campo</th><th>Descripcion</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Telefono</td><td>Numero del cliente</td></tr>
+                    <tr><td>Nombre</td><td>Nombre del cliente</td></tr>
+                    <tr><td>Archivo</td><td>Nombre del archivo recibido</td></tr>
+                    <tr><td>Tipo</td><td>Formato (imagen, PDF, documento)</td></tr>
+                    <tr><td>URL</td><td>Enlace para descargar el archivo</td></tr>
+                    <tr><td>Disparado por</td><td>Si fue por estado_rojo o estado_amarillo</td></tr>
+                    <tr><td>Revisado</td><td>Checkbox para marcar como revisado</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Flujo de trabajo</h4>
+            <ol>
+                <li>Revisa los documentos NO revisados cada dia</li>
+                <li>Descarga y verifica que sean legibles y correctos</li>
+                <li>Si el documento es valido, marcalo como <strong>revisado</strong></li>
+                <li>Si el documento es ilegible o incorrecto, contacta al cliente por el chat</li>
+                <li>Cuando todos los docs de un cliente estan completos, marca <kbd>Docs Completos</kbd></li>
+            </ol>
+        </div>
+
+        <div class="callout">
+            <span class="icon">📌</span>
+            <div>
+                <strong>Nota:</strong> El bot espera 60 segundos despues del ultimo documento enviado para confirmar la recepcion. Esto permite que el cliente envie multiples archivos seguidos sin recibir una confirmacion por cada uno.
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 10. SOLICITUDES LLM -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="solicitudes-llm">
+        <h2><span class="num">10</span> Solicitudes Registradas por la IA</h2>
+
+        <div class="card">
+            <p>Cuando el agente de inteligencia artificial (Claude) conversa con un cliente, puede detectar que el cliente necesita algo que requiere atencion humana. En lugar de escalar inmediatamente, registra la solicitud para que el equipo la atienda.</p>
+
+            <h4>Tipos de solicitudes</h4>
+            <table>
+                <thead>
+                    <tr><th>Tipo</th><th>Que significa</th><th>Accion del operador</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><span class="badge-inline badge-blue">desembolso_pendiente</span></td><td>El cliente dice que no le ha llegado el dinero</td><td>Verificar en el sistema de desembolsos y contactar al cliente</td></tr>
+                    <tr><td><span class="badge-inline badge-blue">paz_salvo</span></td><td>Solicita certificado de paz y salvo</td><td>Generar el certificado y enviarlo</td></tr>
+                    <tr><td><span class="badge-inline badge-blue">compra_cartera</span></td><td>Pregunta por diferencia en el monto desembolsado</td><td>Explicar la compra de cartera y enviar soporte</td></tr>
+                    <tr><td><span class="badge-inline badge-blue">error_descuento</span></td><td>Reporta error en los descuentos de nomina</td><td>Verificar con el area de cartera</td></tr>
+                    <tr><td><span class="badge-inline badge-blue">prepago</span></td><td>Quiere hacer un abono anticipado</td><td>Dar instrucciones de prepago</td></tr>
+                    <tr><td><span class="badge-inline badge-blue">cambio_cuenta</span></td><td>Quiere cambiar su cuenta bancaria</td><td>Procesar el cambio por seguridad (no lo hace el bot)</td></tr>
+                    <tr><td><span class="badge-inline badge-red">urgente</span></td><td>Situacion con impacto financiero activo</td><td>Atender de inmediato</td></tr>
+                    <tr><td><span class="badge-inline badge-red">reclamo</span></td><td>Queja formal</td><td>Escalar al area correspondiente</td></tr>
+                    <tr><td><span class="badge-inline badge-gray">general</span></td><td>Otro tipo de solicitud no categorizada</td><td>Evaluar y gestionar caso a caso</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Como gestionarlas</h4>
+            <ol>
+                <li>Ve a la pestana <kbd>Solicitudes LLM</kbd></li>
+                <li>Filtra por <strong>No Resueltas</strong> para ver las pendientes</li>
+                <li>Lee el detalle de cada solicitud</li>
+                <li>Atiende la solicitud segun el tipo (contactar al cliente, verificar en sistema, etc.)</li>
+                <li>Marca como <strong>Resuelta</strong> cuando termines</li>
+            </ol>
+        </div>
+
+        <div class="card danger">
+            <div class="card-title">Prioridad</div>
+            <p>Las solicitudes tipo <strong>urgente</strong> y <strong>reclamo</strong> deben atenderse primero. Revisalas apenas aparezcan.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 11. FLUJOS DEL CLIENTE -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="flujos-cliente">
+        <h2><span class="num">11</span> Flujos del Cliente (Lo Que El Cliente Experimenta)</h2>
+
+        <p>Es importante que entiendas lo que el cliente ve y experimenta para poder ayudarlo cuando tenga dudas.</p>
+
+        <h3>Flujo 1: Primer contacto</h3>
+        <div class="chat-sim">
+            <div class="chat-bubble user"><div class="label">Cliente</div>Hola</div>
+            <div class="chat-bubble bot"><div class="label">Bot</div>¡Hola! Bienvenido a ProAlto. Antes de continuar, necesitamos tu autorizacion para el tratamiento de datos personales conforme a la Ley 1581 de 2012. [Acepto] [Rechazo]</div>
+            <div class="chat-bubble user"><div class="label">Cliente</div>[Acepto]</div>
+            <div class="chat-bubble bot"><div class="label">Bot</div>¡Gracias! ¿En que te podemos ayudar?<br>1. Soy Cliente<br>2. Estado Solicitud<br>3. Solicitar Credito</div>
+        </div>
+
+        <h3>Flujo 2: Consultar estado de solicitud</h3>
+        <div class="flow">
+            <div class="flow-step">Menu Principal</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Estado Solicitud"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ingresa cedula</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">Bot muestra estado</div>
+        </div>
+
+        <div class="card">
+            <h4>Segun el estado encontrado, el bot hace cosas diferentes:</h4>
+            <table>
+                <thead>
+                    <tr><th>Estado</th><th>Que ve el cliente</th><th>Que pasa despues</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge-inline badge-green">Aprobado</span></td>
+                        <td>"¡Tu credito de $5.000.000 a 12 meses fue aprobado!"</td>
+                        <td>Bot pide correo electronico para DocuSign</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-red">Faltan Docs</span></td>
+                        <td>"Tu proceso esta detenido. Falta: Certificado laboral, Cedula..."</td>
+                        <td>Bot permite enviar documentos por WhatsApp</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-yellow">Listo DocuSign</span></td>
+                        <td>"Tu contrato esta listo. Necesitamos tu cuenta bancaria"</td>
+                        <td>Bot pide numero de cuenta y banco</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-gray">En estudio</span></td>
+                        <td>"Tu solicitud esta siendo revisada..."</td>
+                        <td>Vuelve al menu</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-red">Denegado</span></td>
+                        <td>"Lamentamos informarte que tu credito no fue aprobado..."</td>
+                        <td>Vuelve al menu</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Flujo 3: Consultar saldo</h3>
+        <div class="flow">
+            <div class="flow-step">Menu Principal</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Soy Cliente"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Consultar Saldo"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Ingresa cedula</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">Bot muestra saldo</div>
+        </div>
+
+        <h3>Flujo 4: Solicitar credito nuevo</h3>
+        <div class="flow">
+            <div class="flow-step">Menu Principal</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Solicitar Credito"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">Bot envia link al formulario Google</div>
+        </div>
+
+        <h3>Flujo 5: Hablar con asesor</h3>
+        <div class="flow">
+            <div class="flow-step">Menu Principal</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Soy Cliente"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">"Hablar con Asesor"</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">Bot escala a asesor humano</div>
+        </div>
+
+        <div class="callout">
+            <span class="icon">💡</span>
+            <div>
+                <strong>Si un cliente escribe "asesor", "ayuda" o "help" en cualquier momento</strong>, el bot tambien lo escala a un asesor humano, sin importar en que parte del flujo este.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 12. ESTADOS DE SOLICITUD -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="estados">
+        <h2><span class="num">12</span> Mapa Completo de Estados de Solicitud</h2>
+
+        <p>Estos son TODOS los estados posibles de una solicitud y el mensaje que el cliente ve:</p>
+
+        <table>
+            <thead>
+                <tr><th>Estado Interno</th><th>Lo Que Ve el Cliente</th><th>Color</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ENVIADO A VB EMPRESA</td>
+                    <td>Tu solicitud esta en manos de nuestro equipo de validacion. Te avisaremos en cuanto tengamos una respuesta.</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+                <tr>
+                    <td>PENDIENTE POR ENVIAR A VB</td>
+                    <td>Estamos terminando de procesar tu informacion para enviarla al area de validacion.</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+                <tr>
+                    <td>REVISAR NUEVAMENTE</td>
+                    <td>Tu solicitud esta pasando por una revision detallada.</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+                <tr>
+                    <td>FALTA ALGUN DOCUMENTO</td>
+                    <td>Tu proceso esta detenido porque falta documentacion. [Lista de documentos faltantes]</td>
+                    <td><span class="badge-inline badge-red">Rojo</span></td>
+                </tr>
+                <tr>
+                    <td>EMPRESA PAUSADA</td>
+                    <td>Tu empresa se encuentra pausada por causas operativas internas.</td>
+                    <td><span class="badge-inline badge-red">Rojo</span></td>
+                </tr>
+                <tr>
+                    <td>DENEGADO</td>
+                    <td>Lamentamos informarte que tu credito no fue aprobado.</td>
+                    <td><span class="badge-inline badge-red">Rojo</span></td>
+                </tr>
+                <tr>
+                    <td>CANCELADO POR LA EMPRESA</td>
+                    <td>Por el momento, no podemos otorgarte el credito.</td>
+                    <td><span class="badge-inline badge-red">Rojo</span></td>
+                </tr>
+                <tr>
+                    <td>DESISTIO DEL CREDITO</td>
+                    <td>Tu solicitud ha sido cerrada a peticion tuya.</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+                <tr>
+                    <td>NO RESPONDIO</td>
+                    <td>Cerramos tu solicitud por falta de respuesta.</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+                <tr>
+                    <td>LISTO EN DOCUSIGN</td>
+                    <td>En legalizacion de contratos para proceder a desembolso.</td>
+                    <td><span class="badge-inline badge-yellow">Amarillo</span></td>
+                </tr>
+                <tr>
+                    <td>APROBADO POR EL CLIENTE</td>
+                    <td>¡SOLICITUD APROBADA! Monto y plazo confirmados.</td>
+                    <td><span class="badge-inline badge-green">Verde</span></td>
+                </tr>
+                <tr>
+                    <td>LISTO PARA HACERLE DOCUMENTACION</td>
+                    <td>¡SOLICITUD APROBADA!</td>
+                    <td><span class="badge-inline badge-green">Verde</span></td>
+                </tr>
+                <tr>
+                    <td>NULL / Sin estado</td>
+                    <td>Pendiente / En Estudio</td>
+                    <td><span class="badge-inline badge-gray">Gris</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 13. PUEDE vs NO PUEDE -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="puede-no-puede">
+        <h2><span class="num">13</span> Que PUEDE y Que NO PUEDE Hacer el Bot</h2>
+
+        <div class="cols">
+            <div class="card success">
+                <div class="card-title">✅ SI PUEDE</div>
+                <ul>
+                    <li>Consultar estado de solicitud con cedula</li>
+                    <li>Consultar saldo de creditos activos</li>
+                    <li>Explicar en que etapa esta el proceso</li>
+                    <li>Responder preguntas frecuentes</li>
+                    <li>Capturar correo electronico para DocuSign</li>
+                    <li>Recibir y almacenar documentos (fotos, PDFs)</li>
+                    <li>Capturar numero de cuenta y banco</li>
+                    <li>Redirigir al formulario de nueva solicitud</li>
+                    <li>Conectar con un asesor humano</li>
+                    <li>Registrar solicitudes especiales</li>
+                    <li>Responder en lenguaje natural con IA</li>
+                    <li>Funcionar 24/7 sin interrupcion</li>
+                </ul>
+            </div>
+            <div class="card danger">
+                <div class="card-title">❌ NO PUEDE</div>
+                <ul>
+                    <li>Aprobar o rechazar creditos</li>
+                    <li>Procesar pagos o recibir dinero</li>
+                    <li>Cambiar cuotas, plazos o condiciones</li>
+                    <li>Modificar datos personales del cliente</li>
+                    <li>Cambiar la cuenta bancaria despues de registrada</li>
+                    <li>Dar tasas de interes especificas</li>
+                    <li>Dar asesoria legal o financiera personalizada</li>
+                    <li>Explicar por que un credito fue denegado</li>
+                    <li>Comprometerse con montos o condiciones</li>
+                    <li>Procesar mensajes de voz o video</li>
+                    <li>Enviar correos electronicos o SMS</li>
+                    <li>Funcionar en chats grupales</li>
+                    <li>Generar o enviar contratos</li>
+                    <li>Registrar prepagos directamente</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="callout">
+            <span class="icon">📌</span>
+            <div>
+                <strong>Cuando un cliente pide algo que el bot no puede hacer:</strong> El bot se lo informa amablemente y sugiere hablar con un asesor. Si esta en modo LLM, registra la solicitud automaticamente para que el equipo la atienda.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 14. FAQ DEL OPERADOR -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="faq-operador">
+        <h2><span class="num">14</span> Preguntas Frecuentes del Operador</h2>
+
+        <div class="card">
+            <h4>Un cliente dice que no le llego el mensaje del bot, ¿que hago?</h4>
+            <p>Verifica en el historial de la conversacion si el mensaje fue enviado. Si aparece como enviado pero el cliente dice que no lo recibio, puede ser un problema de conexion del cliente. Reenvia el mensaje manualmente desde el panel.</p>
+        </div>
+
+        <div class="card">
+            <h4>El cliente envio un documento ilegible, ¿que hago?</h4>
+            <p>Contacta al cliente por el chat y pidele que envie el documento de nuevo, mas claro o mejor iluminado. No marques el documento como revisado.</p>
+        </div>
+
+        <div class="card">
+            <h4>El cliente dice que su cedula no aparece en el sistema</h4>
+            <p>Posibles causas: (1) La solicitud es reciente (menos de 24-48h). (2) El cliente ingreso un numero incorrecto. (3) El cliente lleno el formulario con otro numero. Pidele que verifique y reintente. Si persiste, revisa directamente en la base de datos.</p>
+        </div>
+
+        <div class="card">
+            <h4>Le envie un template y el cliente no responde</h4>
+            <p>Los templates de WhatsApp tienen una ventana de 24 horas para que el cliente responda. Si no responde, puedes reenviar al dia siguiente (el sistema no lo excluira si no respondio). No envies multiples templates el mismo dia.</p>
+        </div>
+
+        <div class="card">
+            <h4>Quiero enviar un mensaje a un numero que no tiene conversacion</h4>
+            <p>Crea un nuevo chat con <kbd>+ Nuevo Chat</kbd>, ingresa el numero con formato 57XXXXXXXXXX. Ten en cuenta que solo puedes enviar templates a numeros sin conversacion activa (regla de WhatsApp).</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Cuantos mensajes puedo enviar en un envio masivo?</h4>
+            <p>No hay limite tecnico fijo, pero WhatsApp tiene limites de mensajeria por cuenta. Actualmente el bot envia de uno en uno con pausas para evitar bloqueos. El sistema te mostrara si alguno fallo.</p>
+        </div>
+
+        <div class="card">
+            <h4>El bot le respondio algo incorrecto a un cliente</h4>
+            <p>Toma control del chat (modo asesor), disculpate con el cliente y dale la informacion correcta. Luego reporta el error al equipo tecnico para que corrija la logica.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Puedo usar el bot fuera de horario?</h4>
+            <p>El panel de administracion esta disponible 24/7. El bot tambien funciona 24/7. Los envios masivos no tienen restriccion de horario, pero se recomienda enviarlos en horario laboral (8am-5pm) para mejor tasa de respuesta.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 15. TROUBLESHOOTING -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="troubleshooting">
+        <h2><span class="num">15</span> Resolucion de Problemas Comunes</h2>
+
+        <table>
+            <thead>
+                <tr><th>Problema</th><th>Posible Causa</th><th>Que Hacer</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>El bot no responde a un cliente</td>
+                    <td>La conversacion esta en modo "asesor" y nadie la tomo</td>
+                    <td>Ve al chat, atiende al cliente o haz clic en <kbd>Cerrar Agente</kbd> para devolver el control al bot</td>
+                </tr>
+                <tr>
+                    <td>El envio masivo no muestra clientes</td>
+                    <td>Ya se envio hoy, o no hay clientes elegibles</td>
+                    <td>Verifica la lista de excluidos para entender por que no hay elegibles</td>
+                </tr>
+                <tr>
+                    <td>El cliente no recibe el template</td>
+                    <td>Numero de telefono incorrecto o el template fallo</td>
+                    <td>Revisa el resultado del envio. Si fallo, verifica el numero en la base de datos</td>
+                </tr>
+                <tr>
+                    <td>No puedo ver las conversaciones</td>
+                    <td>Problema de conexion con Supabase</td>
+                    <td>Recarga la pagina. Si persiste, contacta al equipo tecnico</td>
+                </tr>
+                <tr>
+                    <td>Los documentos no se descargan</td>
+                    <td>Problema de permisos en el almacenamiento</td>
+                    <td>Intenta abrir el enlace directamente. Si no funciona, contacta soporte tecnico</td>
+                </tr>
+                <tr>
+                    <td>El bot responde cosas raras con la IA</td>
+                    <td>El modo LLM tiene limitaciones</td>
+                    <td>Toma control del chat, corrige con el cliente. Reporta al equipo tecnico</td>
+                </tr>
+                <tr>
+                    <td>Dos asesores quieren tomar el mismo chat</td>
+                    <td>El sistema de presencia muestra quien esta en que chat</td>
+                    <td>Coordina con tu equipo. Solo un asesor por chat.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="card danger">
+            <div class="card-title">Cuando escalar al equipo tecnico</div>
+            <ul>
+                <li>El panel no carga o muestra errores persistentes</li>
+                <li>Los envios masivos fallan sistematicamente (no uno, sino todos)</li>
+                <li>La base de datos muestra informacion inconsistente</li>
+                <li>El bot entra en un loop o responde de forma erratica</li>
+            </ul>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 16. CHECKLIST DIARIO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="checklist">
+        <h2><span class="num">16</span> Checklist Diario del Operador</h2>
+
+        <div class="card">
+            <h4>Al iniciar el dia (8:00 - 8:30 AM)</h4>
+            <ul class="checklist">
+                <li>Ingresa al panel de administracion</li>
+                <li>Revisa conversaciones pendientes en modo "asesor" (clientes esperando respuesta humana)</li>
+                <li>Atiende los chats pendientes de la noche anterior</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h4>Envios masivos (9:00 - 10:00 AM)</h4>
+            <ul class="checklist">
+                <li>Ve a la pestana Automatizacion</li>
+                <li>Ejecuta envio <span class="badge-inline badge-green">Verde</span> (aprobados) — revisa lista y envia</li>
+                <li>Ejecuta envio <span class="badge-inline badge-red">Rojo</span> (faltan docs) — revisa lista y envia</li>
+                <li>Ejecuta envio <span class="badge-inline badge-yellow">Amarillo</span> (DocuSign) — revisa lista y envia</li>
+                <li>Si hay campana de leads, ejecuta envio de Leads</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h4>Durante el dia (monitoreo continuo)</h4>
+            <ul class="checklist">
+                <li>Atiende chats escalados a asesor humano</li>
+                <li>Revisa solicitudes LLM pendientes (urgentes y reclamos primero)</li>
+                <li>Revisa documentos recibidos y marcalos como revisados</li>
+                <li>Verifica correos y cuentas capturadas si hay desembolsos pendientes</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h4>Al cerrar el dia (4:30 - 5:00 PM)</h4>
+            <ul class="checklist">
+                <li>Revisa que no haya chats en modo "asesor" sin atender</li>
+                <li>Si hay chats pendientes que no puedes resolver, dejalos en modo asesor para el dia siguiente</li>
+                <li>Devuelve al modo bot los chats que ya no necesiten atencion humana (clic en "Cerrar Agente")</li>
+            </ul>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 17. GLOSARIO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="glosario">
+        <h2><span class="num">17</span> Glosario</h2>
+
+        <table>
+            <thead>
+                <tr><th>Termino</th><th>Significado</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Bot</strong></td><td>El asistente virtual automatico de WhatsApp de ProAlto</td></tr>
+                <tr><td><strong>Dashboard / Panel</strong></td><td>La pagina web donde gestionas el bot y las conversaciones</td></tr>
+                <tr><td><strong>Template</strong></td><td>Mensaje pre-aprobado por WhatsApp que se puede enviar masivamente</td></tr>
+                <tr><td><strong>Envio masivo / Bulk send</strong></td><td>Enviar un template a multiples clientes a la vez</td></tr>
+                <tr><td><strong>Estado verde</strong></td><td>Solicitud aprobada — se necesita correo para DocuSign</td></tr>
+                <tr><td><strong>Estado rojo</strong></td><td>Faltan documentos — se necesita que el cliente los envie</td></tr>
+                <tr><td><strong>Estado amarillo</strong></td><td>Contrato listo en DocuSign — se necesita cuenta bancaria</td></tr>
+                <tr><td><strong>Habeas Data</strong></td><td>Autorizacion legal para tratamiento de datos personales (Ley 1581 de 2012)</td></tr>
+                <tr><td><strong>DocuSign</strong></td><td>Plataforma de firma electronica de contratos</td></tr>
+                <tr><td><strong>LLM / Agente IA</strong></td><td>Inteligencia artificial (Claude) que responde preguntas en lenguaje natural</td></tr>
+                <tr><td><strong>Modo asesor / agent</strong></td><td>El bot se silencia y un humano toma el control del chat</td></tr>
+                <tr><td><strong>Escalamiento</strong></td><td>Cuando el bot transfiere la conversacion a un asesor humano</td></tr>
+                <tr><td><strong>Supabase</strong></td><td>Base de datos en la nube donde se almacenan las conversaciones y documentos</td></tr>
+                <tr><td><strong>Libranza</strong></td><td>Credito con descuento automatico de nomina</td></tr>
+                <tr><td><strong>Cedula / NIT</strong></td><td>Numero de documento de identidad del cliente</td></tr>
+                <tr><td><strong>Compra de cartera</strong></td><td>Cuando ProAlto paga la deuda del cliente con otra financiera y le desembolsa la diferencia</td></tr>
+                <tr><td><strong>Paz y salvo</strong></td><td>Certificado de que el cliente ya no tiene deudas con ProAlto</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Footer -->
+    <div style="text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 13px;">
+        <p>ProAlto Bot — Playbook Operativo v1.0 — Marzo 2026</p>
+        <p>Documento confidencial de uso interno</p>
+    </div>
+
+</div>
+
+<!-- PDF Export Button -->
+<button id="pdf-btn" onclick="exportPDF()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+        <polyline points="14,2 14,8 20,8"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
+        <polyline points="9,15 12,18 15,15"></polyline>
+    </svg>
+    Exportar a PDF
+</button>
+
+<script>
+    // TOC toggle
+    function toggleToc() {
+        const toc = document.getElementById('toc');
+        const main = document.getElementById('main');
+        const btn = document.getElementById('toc-toggle');
+        toc.classList.toggle('collapsed');
+        main.classList.toggle('expanded');
+        btn.classList.toggle('shifted');
+    }
+
+    // Active TOC link on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const tocLinks = document.querySelectorAll('nav.toc-sidebar a');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(s => {
+            if (window.scrollY >= s.offsetTop - 100) current = s.id;
+        });
+        tocLinks.forEach(a => {
+            a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+        });
+    }, { passive: true });
+
+    // PDF export
+    function exportPDF() {
+        window.print();
+    }
+</script>
+
+</body>
+</html>

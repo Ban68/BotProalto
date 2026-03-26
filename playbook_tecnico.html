@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProAlto Bot — Playbook Tecnico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #fec05c;
+            --primary-dark: #283e52;
+            --primary-darker: #1e3044;
+            --primary-light: #fffbeb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --success-bg: #f0fdf4;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --info: #3b82f6;
+            --info-bg: #eff6ff;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text);
+            line-height: 1.7; font-size: 15px;
+        }
+
+        @media print {
+            body { background: white; font-size: 11px; line-height: 1.4; }
+            .no-print, #pdf-btn, #toc-toggle { display: none !important; }
+            .page-break { page-break-before: always; }
+            .card, pre { box-shadow: none !important; border: 1px solid #ddd; }
+            nav.toc-sidebar { display: none !important; }
+            .main-content { margin-left: 0 !important; }
+            pre { font-size: 10px; white-space: pre-wrap; word-break: break-all; }
+        }
+
+        #pdf-btn {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+            background: var(--primary-dark); color: white;
+            border: none; padding: 14px 28px; border-radius: 50px;
+            font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+            cursor: pointer; box-shadow: 0 8px 30px rgba(40,62,82,0.35);
+            display: flex; align-items: center; gap: 10px; transition: all 0.2s;
+        }
+        #pdf-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(40,62,82,0.45); }
+        #pdf-btn svg { width: 20px; height: 20px; }
+
+        nav.toc-sidebar {
+            position: fixed; left: 0; top: 0; bottom: 0; width: 300px;
+            background: var(--primary-dark); color: white; overflow-y: auto;
+            padding: 24px 16px; z-index: 100; transition: transform 0.3s;
+        }
+        nav.toc-sidebar.collapsed { transform: translateX(-300px); }
+        nav.toc-sidebar h3 {
+            color: var(--primary); font-size: 12px; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 14px; padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        nav.toc-sidebar a {
+            display: block; color: rgba(255,255,255,0.7); text-decoration: none;
+            padding: 6px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 500;
+            transition: all 0.15s; margin-bottom: 1px;
+        }
+        nav.toc-sidebar a:hover { background: rgba(255,255,255,0.1); color: white; }
+        nav.toc-sidebar a.active { background: rgba(254,192,92,0.15); color: var(--primary); }
+        nav.toc-sidebar .sep { border-top: 1px solid rgba(255,255,255,0.08); margin: 8px 0; }
+
+        #toc-toggle {
+            position: fixed; left: 16px; top: 16px; z-index: 200;
+            background: var(--primary-dark); color: white; border: none;
+            width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: left 0.3s; font-size: 18px;
+        }
+        #toc-toggle.shifted { left: 316px; }
+
+        .main-content {
+            margin-left: 300px; padding: 40px 56px 120px;
+            max-width: 1100px; transition: margin-left 0.3s;
+        }
+        .main-content.expanded { margin-left: 0; }
+
+        .hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #0f1f2e 100%);
+            color: white; padding: 50px 48px; border-radius: 20px;
+            margin-bottom: 48px; position: relative; overflow: hidden;
+        }
+        .hero::after {
+            content: ''; position: absolute; right: -80px; top: -80px;
+            width: 280px; height: 280px; background: var(--primary);
+            border-radius: 50%; opacity: 0.06;
+        }
+        .hero .badge {
+            display: inline-block; background: rgba(254,192,92,0.2);
+            color: var(--primary); padding: 6px 16px; border-radius: 50px;
+            font-size: 12px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 16px;
+        }
+        .hero h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 12px; }
+        .hero p { font-size: 1.05rem; opacity: 0.85; max-width: 650px; }
+        .hero .meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; opacity: 0.65; }
+
+        section { margin-bottom: 48px; }
+        section > h2 {
+            font-size: 1.45rem; font-weight: 700; color: var(--primary-dark);
+            padding-bottom: 12px; border-bottom: 3px solid var(--primary);
+            margin-bottom: 24px; display: flex; align-items: center; gap: 12px;
+        }
+        section > h2 .num {
+            background: var(--primary-dark); color: white; width: 34px; height: 34px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 15px; font-weight: 700; flex-shrink: 0;
+        }
+        h3 { font-size: 1.1rem; font-weight: 600; margin: 24px 0 12px; color: var(--primary-dark); }
+        h4 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; color: var(--text); }
+
+        .card {
+            background: white; border-radius: var(--radius); padding: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .card.success { border-left: 4px solid var(--success); background: var(--success-bg); }
+        .card.danger { border-left: 4px solid var(--danger); background: var(--danger-bg); }
+        .card.warning { border-left: 4px solid var(--warning); background: var(--warning-bg); }
+        .card.info { border-left: 4px solid var(--info); background: var(--info-bg); }
+        .card-title { font-weight: 700; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        thead { background: var(--primary-dark); color: white; }
+        th { padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12.5px; letter-spacing: 0.5px; }
+        td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+        tbody tr:hover { background: var(--primary-light); }
+        tbody tr:last-child td { border-bottom: none; }
+
+        ul, ol { padding-left: 24px; margin: 8px 0; }
+        li { margin-bottom: 4px; }
+
+        pre {
+            background: var(--code-bg); color: var(--code-text);
+            padding: 20px 24px; border-radius: var(--radius); overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;
+            margin: 12px 0;
+        }
+        code {
+            font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #be185d;
+        }
+        pre code { background: none; padding: 0; color: inherit; }
+
+        .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .cols { grid-template-columns: 1fr; } }
+
+        .callout {
+            background: var(--primary-light); border: 1px solid rgba(254,192,92,0.3);
+            border-radius: var(--radius); padding: 18px 22px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+        .callout .icon { font-size: 22px; flex-shrink: 0; }
+
+        hr { border: none; border-top: 2px solid var(--border); margin: 40px 0; }
+
+        kbd {
+            background: var(--primary-light); border: 1px solid var(--border);
+            padding: 2px 8px; border-radius: 6px; font-size: 12.5px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 500;
+        }
+
+        .badge-inline {
+            display: inline-block; padding: 2px 8px; border-radius: 50px;
+            font-size: 11.5px; font-weight: 600;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+
+        .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin: 16px 0; justify-content: center; }
+        .flow-step {
+            background: white; border: 2px solid var(--primary); border-radius: 10px;
+            padding: 10px 16px; font-size: 12.5px; font-weight: 600; text-align: center; min-width: 100px;
+        }
+        .flow-step.highlight { background: var(--primary); color: var(--primary-dark); }
+        .flow-arrow { font-size: 18px; color: var(--primary-dark); margin: 0 3px; font-weight: 700; }
+
+        .file-tree { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; padding: 16px 20px; background: #f8fafc; border-radius: var(--radius); border: 1px solid var(--border); }
+        .file-tree .dir { color: var(--info); font-weight: 600; }
+        .file-tree .file { color: var(--text); }
+        .file-tree .comment { color: var(--text-muted); font-style: italic; }
+    </style>
+</head>
+<body>
+
+<nav class="toc-sidebar" id="toc">
+    <h3>Playbook Tecnico</h3>
+    <a href="#arquitectura">Arquitectura General</a>
+    <a href="#estructura">Estructura de Archivos</a>
+    <a href="#env">Variables de Entorno</a>
+    <a href="#app">app.py &mdash; Entry Point</a>
+    <a href="#config">config.py &mdash; Configuracion</a>
+    <a href="#webhook">webhook.py &mdash; Webhook Handler</a>
+    <a href="#flows">flows.py &mdash; Maquina de Estados</a>
+    <a href="#services">services.py &mdash; WhatsApp API</a>
+    <a href="#conversation-log">conversation_log.py &mdash; Supabase</a>
+    <a href="#database">database.py &mdash; Cloud Run Bridge</a>
+    <a href="#automation">automation.py &mdash; Envios Masivos</a>
+    <a href="#llm">llm.py &mdash; Agente IA</a>
+    <a href="#notifications">notifications.py &mdash; Alertas</a>
+    <a href="#google-sheets">google_sheets.py &mdash; Fallback</a>
+    <div class="sep"></div>
+    <a href="#admin">admin.py &mdash; Panel Admin</a>
+    <a href="#admin-html">admin.html &mdash; Frontend</a>
+    <a href="#cloud-run">Cloud Run &mdash; Microservicio DB</a>
+    <div class="sep"></div>
+    <a href="#state-machine">Maquina de Estados Completa</a>
+    <a href="#supabase-schema">Schema Supabase</a>
+    <a href="#templates-wa">Templates WhatsApp</a>
+    <a href="#context-files">Archivos de Contexto LLM</a>
+    <a href="#threading">Threading y Async</a>
+    <a href="#security">Seguridad</a>
+    <a href="#deploy">Despliegue</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#scripts">Scripts de Utilidad</a>
+    <a href="#extend">Como Extender el Bot</a>
+</nav>
+
+<button id="toc-toggle" class="shifted" onclick="toggleToc()">☰</button>
+
+<div class="main-content" id="main">
+
+    <div class="hero">
+        <div class="badge">Playbook Tecnico</div>
+        <h1>Bot WhatsApp ProAlto</h1>
+        <p>Documentacion tecnica completa. Arquitectura, codigo fuente, APIs, base de datos, despliegue y guias de extension. Suficiente para que cualquier desarrollador gestione el bot desde cero.</p>
+        <div class="meta">
+            <span>Version 1.0</span>
+            <span>Marzo 2026</span>
+            <span>Stack: Python / Flask / Supabase / Meta Cloud API / Claude</span>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 1. ARQUITECTURA -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="arquitectura">
+        <h2><span class="num">1</span> Arquitectura General</h2>
+
+        <div class="card">
+            <div class="flow">
+                <div class="flow-step">WhatsApp Cliente</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Meta Cloud API (v21.0)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step highlight">Bot Flask (Render)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Supabase (PostgreSQL + Storage)</div>
+            </div>
+            <div class="flow" style="margin-top:8px">
+                <div class="flow-step highlight">Bot Flask (Render)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Cloud Run (Bridge a PostgreSQL operativo)</div>
+            </div>
+            <div class="flow" style="margin-top:8px">
+                <div class="flow-step highlight">Bot Flask (Render)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Anthropic Claude API (LLM)</div>
+            </div>
+        </div>
+
+        <h3>Componentes</h3>
+        <table>
+            <thead>
+                <tr><th>Componente</th><th>Tecnologia</th><th>Hosting</th><th>Proposito</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Bot principal</strong></td><td>Python 3 / Flask / Gunicorn</td><td>Render</td><td>Logica del bot, webhooks, admin panel</td></tr>
+                <tr><td><strong>Base de datos conversaciones</strong></td><td>Supabase (PostgreSQL)</td><td>Supabase Cloud</td><td>Mensajes, estados, emails, cuentas, docs</td></tr>
+                <tr><td><strong>Almacenamiento archivos</strong></td><td>Supabase Storage</td><td>Supabase Cloud</td><td>Documentos e imagenes de clientes</td></tr>
+                <tr><td><strong>Base de datos operativa</strong></td><td>PostgreSQL (vista: <code>v_solicitudes_whatsapp</code>)</td><td>Servidor externo</td><td>Solicitudes, saldos, estados de credito</td></tr>
+                <tr><td><strong>Bridge DB</strong></td><td>Python / functions-framework</td><td>Google Cloud Run</td><td>API puente HTTP→PostgreSQL (firewall)</td></tr>
+                <tr><td><strong>WhatsApp API</strong></td><td>Meta Cloud API v21.0</td><td>Meta</td><td>Envio/recepcion de mensajes</td></tr>
+                <tr><td><strong>LLM</strong></td><td>Claude Haiku (claude-haiku-4-5-20251001)</td><td>Anthropic</td><td>Respuestas en lenguaje natural</td></tr>
+                <tr><td><strong>Google Sheets (fallback)</strong></td><td>Apps Script</td><td>Google</td><td>Verificacion de solicitudes recientes del formulario</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 2. ESTRUCTURA DE ARCHIVOS -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="estructura">
+        <h2><span class="num">2</span> Estructura de Archivos</h2>
+
+        <div class="file-tree">
+<span class="dir">Bot/</span>
+├── <span class="file">app.py</span>                    <span class="comment"># Flask app factory, entry point, rutas raiz</span>
+├── <span class="file">config.py</span>                 <span class="comment"># Clase Config — carga variables de entorno</span>
+├── <span class="file">Procfile</span>                  <span class="comment"># web: gunicorn app:app --bind 0.0.0.0:$PORT</span>
+├── <span class="file">requirements.txt</span>          <span class="comment"># Dependencias Python</span>
+├── <span class="file">.env</span>                      <span class="comment"># Variables de entorno (NO en git)</span>
+│
+├── <span class="dir">src/</span>
+│   ├── <span class="file">__init__.py</span>           <span class="comment"># Vacio</span>
+│   ├── <span class="file">webhook.py</span>            <span class="comment"># Blueprint: GET/POST /webhook</span>
+│   ├── <span class="file">flows.py</span>              <span class="comment"># FlowHandler: maquina de estados principal</span>
+│   ├── <span class="file">services.py</span>           <span class="comment"># WhatsAppService: envio mensajes, media, templates</span>
+│   ├── <span class="file">conversation_log.py</span>   <span class="comment"># Supabase CRUD: mensajes, estados, capturas</span>
+│   ├── <span class="file">database.py</span>           <span class="comment"># Cloud Run bridge: solicitudes, saldos</span>
+│   ├── <span class="file">automation.py</span>         <span class="comment"># Envios masivos, debounce docs, status mapping</span>
+│   ├── <span class="file">admin.py</span>              <span class="comment"># Blueprint: /admin/* — panel y APIs</span>
+│   ├── <span class="file">llm.py</span>                <span class="comment"># Claude LLM: system prompt, ask_llm()</span>
+│   ├── <span class="file">notifications.py</span>      <span class="comment"># Alertas a admin, horario laboral</span>
+│   ├── <span class="file">google_sheets.py</span>      <span class="comment"># Fallback Google Sheets</span>
+│   └── <span class="file">status_mapping.json</span>   <span class="comment"># Mapa estado_interno → mensaje al cliente</span>
+│
+├── <span class="dir">context/</span>                   <span class="comment"># Archivos de contexto para el LLM</span>
+│   ├── <span class="file">empresa.md</span>            <span class="comment"># Informacion general de ProAlto</span>
+│   ├── <span class="file">productos.md</span>          <span class="comment"># Credito de libranza, requisitos</span>
+│   ├── <span class="file">estados_solicitud.md</span>  <span class="comment"># Explicacion de cada estado</span>
+│   ├── <span class="file">faq.md</span>                <span class="comment"># Preguntas frecuentes</span>
+│   ├── <span class="file">capacidades_bot.md</span>    <span class="comment"># Que puede y no puede hacer el bot</span>
+│   ├── <span class="file">compliance.md</span>         <span class="comment"># Legal, Habeas Data</span>
+│   ├── <span class="file">ejemplos_conversacion.md</span> <span class="comment"># Ejemplos de respuesta</span>
+│   └── <span class="file">flujos.md, conversaciones_bot.md, README.md</span>
+│
+├── <span class="dir">cloud_run/</span>
+│   └── <span class="file">main.py</span>              <span class="comment"># Google Cloud Function: bridge HTTP→PostgreSQL</span>
+│
+├── <span class="dir">templates/</span>
+│   └── <span class="file">admin.html</span>            <span class="comment"># Dashboard SPA completo</span>
+│
+├── <span class="dir">static/uploads/</span>           <span class="comment"># Media temporal (efimera en Render)</span>
+├── <span class="dir">scripts/</span>                   <span class="comment"># Scripts de debugging y utilidad</span>
+└── <span class="dir">data/</span>
+    └── <span class="file">conversations.json</span>    <span class="comment"># Datos estaticos (legacy)</span>
+        </div>
+
+        <h3>Dependencias (requirements.txt)</h3>
+        <pre><code>Flask==3.0.0
+python-dotenv==1.0.0
+requests==2.31.0
+gunicorn==21.2.0
+supabase==2.3.4
+gotrue&lt;2.9.0
+apscheduler==3.10.4
+tzdata
+anthropic>=0.40.0</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 3. VARIABLES DE ENTORNO -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="env">
+        <h2><span class="num">3</span> Variables de Entorno (.env)</h2>
+
+        <table>
+            <thead>
+                <tr><th>Variable</th><th>Ejemplo / Default</th><th>Requerida</th><th>Proposito</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>API_TOKEN</code></td><td>EAABx...</td><td>Si</td><td>Bearer token WhatsApp Cloud API</td></tr>
+                <tr><td><code>BUSINESS_PHONE</code></td><td>123456789012</td><td>Si</td><td>WhatsApp Business Phone Number ID</td></tr>
+                <tr><td><code>WEBHOOK_VERIFY_TOKEN</code></td><td>mi_token_secreto</td><td>Si</td><td>Token de verificacion del webhook Meta</td></tr>
+                <tr><td><code>APP_SECRET</code></td><td>abc123...</td><td>Recomendado</td><td>Secret para HMAC-SHA256 de webhooks. Si no se define, se acepta todo</td></tr>
+                <tr><td><code>PORT</code></td><td>5000</td><td>No</td><td>Puerto del servidor Flask</td></tr>
+                <tr><td><code>DEBUG</code></td><td>True</td><td>No</td><td>Modo debug de Flask (False en produccion)</td></tr>
+                <tr><td><code>SUPABASE_URL</code></td><td>https://xxx.supabase.co</td><td>Si</td><td>URL del proyecto Supabase</td></tr>
+                <tr><td><code>SUPABASE_KEY</code></td><td>eyJhb...</td><td>Si</td><td>Anon key de Supabase</td></tr>
+                <tr><td><code>CLOUD_RUN_URL</code></td><td>https://bot-proalto-db-api-xxx.run.app</td><td>Si</td><td>Endpoint del microservicio Cloud Run</td></tr>
+                <tr><td><code>API_TOKEN_SECRET</code></td><td>mi_api_token</td><td>Si</td><td>Bearer token para autenticacion con Cloud Run</td></tr>
+                <tr><td><code>ADMIN_USER</code></td><td>admin</td><td>Si</td><td>Usuario HTTP Basic Auth del panel</td></tr>
+                <tr><td><code>ADMIN_PASS</code></td><td>password123</td><td>Si</td><td>Contrasena del panel admin</td></tr>
+                <tr><td><code>ADMIN_NOTIFY_NUMBERS</code></td><td>573101234567,573109876543</td><td>Recomendado</td><td>Telefonos para notificaciones de admin (CSV)</td></tr>
+                <tr><td><code>ADMIN_TIMEZONE</code></td><td>America/Bogota</td><td>No</td><td>Zona horaria para horario laboral</td></tr>
+                <tr><td><code>ANTHROPIC_API_KEY</code></td><td>sk-ant-...</td><td>Si (para LLM)</td><td>API key de Anthropic para Claude</td></tr>
+                <tr><td><code>GOOGLE_APPS_SCRIPT_URL</code></td><td>https://script.google.com/macros/s/...</td><td>No</td><td>URL del Apps Script fallback</td></tr>
+                <tr><td><code>MAINTENANCE_MODE</code></td><td>False</td><td>No</td><td>Si True, deshabilita llamadas a DB</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">🔐</span>
+            <div><strong>En Render:</strong> Todas estas variables se configuran en el dashboard de Render → Environment. El archivo <code>.env</code> solo se usa para desarrollo local.</div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 4. APP.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="app">
+        <h2><span class="num">4</span> app.py — Entry Point</h2>
+
+        <div class="card">
+            <p>Archivo principal. Crea la app Flask, registra blueprints y define rutas raiz.</p>
+        </div>
+
+        <pre><code># Blueprints registrados:
+webhook_bp  →  /webhook (GET y POST)
+admin_bp    →  /admin/*
+
+# Rutas directas:
+GET /          →  "ProAlto Bot is running 🚀"
+GET /privacy   →  Pagina HTML de politica de privacidad
+GET /health    →  "OK" (healthcheck para Render)
+GET /whoami    →  IP publica del servidor (debug)
+
+# Deployment:
+# Procfile: web: gunicorn app:app --bind 0.0.0.0:$PORT</code></pre>
+
+        <div class="card info">
+            <div class="card-title">Scheduler (comentado)</div>
+            <p>En <code>app.py</code> hay un import condicional de <code>start_scheduler</code> desde <code>src.automation</code>. Actualmente esta comentado. Si se activa, usa APScheduler para tareas periodicas en background.</p>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 5. CONFIG.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="config">
+        <h2><span class="num">5</span> config.py — Configuracion</h2>
+
+        <pre><code>class Config:
+    WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "")
+    APP_SECRET           = os.getenv("APP_SECRET", "")
+    API_TOKEN            = os.getenv("API_TOKEN")
+    BUSINESS_PHONE       = os.getenv("BUSINESS_PHONE")
+    API_VERSION          = os.getenv("API_VERSION", "v21.0")
+    PORT                 = int(os.getenv("PORT", 5000))
+    DEBUG                = os.getenv("DEBUG", "True").lower() == "true"
+    ADMIN_NOTIFY_NUMBERS = os.getenv("ADMIN_NOTIFY_NUMBERS", "")
+    ADMIN_TIMEZONE       = os.getenv("ADMIN_TIMEZONE", "America/Bogota")
+    ADMIN_USER           = os.getenv("ADMIN_USER", "")
+    ADMIN_PASS           = os.getenv("ADMIN_PASS", "")
+    SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY         = os.getenv("SUPABASE_KEY", "")
+    MAINTENANCE_MODE     = os.getenv("MAINTENANCE_MODE", "False").lower() == "true"
+    GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_APPS_SCRIPT_URL", "...")</code></pre>
+
+        <p>Cargado globalmente via <code>from config import Config</code> en todos los modulos.</p>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 6. WEBHOOK.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="webhook">
+        <h2><span class="num">6</span> webhook.py — Webhook Handler</h2>
+
+        <h3>Flujo del webhook</h3>
+        <div class="flow">
+            <div class="flow-step">Meta envia POST /webhook</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Verificar firma HMAC</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Deduplicar por message_id</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">FlowHandler.handle_incoming_message()</div>
+        </div>
+
+        <h3>Verificacion de firma</h3>
+        <pre><code># _verify_signature(request) -> bool
+# Header: X-Hub-Signature-256: sha256=&lt;hex_digest&gt;
+# Compara HMAC-SHA256 del body con APP_SECRET
+# Si APP_SECRET no esta configurado: PERMITE TODO (modo permisivo)</code></pre>
+
+        <h3>Deduplicacion</h3>
+        <pre><code># Cache en memoria: _processed_messages = {message_id: timestamp}
+# TTL: 300 segundos (5 min)
+# _is_duplicate(message_id) -> bool
+# Limpia entradas expiradas en cada llamada</code></pre>
+
+        <h3>Verificacion del webhook (GET)</h3>
+        <pre><code># GET /webhook?hub.mode=subscribe&amp;hub.verify_token=XXX&amp;hub.challenge=YYY
+# Si hub.verify_token == Config.WEBHOOK_VERIFY_TOKEN: devuelve challenge
+# Si no: 403</code></pre>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 7. FLOWS.PY — MAQUINA DE ESTADOS -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="flows">
+        <h2><span class="num">7</span> flows.py — Maquina de Estados (FlowHandler)</h2>
+
+        <p>Este es el archivo mas critico del bot. Contiene toda la logica de procesamiento de mensajes.</p>
+
+        <h3>Clase: FlowHandler (todos metodos @staticmethod)</h3>
+
+        <h4>handle_incoming_message(payload)</h4>
+        <div class="card">
+            <p>Entry point. Extrae datos del payload de Meta, identifica tipo de mensaje, descarga media si aplica, y rutea a <code>process_text_input()</code> o <code>process_button_click()</code>.</p>
+            <p><strong>Procesamiento de media (imagen/documento):</strong></p>
+            <ol>
+                <li>Extrae <code>media_id</code> del payload</li>
+                <li>Llama <code>WhatsAppService.get_media_url(media_id)</code> para obtener URL temporal de Meta</li>
+                <li>Descarga a <code>static/uploads/{phone}/{filename}</code></li>
+                <li>Sube a Supabase Storage bucket <code>"media"</code> en path <code>{phone}/{filename}</code></li>
+                <li>Registra en <code>bot_messages</code> con la URL publica de Supabase</li>
+                <li>Si estado es <code>waiting_for_docs_rojo</code> o <code>waiting_for_cuenta_amarillo</code>: registra en <code>received_documents</code> y programa confirmacion con debounce de 60s</li>
+            </ol>
+        </div>
+
+        <h4>process_text_input(user_phone, text, state)</h4>
+        <div class="card">
+            <p>Router principal por estado. Flujo de decision:</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Estado</th><th>Logica</th><th>Transicion</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>agent</code> / <code>agent_silent</code></td>
+                    <td>Bot silenciado. Si texto es "salir"/"cancelar"/"volver" → vuelve a active</td>
+                    <td>→ <code>active</code></td>
+                </tr>
+                <tr>
+                    <td><code>agent_llm</code></td>
+                    <td>Ruteado a <code>ask_llm()</code>. Si texto es cedula (6-12 digitos), pasa como contexto. Detecta tags: <code>[HABLAR_ASESOR]</code>, <code>[MOSTRAR_MENU]</code>, <code>[REGISTRAR_SOLICITUD:tipo]</code></td>
+                    <td>Segun tag</td>
+                </tr>
+                <tr>
+                    <td><code>pending_consent</code></td>
+                    <td>Envia prompt de Habeas Data con botones Acepto/No Acepto</td>
+                    <td>Espera boton</td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_cedula</code></td>
+                    <td>Valida solo digitos. Llama <code>get_solicitud_status(cedula)</code>. Construye respuesta segun <code>estado_interno</code> via <code>status_mapping.json</code>. Si APROBADO → pide email. Si FALTA DOC → muestra lista.</td>
+                    <td>→ <code>waiting_for_email</code> / <code>waiting_for_docs_rojo</code> / <code>active</code></td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_email</code></td>
+                    <td>Regex: <code>[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}</code>. Guarda via <code>save_captured_email()</code></td>
+                    <td>→ <code>active</code></td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_docs_rojo</code></td>
+                    <td>Si menciona "asesor"/"ayuda" → escala. Sino → muestra menu interactivo con 3 opciones</td>
+                    <td>→ <code>agent</code> / permanece</td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_numero_cuenta</code> / <code>waiting_for_cuenta_amarillo</code></td>
+                    <td>Extrae digitos, valida min 5. Guarda via <code>save_captured_cuenta()</code></td>
+                    <td>→ <code>waiting_for_banco</code></td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_banco</code></td>
+                    <td>Valida largo >= 2. Guarda via <code>update_captured_cuenta_banco()</code></td>
+                    <td>→ <code>active</code></td>
+                </tr>
+                <tr>
+                    <td><code>waiting_for_cedula_saldo</code></td>
+                    <td>Llama <code>get_saldo(cedula)</code>. Formatea tabla: saldo, cuotas restantes, ultimo pago</td>
+                    <td>→ <code>active</code></td>
+                </tr>
+                <tr>
+                    <td><code>active</code> / otro</td>
+                    <td>Detecta saludos (hola, menu, buenas, etc.). Si saludo → menu principal. Si no → "No entendi"</td>
+                    <td>→ <code>active</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>process_button_click(user_phone, btn_id, state)</h4>
+        <table>
+            <thead>
+                <tr><th>Button ID</th><th>Accion</th><th>Transicion</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>accept_terms</code></td><td>Bienvenida + menu principal</td><td>→ <code>active</code></td></tr>
+                <tr><td><code>decline_terms</code></td><td>Respeta decision</td><td>→ <code>pending_consent</code></td></tr>
+                <tr><td><code>menu_cliente</code></td><td>Muestra submenu cliente</td><td>permanece</td></tr>
+                <tr><td><code>menu_solicitud</code></td><td>Pide cedula</td><td>→ <code>waiting_for_cedula</code></td></tr>
+                <tr><td><code>menu_credito</code></td><td>Envia link Google Forms</td><td>→ <code>active</code></td></tr>
+                <tr><td><code>menu_saldo</code></td><td>Pide cedula para saldo</td><td>→ <code>waiting_for_cedula_saldo</code></td></tr>
+                <tr><td><code>enviar_numero_cuenta</code></td><td>Pide numero de cuenta</td><td>→ <code>waiting_for_numero_cuenta</code></td></tr>
+                <tr><td><code>cargar_documentos</code></td><td>Instrucciones para adjuntar</td><td>permanece</td></tr>
+                <tr><td><code>ya_envie_docs</code></td><td>Confirmacion</td><td>→ <code>active</code></td></tr>
+                <tr><td><code>hablar_asesor_docs</code> / <code>menu_support</code></td><td>Escala a asesor + notifica admin</td><td>→ <code>agent</code></td></tr>
+                <tr><td><code>menu_main</code></td><td>Menu principal</td><td>→ <code>active</code></td></tr>
+            </tbody>
+        </table>
+
+        <h4>Metodos auxiliares</h4>
+        <pre><code>send_habeas_data_prompt(phone)  # Botones: Acepto / No Acepto
+send_main_menu(phone)           # Botones: Soy Cliente / Estado Solicitud / Solicitar Credito
+send_client_menu(phone)         # Botones: Consultar Saldo / Hablar con Asesor / Volver</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 8. SERVICES.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="services">
+        <h2><span class="num">8</span> services.py — WhatsAppService</h2>
+
+        <p>Todas las interacciones con la Meta Cloud API. Clase con metodos <code>@staticmethod</code>.</p>
+
+        <h3>Endpoint base</h3>
+        <pre><code>BASE_URL = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+HEADERS  = {"Authorization": f"Bearer {Config.API_TOKEN}", "Content-Type": "application/json"}</code></pre>
+
+        <h3>Metodos</h3>
+        <table>
+            <thead>
+                <tr><th>Metodo</th><th>Payload type</th><th>Parametros</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>send_message(to, body)</code></td>
+                    <td>"text"</td>
+                    <td><code>text: {body: str}</code></td>
+                </tr>
+                <tr>
+                    <td><code>send_image(to, url, caption)</code></td>
+                    <td>"image"</td>
+                    <td><code>image: {link: url, caption}</code></td>
+                </tr>
+                <tr>
+                    <td><code>send_document(to, url, filename, caption)</code></td>
+                    <td>"document"</td>
+                    <td><code>document: {link: url, filename, caption}</code></td>
+                </tr>
+                <tr>
+                    <td><code>send_interactive_button(to, body, buttons)</code></td>
+                    <td>"interactive" → "button"</td>
+                    <td><code>buttons: [{id, title}]</code> (max 3)</td>
+                </tr>
+                <tr>
+                    <td><code>send_interactive_list(to, body, btn_text, sections)</code></td>
+                    <td>"interactive" → "list"</td>
+                    <td><code>sections: [{title, rows: [{id, title}]}]</code></td>
+                </tr>
+                <tr>
+                    <td><code>send_template(to, name, lang, components)</code></td>
+                    <td>"template"</td>
+                    <td><code>components: [{type, parameters: [{type, text}]}]</code></td>
+                </tr>
+                <tr>
+                    <td><code>get_media_url(media_id)</code></td>
+                    <td>GET</td>
+                    <td>Retorna URL temporal del archivo en Meta</td>
+                </tr>
+                <tr>
+                    <td><code>download_media_file(url, path)</code></td>
+                    <td>GET (binary)</td>
+                    <td>Descarga archivo a disco local</td>
+                </tr>
+                <tr>
+                    <td><code>upload_to_supabase_storage(local, remote, content_type)</code></td>
+                    <td>Supabase SDK</td>
+                    <td>Sube a bucket "media", retorna URL publica</td>
+                </tr>
+                <tr>
+                    <td><code>revoke_message(message_id)</code></td>
+                    <td>PUT</td>
+                    <td><code>status: "deleted"</code> — borra mensaje en WhatsApp</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">📌</span>
+            <div>Todos los mensajes enviados se registran con <code>log_message()</code> incluyendo el <code>wamid</code> (WhatsApp message ID) extraido de la respuesta de Meta.</div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 9. CONVERSATION_LOG.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="conversation-log">
+        <h2><span class="num">9</span> conversation_log.py — Capa Supabase</h2>
+
+        <p>Todas las operaciones CRUD contra Supabase. El cliente se inicializa al importar el modulo.</p>
+
+        <h3>Funciones de estado</h3>
+        <pre><code>get_user_state(phone) -> str           # Default: "pending_consent"
+set_user_state(phone, state)            # Upsert en bot_conversations
+set_client_name(phone, name)            # Upsert client_name
+get_client_name(phone) -> str           # Default: "Cliente"
+set_agent_mode(phone, status="agent")   # Wrapper de set_user_state</code></pre>
+
+        <h3>Logging de mensajes</h3>
+        <pre><code>log_message(phone, direction, text, msg_type="text", wamid=None)
+  # Ejecuta en background thread (daemon) via _supabase_log_task()
+  # Si conversacion archivada + inbound → la reactiva a "active"
+  # Inserta en bot_messages: phone, direction, text, msg_type, created_at, wamid</code></pre>
+
+        <h3>Consultas de conversaciones</h3>
+        <pre><code>get_conversations() -> list         # 50 mas recientes, con last_message y count
+get_conversation(phone) -> dict     # Historial completo: {status, messages: [...]}
+get_agent_conversations() -> list   # Solo status in ("agent", "agent_silent")
+delete_conversation(phone, perm)    # perm=True: DELETE, False: status="archived"
+get_archived_conversations() -> list
+restore_conversation(phone)         # status → "active"</code></pre>
+
+        <h3>Tracking de notificaciones (para filtros de envio masivo)</h3>
+        <pre><code>get_notified_phones_batch(phones) -> set          # Notificados verde HOY
+get_phones_with_email(phones) -> set               # Ya tienen email capturado
+get_notified_phones_rojo_batch(phones) -> set      # Notificados rojo HOY
+get_phones_menu_contacted_rojo_batch(phones) -> set # Consultaron estado→rojo via menu HOY
+get_template_stats_batch(phones) -> dict            # {phone: {count, last_sent}}
+get_phones_with_docs_completos(phones) -> set       # Tienen docs_completos=true
+get_phones_with_cuenta(phones) -> set               # Ya enviaron cuenta bancaria
+get_notified_phones_amarillo_batch(phones) -> set   # Notificados amarillo HOY</code></pre>
+
+        <h3>Capturas</h3>
+        <pre><code># Emails
+save_captured_email(phone, email, name)
+get_captured_emails() -> list
+update_captured_email(phone, new_email) -> bool
+get_email_for_phone(phone) -> str | None
+
+# Cuentas bancarias
+save_captured_cuenta(phone, numero_cuenta, name)
+update_captured_cuenta_banco(phone, banco)
+get_captured_cuentas() -> list
+
+# Documentos
+log_received_document(phone, client_name, filename, mime_type, storage_url)
+get_received_documents() -> list  # Enriquece con empresa via background thread
+mark_document_reviewed(doc_id)
+count_received_documents(phone) -> int
+
+# Contexto de solicitud (para estado rojo)
+set_solicitud_context(phone, empresa, docs_faltantes, tipo_empleador)
+get_solicitud_context(phone) -> dict
+mark_docs_completos(phone, value=True)
+
+# LLM
+save_llm_request(phone, client_name, tipo, detalle)
+get_llm_requests(only_pending=False) -> list
+resolve_llm_request(request_id)
+
+# Historial para LLM
+get_recent_messages_for_llm(phone, limit=6) -> list  # Formato Anthropic messages</code></pre>
+
+        <h3>Borrado de mensajes</h3>
+        <pre><code>mark_message_deleted(msg_id)  # Cambia msg_type a "deleted", text a "[Mensaje eliminado]"</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 10. DATABASE.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="database">
+        <h2><span class="num">10</span> database.py — Cloud Run Bridge</h2>
+
+        <p>Todas las consultas a la base de datos operativa (PostgreSQL con solicitudes, saldos, etc.) pasan por el microservicio en Cloud Run.</p>
+
+        <pre><code>CLOUD_RUN_URL  = os.getenv("CLOUD_RUN_URL")
+API_TOKEN_SECRET = os.getenv("API_TOKEN_SECRET")
+HEADERS = {"Authorization": f"Bearer {API_TOKEN_SECRET}", "Content-Type": "application/json"}</code></pre>
+
+        <h3>Funciones</h3>
+        <table>
+            <thead>
+                <tr><th>Funcion</th><th>Request body</th><th>Retorna</th><th>Timeout</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>get_solicitud_status(cedula)</code></td>
+                    <td><code>{"cedula": "123"}</code></td>
+                    <td>Dict con nro_solicitud, nombre, estado_interno, valor, plazo, empresa, docs_faltantes, tipo_empleador</td>
+                    <td>15s</td>
+                </tr>
+                <tr>
+                    <td><code>get_saldo(cedula)</code></td>
+                    <td><code>{"cedula": "123", "tipo": "saldo"}</code></td>
+                    <td>Lista de prestamos: id, saldo_actual, cuotas_restantes, estado, ultima_fecha_pago</td>
+                    <td>15s</td>
+                </tr>
+                <tr>
+                    <td><code>get_aprobados_por_el_cliente()</code></td>
+                    <td><code>{"tipo": "aprobados"}</code></td>
+                    <td>Lista de solicitudes aprobadas con nombre, telefono, monto, plazo, empresa</td>
+                    <td>15s</td>
+                </tr>
+                <tr>
+                    <td><code>get_falta_documento()</code></td>
+                    <td><code>{"tipo": "falta_documento"}</code></td>
+                    <td>Lista con nombre, telefono, empresa, docs_faltantes, tipo_empleador</td>
+                    <td>15s</td>
+                </tr>
+                <tr>
+                    <td><code>get_listo_en_docusign()</code></td>
+                    <td><code>{"tipo": "listo_en_docusign"}</code></td>
+                    <td>Lista con nombre, telefono, empresa</td>
+                    <td>15s</td>
+                </tr>
+                <tr>
+                    <td><code>get_name_by_phone(phone)</code></td>
+                    <td><code>{"tipo": "por_telefono", "telefono": "573..."}</code></td>
+                    <td>nombre_completo o None</td>
+                    <td>5s</td>
+                </tr>
+                <tr>
+                    <td><code>get_client_context_by_phone(phone)</code></td>
+                    <td><code>{"tipo": "por_telefono_completo", "telefono": "573..."}</code></td>
+                    <td>Dict completo de solicitud (para contexto LLM)</td>
+                    <td>5s</td>
+                </tr>
+                <tr>
+                    <td><code>test_cloud_run_connection()</code></td>
+                    <td><code>{}</code></td>
+                    <td>(bool, str) — healthcheck</td>
+                    <td>5s</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="card warning">
+            <div class="card-title">Importante: Retornos None</div>
+            <p>Todas las funciones retornan <code>None</code> en caso de error (timeout, error HTTP, JSON invalido). El llamador debe verificar <code>if result is None</code> antes de usar.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 11. AUTOMATION.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="automation">
+        <h2><span class="num">11</span> automation.py — Envios Masivos y Debounce</h2>
+
+        <h3>Debounce de confirmacion de documentos</h3>
+        <pre><code>DOC_CONFIRM_DELAY = 60  # segundos
+_doc_timers: dict[str, threading.Timer] = {}
+
+_schedule_doc_confirmation(phone)
+  # Cancela timer anterior si existe
+  # Crea nuevo Timer(60s, _send_doc_confirmation, [phone])
+
+_send_doc_confirmation(phone)
+  # Envia mensaje: "Listo, recibimos tus documentos..."
+  # Solo si estado sigue en waiting_for_docs_rojo o waiting_for_cuenta_amarillo</code></pre>
+
+        <h3>Status Mapping</h3>
+        <pre><code># Cargado de src/status_mapping.json al iniciar
+# Mapa: {"APROBADO POR EL CLIENTE": "✅ ¡SOLICITUD APROBADA!", ...}</code></pre>
+
+        <h3>Document Labels</h3>
+        <pre><code># Para tipo_empleador == "EMPRESA":
+_DOC_LABEL_MAP_EMPRESA = {
+    "DESPRENDIBLE 1": "📄 Desprendible de nomina 1",
+    "DESPRENDIBLE 2": "📄 Desprendible de nomina 2",
+    "CERTIFICADO LABORAL": "📄 Certificado laboral",
+    "CEDULA": "🪪 Foto de cedula",
+    "RECIBO PUBLICO": "🏠 Recibo de servicio publico",
+    "EXTRACTO BANCARIO": "🏦 Extracto bancario"
+}
+
+# Para tipo_empleador == "FINCA":
+_DOC_LABEL_MAP_FINCA = { ... mapeo similar para sector rural ... }</code></pre>
+
+        <h3>Flujo de envio masivo (ejemplo: Verde)</h3>
+        <pre><code>get_pending_approved_notifications():
+  1. get_aprobados_por_el_cliente()         # Cloud Run → PostgreSQL
+  2. Limpiar telefonos (strip decimals, add "57" prefix)
+  3. get_notified_phones_batch(phones)      # Ya notificados HOY
+  4. get_phones_with_email(phones)          # Ya tienen email
+  5. Filtrar: elegibles vs excluidos (con razon de exclusion)
+  6. get_template_stats_batch(phones)       # Enriquecer con count/last_sent
+  7. Return {eligible: [...], excluded: [...]}
+
+execute_bulk_approved_notifications(users):
+  1. Para cada user en lista:
+     a. Formatear monto: "5000000" → "$5.000.000"
+     b. Construir components: [{type: "body", parameters: [nombre, monto, plazo]}]
+     c. WhatsAppService.send_template(phone, "estado_verde", "es_CO", components)
+     d. set_user_state(phone, "waiting_for_email")
+     e. set_client_name(phone, nombre)
+  2. Return {total, success, fail, errors}</code></pre>
+
+        <h3>Funciones de envio masivo</h3>
+        <table>
+            <thead>
+                <tr><th>Tipo</th><th>get_pending_*()</th><th>execute_bulk_*()</th><th>Template</th><th>Estado destino</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Verde</td><td><code>get_pending_approved_notifications</code></td><td><code>execute_bulk_approved_notifications</code></td><td><code>estado_verde</code></td><td><code>waiting_for_email</code></td></tr>
+                <tr><td>Rojo</td><td><code>get_pending_falta_documento_notifications</code></td><td><code>execute_bulk_falta_documento_notifications</code></td><td><code>estado_rojo</code></td><td><code>waiting_for_docs_rojo</code></td></tr>
+                <tr><td>Amarillo</td><td><code>get_pending_listo_docusign_notifications</code></td><td><code>execute_bulk_listo_docusign_notifications</code></td><td><code>estado_amarillo</code></td><td><code>waiting_for_cuenta_amarillo</code></td></tr>
+                <tr><td>Leads</td><td>(manual list)</td><td><code>execute_bulk_leads_notifications</code></td><td><code>contacto_leads</code></td><td><code>lead_notified</code></td></tr>
+            </tbody>
+        </table>
+
+        <div class="card info">
+            <div class="card-title">TEST_MODE</div>
+            <p><code>TEST_MODE = False</code> al inicio del archivo. Si se pone <code>True</code>, usa el telefono <code>573106176713</code> en lugar de los reales. Util para probar envios sin afectar clientes.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 12. LLM.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="llm">
+        <h2><span class="num">12</span> llm.py — Agente de Inteligencia Artificial</h2>
+
+        <h3>Contexto cargado al inicio</h3>
+        <pre><code># Se cargan 7 archivos .md de context/:
+# empresa.md, productos.md, estados_solicitud.md, faq.md,
+# capacidades_bot.md, compliance.md, ejemplos_conversacion.md
+# Concatenados en _CONTEXT_DOCS (string)</code></pre>
+
+        <h3>System Prompt (resumen)</h3>
+        <div class="card">
+            <ul>
+                <li>Identidad: "Eres un asesor humano de ProAlto" (nunca revelar que es IA)</li>
+                <li>Tono: Espanol colombiano, sin emojis, sin negritas, 2-3 frases max</li>
+                <li>Tags de accion: <code>[REGISTRAR_SOLICITUD:tipo]</code>, <code>[MOSTRAR_MENU]</code>, <code>[HABLAR_ASESOR]</code></li>
+                <li>Tipos de solicitud: desembolso_pendiente, paz_salvo, compra_cartera, error_descuento, prepago, cambio_cuenta, urgente, reclamo, general</li>
+                <li><code>[HABLAR_ASESOR]</code> solo si: (1) cliente insiste tras intentar ayudar, o (2) fraude/amenaza legal activa</li>
+            </ul>
+        </div>
+
+        <h3>Funcion principal</h3>
+        <pre><code>ask_llm(user_phone, user_message, state, client_name, cedula_context=None) -> str
+  1. get_recent_messages_for_llm(phone, limit=6)  # Historial reciente
+  2. _build_client_context_note(phone)             # Datos del CRM via Cloud Run
+  3. Si cedula_context: inyecta nota [DATOS POR CÉDULA]
+  4. Llama anthropic.messages.create():
+     - model: "claude-haiku-4-5-20251001"
+     - max_tokens: 400
+     - system: _SYSTEM_PROMPT + contexto
+     - messages: historial + mensaje actual
+  5. Retorna texto de respuesta (puede incluir tags)</code></pre>
+
+        <div class="card warning">
+            <div class="card-title">Manejo de errores</div>
+            <p>Si la API de Anthropic falla (timeout, error), retorna: <em>"Dejame verificar eso y te confirmo en un momento."</em></p>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 13. NOTIFICATIONS.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="notifications">
+        <h2><span class="num">13</span> notifications.py — Alertas a Admin</h2>
+
+        <pre><code>is_business_hours() -> bool
+  # Lun-Vie 8am-5pm en Config.ADMIN_TIMEZONE
+
+notify_admins(message: str)
+  # Envia a todos los numeros en ADMIN_NOTIFY_NUMBERS (CSV)
+
+notify_admin_agent_request(user_phone)
+  # "🚨 Aviso de Soporte" — solo en horario laboral
+
+notify_admin_llm_request(user_phone, tipo)
+  # "📋 Nueva Solicitud Registrada" — con tipo y detalle
+
+notify_admin_error(user_phone, error_msg)
+  # "⚠️ Alerta de Sistema" — errores criticos</code></pre>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 14. GOOGLE_SHEETS.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="google-sheets">
+        <h2><span class="num">14</span> google_sheets.py — Fallback</h2>
+
+        <pre><code>get_solicitud_reciente_sheet(cedula) -> dict | None
+  # GET {GOOGLE_APPS_SCRIPT_URL}?cedula={cedula}
+  # Si response.found == true AND isRecent == true:
+  #   return {"en_estudio": True}
+  # Usado cuando cedula NO esta en PostgreSQL
+  # Cubre solicitudes de las ultimas 48-72h que aun no migran a la DB</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 15. ADMIN.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="admin">
+        <h2><span class="num">15</span> admin.py — Panel de Administracion (Backend)</h2>
+
+        <p>Blueprint <code>admin_bp</code> montado en <code>/admin/</code>. Todas las rutas protegidas con HTTP Basic Auth.</p>
+
+        <h3>Presencia de asesores</h3>
+        <pre><code>_active_advisors: dict = {}
+# {advisor_name: {last_seen: datetime, current_chat: phone}}
+# Cleanup: elimina asesores con last_seen > 30 segundos
+# Previene conflictos: dos asesores no pueden tomar el mismo chat</code></pre>
+
+        <h3>Rutas API completas</h3>
+        <table>
+            <thead>
+                <tr><th>Metodo</th><th>Ruta</th><th>Proposito</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>GET</td><td><code>/admin/</code></td><td>Render admin.html</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/presence</code></td><td>Heartbeat asesor + lista activos</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/conversations</code></td><td>Lista conversaciones activas</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/conversations/&lt;phone&gt;</code></td><td>Historial completo de un chat</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/send</code></td><td>Enviar mensaje (con/sin prefijo asesor)</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/delete-message</code></td><td>Revocar mensaje en WhatsApp</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/set-llm-agent/&lt;phone&gt;</code></td><td>Activar modo LLM</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/close-agent/&lt;phone&gt;</code></td><td>Cerrar modo agente → active</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/human-takeover/&lt;phone&gt;</code></td><td>LLM → human agent silenciosamente</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/force-agent/&lt;phone&gt;</code></td><td>Forzar toma de control humano</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/create-chat</code></td><td>Nuevo chat con numero</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/delete-chat/&lt;phone&gt;</code></td><td>Archivar/eliminar conversacion</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/archived-conversations</code></td><td>Listar archivadas</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/restore-chat/&lt;phone&gt;</code></td><td>Restaurar archivada</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/upload-media</code></td><td>Subir archivo a Supabase</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/send-media</code></td><td>Enviar imagen/doc a cliente</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/pending-notifications</code></td><td>Elegibles estado verde</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/trigger-bulk-send</code></td><td>Ejecutar envio verde</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/pending-falta-documento</code></td><td>Elegibles estado rojo</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/trigger-bulk-rojo</code></td><td>Ejecutar envio rojo</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/pending-listo-docusign</code></td><td>Elegibles estado amarillo</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/trigger-bulk-amarillo</code></td><td>Ejecutar envio amarillo</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/trigger-bulk-leads</code></td><td>Ejecutar envio leads</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/captured-emails</code></td><td>Listar emails</td></tr>
+                <tr><td>PUT</td><td><code>/admin/api/captured-emails/&lt;phone&gt;</code></td><td>Editar email</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/captured-cuentas</code></td><td>Listar cuentas bancarias</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/received-documents</code></td><td>Listar documentos recibidos</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/mark-document-reviewed</code></td><td>Marcar doc como revisado</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/download-doc</code></td><td>Proxy de descarga (CORS)</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/mark-docs-completos</code></td><td>Marcar docs completos para un phone</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/llm-requests</code></td><td>Listar solicitudes LLM</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/llm-requests/&lt;id&gt;/resolve</code></td><td>Marcar solicitud como resuelta</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 16. ADMIN.HTML -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="admin-html">
+        <h2><span class="num">16</span> admin.html — Frontend (SPA)</h2>
+
+        <div class="card">
+            <p>Single Page Application en HTML/CSS/JS puro (sin framework). Renderizado por Flask via <code>render_template("admin.html")</code>.</p>
+            <ul>
+                <li><strong>CSS:</strong> Variables CSS ProAlto (--primary: #fec05c, --primary-dark: #283e52). Fuente: Outfit.</li>
+                <li><strong>JS:</strong> Vanilla JS con fetch() para API calls. Auto-refresh cada 10 segundos.</li>
+                <li><strong>Layout:</strong> Sidebar (lista chats) + Area central (chat activo) + Pestanas superiores.</li>
+                <li><strong>Libreria externa:</strong> SheetJS (xlsx) para exportar datos a Excel.</li>
+                <li><strong>Tabs:</strong> Conversaciones, Automatizacion, Emails, Cuentas, Documentos, Solicitudes LLM.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 17. CLOUD RUN -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="cloud-run">
+        <h2><span class="num">17</span> Cloud Run — Microservicio Database Bridge</h2>
+
+        <p>Archivo: <code>cloud_run/main.py</code>. Desplegado como Google Cloud Function.</p>
+
+        <h3>Autenticacion</h3>
+        <pre><code># Header: Authorization: Bearer {API_TOKEN_SECRET}
+# Retorna 401 si falta o no coincide</code></pre>
+
+        <h3>Tipos de consulta (parametro "tipo")</h3>
+        <table>
+            <thead>
+                <tr><th>tipo</th><th>Query SQL (vista)</th><th>Campos retornados</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>(default / cedula)</td>
+                    <td><code>v_solicitudes_whatsapp WHERE cedula_nit = ?</code></td>
+                    <td>nro_solicitud, nombre_completo, fecha_de_solicitud, valor_preestudiado, estado_interno, plazo, empresa, documentos_faltantes, tipo_empleador</td>
+                </tr>
+                <tr>
+                    <td><code>saldo</code></td>
+                    <td><code>vista_consulta_saldo WHERE cedula_nit = ?</code></td>
+                    <td>id_prestamo, nombre_completo, saldo_actual, estado_del_prestamo, cuotas_restantes, ultima_fecha_pago</td>
+                </tr>
+                <tr>
+                    <td><code>aprobados</code></td>
+                    <td><code>v_solicitudes_whatsapp WHERE estado_interno = 'APROBADO POR EL CLIENTE'</code></td>
+                    <td>nro_solicitud, nombre_completo, telefono, valor_preestudiado, plazo, empresa</td>
+                </tr>
+                <tr>
+                    <td><code>falta_documento</code></td>
+                    <td><code>v_solicitudes_whatsapp WHERE estado_interno = 'FALTA ALGÚN DOCUMENTO'</code></td>
+                    <td>nombre_completo, telefono, empresa, documentos_faltantes, tipo_empleador</td>
+                </tr>
+                <tr>
+                    <td><code>listo_en_docusign</code></td>
+                    <td><code>v_solicitudes_whatsapp WHERE estado_interno = 'LISTO EN DOCUSIGN'</code></td>
+                    <td>nombre_completo, telefono, empresa</td>
+                </tr>
+                <tr>
+                    <td><code>por_telefono</code></td>
+                    <td><code>v_solicitudes_whatsapp WHERE telefono IN (?, ?)</code></td>
+                    <td>nombre_completo</td>
+                </tr>
+                <tr>
+                    <td><code>por_telefono_completo</code></td>
+                    <td>Igual que por_telefono pero retorna todos los campos</td>
+                    <td>Solicitud completa</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Conexion a PostgreSQL</h3>
+        <pre><code># Variables de entorno en Cloud Run:
+DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
+# Usa psycopg2 para conectar
+# Vista principal: v_solicitudes_whatsapp
+# Vista saldos: vista_consulta_saldo</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 18. STATE MACHINE -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="state-machine">
+        <h2><span class="num">18</span> Maquina de Estados Completa</h2>
+
+        <pre><code>                         ┌─────────────────┐
+                         │ pending_consent  │  ← Estado inicial
+                         └────────┬────────┘
+                                  │ [accept_terms]
+                         ┌────────▼────────┐
+                   ┌─────│     active       │◄──────────────────────────┐
+                   │     └──┬──┬──┬──┬──┬──┘                           │
+                   │        │  │  │  │  │                               │
+      [menu_solicitud]      │  │  │  │  │           [cierre agente]    │
+                   │        │  │  │  │  └────► agent ─────────────────►│
+     ┌─────────────▼──┐     │  │  │  │         agent_silent ──────────►│
+     │waiting_for_     │     │  │  │  │         agent_llm ────────────►│
+     │   cedula        │     │  │  │  │                                │
+     └───────┬────────┘     │  │  │  └────► waiting_for_cedula_saldo ──┘
+             │               │  │  │                                    │
+      ┌──────┼───────┐      │  │  └────────► waiting_for_cuenta_       │
+      │      │       │      │  │                amarillo ──────────────┘
+      ▼      ▼       ▼      │  │                    │
+  w_email  w_docs  active   │  │              waiting_for_banco ───────┘
+     │     _rojo     │      │  │
+     │       │       │      │  └───► lead_notified
+     └───────┼───────┘      │
+             │               └───────► waiting_for_numero_cuenta
+             ▼                              │
+         active                      waiting_for_banco ────► active</code></pre>
+
+        <h3>Todos los estados posibles</h3>
+        <table>
+            <thead>
+                <tr><th>Estado</th><th>Descripcion</th><th>Quien responde</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>pending_consent</code></td><td>Esperando aceptacion de Habeas Data</td><td>Bot</td></tr>
+                <tr><td><code>active</code></td><td>Menu principal disponible</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_cedula</code></td><td>Esperando cedula para estado</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_email</code></td><td>Esperando email para DocuSign</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_docs_rojo</code></td><td>Esperando documentos faltantes</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_numero_cuenta</code></td><td>Esperando numero de cuenta</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_cuenta_amarillo</code></td><td>Esperando cuenta (estado amarillo)</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_banco</code></td><td>Esperando nombre del banco</td><td>Bot</td></tr>
+                <tr><td><code>waiting_for_cedula_saldo</code></td><td>Esperando cedula para saldo</td><td>Bot</td></tr>
+                <tr><td><code>agent</code></td><td>Asesor humano (con notificacion)</td><td>Humano</td></tr>
+                <tr><td><code>agent_silent</code></td><td>Asesor humano (sin notificacion)</td><td>Humano</td></tr>
+                <tr><td><code>agent_llm</code></td><td>Claude LLM responde</td><td>IA</td></tr>
+                <tr><td><code>lead_notified</code></td><td>Lead contactado via template</td><td>Bot/IA</td></tr>
+                <tr><td><code>archived</code></td><td>Conversacion archivada</td><td>Nadie</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 19. SUPABASE SCHEMA -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="supabase-schema">
+        <h2><span class="num">19</span> Schema Supabase (Tablas)</h2>
+
+        <h3>bot_conversations</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th><th>Notas</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK, auto)</td><td></td></tr>
+                <tr><td><code>phone</code></td><td>text (unique)</td><td>Formato: 57XXXXXXXXXX</td></tr>
+                <tr><td><code>status</code></td><td>text</td><td>Estado de la maquina de estados</td></tr>
+                <tr><td><code>client_name</code></td><td>text</td><td>Nombre del cliente</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td><td></td></tr>
+                <tr><td><code>updated_at</code></td><td>timestamptz</td><td></td></tr>
+                <tr><td><code>empresa</code></td><td>text</td><td>Contexto rojo: empresa del cliente</td></tr>
+                <tr><td><code>docs_faltantes</code></td><td>text</td><td>Separados por ";"</td></tr>
+                <tr><td><code>tipo_empleador</code></td><td>text</td><td>"EMPRESA" o "FINCA"</td></tr>
+                <tr><td><code>docs_completos</code></td><td>boolean</td><td>Marcado por admin</td></tr>
+            </tbody>
+        </table>
+
+        <h3>bot_messages</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th><th>Notas</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK, auto)</td><td></td></tr>
+                <tr><td><code>phone</code></td><td>text</td><td>FK a bot_conversations.phone</td></tr>
+                <tr><td><code>direction</code></td><td>text</td><td>"inbound" o "outbound"</td></tr>
+                <tr><td><code>text</code></td><td>text</td><td>Contenido del mensaje</td></tr>
+                <tr><td><code>msg_type</code></td><td>text</td><td>text, image, document, interactive, template, button_reply, deleted</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td><td></td></tr>
+                <tr><td><code>wamid</code></td><td>text</td><td>WhatsApp Message ID</td></tr>
+            </tbody>
+        </table>
+
+        <h3>captured_emails</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td></tr>
+                <tr><td><code>phone</code></td><td>text</td></tr>
+                <tr><td><code>email</code></td><td>text</td></tr>
+                <tr><td><code>name</code></td><td>text</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td></tr>
+            </tbody>
+        </table>
+
+        <h3>captured_cuentas</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td></tr>
+                <tr><td><code>phone</code></td><td>text</td></tr>
+                <tr><td><code>numero_cuenta</code></td><td>text</td></tr>
+                <tr><td><code>banco</code></td><td>text (nullable)</td></tr>
+                <tr><td><code>name</code></td><td>text</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td></tr>
+            </tbody>
+        </table>
+
+        <h3>received_documents</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td></tr>
+                <tr><td><code>phone</code></td><td>text</td></tr>
+                <tr><td><code>client_name</code></td><td>text</td></tr>
+                <tr><td><code>filename</code></td><td>text</td></tr>
+                <tr><td><code>mime_type</code></td><td>text</td></tr>
+                <tr><td><code>storage_url</code></td><td>text</td></tr>
+                <tr><td><code>triggered_by</code></td><td>text ("estado_rojo" / "estado_amarillo")</td></tr>
+                <tr><td><code>reviewed</code></td><td>boolean (default false)</td></tr>
+                <tr><td><code>received_at</code></td><td>timestamptz</td></tr>
+            </tbody>
+        </table>
+
+        <h3>llm_requests</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td></tr>
+                <tr><td><code>phone</code></td><td>text</td></tr>
+                <tr><td><code>client_name</code></td><td>text</td></tr>
+                <tr><td><code>tipo</code></td><td>text</td></tr>
+                <tr><td><code>detalle</code></td><td>text</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td></tr>
+                <tr><td><code>resolved</code></td><td>boolean (default false)</td></tr>
+                <tr><td><code>resolved_at</code></td><td>timestamptz (nullable)</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">💡</span>
+            <div><strong>Supabase Storage:</strong> Bucket <code>"media"</code> para documentos de clientes. Bucket accesible publicamente. Path: <code>{phone}/{filename}</code> para media de clientes, <code>admin_uploads/{phone}/{filename}</code> para archivos subidos por admin.</div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 20. TEMPLATES WHATSAPP -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="templates-wa">
+        <h2><span class="num">20</span> Templates de WhatsApp</h2>
+
+        <p>Los templates deben estar pre-aprobados en el Meta Business Manager. No se pueden cambiar desde el codigo.</p>
+
+        <table>
+            <thead>
+                <tr><th>Template</th><th>Idioma</th><th>Variables</th><th>Uso</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>estado_verde</code></td>
+                    <td>es_CO</td>
+                    <td>{{1}} nombre, {{2}} monto ($X.XXX.XXX), {{3}} plazo</td>
+                    <td>Notificar aprobacion, pedir email</td>
+                </tr>
+                <tr>
+                    <td><code>estado_rojo</code></td>
+                    <td>es_CO</td>
+                    <td>{{1}} nombre</td>
+                    <td>Notificar documentos faltantes</td>
+                </tr>
+                <tr>
+                    <td><code>estado_amarillo</code></td>
+                    <td>es_CO</td>
+                    <td>{{1}} nombre</td>
+                    <td>Notificar DocuSign listo, pedir cuenta</td>
+                </tr>
+                <tr>
+                    <td><code>contacto_leads</code></td>
+                    <td>es_CO</td>
+                    <td>{{1}} nombre</td>
+                    <td>Primer contacto a prospectos</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="card warning">
+            <div class="card-title">Para crear/modificar templates</div>
+            <p>Se hace desde <strong>Meta Business Manager → WhatsApp Manager → Message Templates</strong>. Los cambios pueden tardar hasta 24h en aprobarse. El codigo solo referencia el nombre del template.</p>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 21. CONTEXT FILES -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="context-files">
+        <h2><span class="num">21</span> Archivos de Contexto para LLM</h2>
+
+        <p>Ubicados en <code>context/</code>. Se cargan al inicio de <code>llm.py</code> y se inyectan como contexto del system prompt de Claude.</p>
+
+        <table>
+            <thead>
+                <tr><th>Archivo</th><th>Contenido</th><th>Impacto en LLM</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>empresa.md</code></td><td>Info de ProAlto: historia, datos, valores, canales</td><td>Responde preguntas sobre la empresa</td></tr>
+                <tr><td><code>productos.md</code></td><td>Credito de libranza: requisitos, proceso, documentos</td><td>Explica productos y requisitos</td></tr>
+                <tr><td><code>estados_solicitud.md</code></td><td>Explicacion de cada estado de solicitud</td><td>Interpreta estados para el cliente</td></tr>
+                <tr><td><code>faq.md</code></td><td>Preguntas frecuentes con respuestas</td><td>Responde FAQ automaticamente</td></tr>
+                <tr><td><code>capacidades_bot.md</code></td><td>Que puede y no puede hacer el bot</td><td>Define limites de respuesta</td></tr>
+                <tr><td><code>compliance.md</code></td><td>Habeas Data, politicas legales</td><td>Responde sobre datos y privacidad</td></tr>
+                <tr><td><code>ejemplos_conversacion.md</code></td><td>Ejemplos de conversaciones reales</td><td>Define tono y estilo de respuesta</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">📌</span>
+            <div><strong>Para modificar el comportamiento del LLM:</strong> edita estos archivos. Los cambios se aplican al reiniciar el bot (o al redesplegar en Render). No requiere cambios en codigo.</div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 22. THREADING -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="threading">
+        <h2><span class="num">22</span> Threading y Operaciones Asincronas</h2>
+
+        <table>
+            <thead>
+                <tr><th>Operacion</th><th>Tipo</th><th>Archivo</th><th>Detalle</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Log de mensajes</td>
+                    <td><code>threading.Thread(daemon=True)</code></td>
+                    <td>conversation_log.py</td>
+                    <td>Cada <code>log_message()</code> lanza un thread para no bloquear el webhook response</td>
+                </tr>
+                <tr>
+                    <td>Confirmacion de docs</td>
+                    <td><code>threading.Timer(60, fn)</code></td>
+                    <td>automation.py</td>
+                    <td>Debounce: cancela timer anterior, espera 60s desde ultimo doc</td>
+                </tr>
+                <tr>
+                    <td>Enriquecimiento empresa</td>
+                    <td><code>threading.Thread(daemon=True)</code></td>
+                    <td>conversation_log.py</td>
+                    <td>Busca empresa via Cloud Run para docs sin empresa registrada</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="card danger">
+            <div class="card-title">Consideracion importante</div>
+            <p>Los threads <code>daemon=True</code> se matan si el proceso principal termina. En Render con Gunicorn, los workers pueden reiniciarse. Los timers de debounce se pierden en un restart. Esto es aceptable porque el peor caso es que no se envie la confirmacion de documentos (no se pierde data).</p>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 23. SEGURIDAD -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="security">
+        <h2><span class="num">23</span> Seguridad</h2>
+
+        <table>
+            <thead>
+                <tr><th>Capa</th><th>Mecanismo</th><th>Donde</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Webhook</td><td>HMAC-SHA256 con APP_SECRET</td><td>webhook.py <code>_verify_signature()</code></td></tr>
+                <tr><td>Admin panel</td><td>HTTP Basic Auth (ADMIN_USER/PASS)</td><td>admin.py <code>@requires_auth</code></td></tr>
+                <tr><td>Cloud Run</td><td>Bearer token (API_TOKEN_SECRET)</td><td>database.py headers / cloud_run/main.py</td></tr>
+                <tr><td>WhatsApp API</td><td>Bearer token (API_TOKEN)</td><td>services.py headers</td></tr>
+                <tr><td>Supabase</td><td>Anon key (SUPABASE_KEY)</td><td>conversation_log.py client init</td></tr>
+                <tr><td>Datos personales</td><td>Consentimiento Habeas Data previo</td><td>flows.py <code>pending_consent</code> state</td></tr>
+                <tr><td>WhatsApp E2E</td><td>Cifrado extremo a extremo (Meta)</td><td>Capa de transporte</td></tr>
+            </tbody>
+        </table>
+
+        <div class="card warning">
+            <div class="card-title">Si APP_SECRET no esta configurado</div>
+            <p>El webhook acepta TODAS las peticiones sin verificar firma. Esto es un riesgo en produccion. Siempre configurar APP_SECRET con el valor del App Secret de la app de Meta.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 24. DESPLIEGUE -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="deploy">
+        <h2><span class="num">24</span> Despliegue</h2>
+
+        <h3>Bot principal (Render)</h3>
+        <div class="card">
+            <ol>
+                <li>Push a <code>main</code> en el repo Git conectado a Render</li>
+                <li>Render detecta el cambio y hace build automatico</li>
+                <li>Build: instala <code>requirements.txt</code></li>
+                <li>Start: ejecuta <code>Procfile</code> → <code>gunicorn app:app --bind 0.0.0.0:$PORT</code></li>
+                <li>Variables de entorno configuradas en Render Dashboard → Environment</li>
+            </ol>
+        </div>
+
+        <h3>Cloud Run (Microservicio DB)</h3>
+        <div class="card">
+            <ol>
+                <li>Archivo: <code>cloud_run/main.py</code></li>
+                <li>Deploy via <code>gcloud functions deploy</code> o Cloud Run Deploy</li>
+                <li>Variables: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT, API_TOKEN_SECRET</li>
+                <li>Framework: <code>functions-framework</code></li>
+                <li>Entry point: <code>get_solicitud</code></li>
+            </ol>
+        </div>
+
+        <h3>Configuracion de Webhook en Meta</h3>
+        <div class="card">
+            <ol>
+                <li>Meta Developer Portal → App → Webhooks</li>
+                <li>Callback URL: <code>https://[tu-dominio-render]/webhook</code></li>
+                <li>Verify token: valor de <code>WEBHOOK_VERIFY_TOKEN</code></li>
+                <li>Suscribir a: <code>messages</code></li>
+                <li>El webhook GET verifica el token, POST recibe mensajes</li>
+            </ol>
+        </div>
+
+        <h3>Despliegue local (desarrollo)</h3>
+        <pre><code># 1. Clonar repositorio
+git clone [repo-url] && cd Bot
+
+# 2. Crear entorno virtual
+python -m venv myenv
+source myenv/bin/activate  # Linux/Mac
+myenv\Scripts\activate     # Windows
+
+# 3. Instalar dependencias
+pip install -r requirements.txt
+
+# 4. Configurar .env (copiar variables de Render)
+cp .env.example .env  # editar con valores reales
+
+# 5. Ejecutar
+python app.py
+
+# 6. Para exponer via ngrok (pruebas con webhook):
+ngrok http 5000
+# Copiar URL https de ngrok al webhook en Meta</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 25. TROUBLESHOOTING -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="troubleshooting">
+        <h2><span class="num">25</span> Troubleshooting</h2>
+
+        <table>
+            <thead>
+                <tr><th>Problema</th><th>Causa probable</th><th>Solucion</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Bot no recibe mensajes</td>
+                    <td>Webhook no suscrito o URL incorrecta en Meta</td>
+                    <td>Verificar en Meta Dev Portal → Webhooks. Verificar que el servidor responde GET /webhook con challenge</td>
+                </tr>
+                <tr>
+                    <td>Webhook retorna 401</td>
+                    <td>Firma HMAC invalida</td>
+                    <td>Verificar APP_SECRET coincide con App Secret en Meta. O quitarlo temporalmente para debug</td>
+                </tr>
+                <tr>
+                    <td>Mensajes duplicados</td>
+                    <td>Meta reintenta webhooks si no recibe 200 rapido</td>
+                    <td>La deduplicacion deberia manejar esto. Si persiste, revisar que el webhook responde 200 antes de procesar</td>
+                </tr>
+                <tr>
+                    <td>Cloud Run retorna 401</td>
+                    <td>API_TOKEN_SECRET no coincide</td>
+                    <td>Verificar que el valor en .env del bot == el valor en Cloud Run env</td>
+                </tr>
+                <tr>
+                    <td>Cloud Run retorna 500</td>
+                    <td>Error de conexion a PostgreSQL</td>
+                    <td>Verificar DB_HOST, DB_USER, DB_PASSWORD. Verificar que la vista <code>v_solicitudes_whatsapp</code> existe</td>
+                </tr>
+                <tr>
+                    <td>Supabase error al insertar</td>
+                    <td>Schema mismatch o permisos</td>
+                    <td>Verificar que las tablas existen con las columnas correctas. Verificar RLS policies en Supabase</td>
+                </tr>
+                <tr>
+                    <td>Documentos no se suben</td>
+                    <td>Bucket "media" no existe o permisos</td>
+                    <td>Crear bucket en Supabase Storage. Verificar que sea publico o que el key tenga permisos</td>
+                </tr>
+                <tr>
+                    <td>LLM no responde</td>
+                    <td>ANTHROPIC_API_KEY invalido o cuota agotada</td>
+                    <td>Verificar la key. Verificar creditos en dashboard.anthropic.com</td>
+                </tr>
+                <tr>
+                    <td>Templates no se envian</td>
+                    <td>Template no aprobado o nombre incorrecto</td>
+                    <td>Verificar en Meta Business Manager que el template esta aprobado con ese nombre exacto</td>
+                </tr>
+                <tr>
+                    <td>Panel admin no carga</td>
+                    <td>ADMIN_USER/ADMIN_PASS incorrectos</td>
+                    <td>Verificar credenciales en variables de entorno</td>
+                </tr>
+                <tr>
+                    <td>Bot responde pero no guarda mensajes</td>
+                    <td>Error en Supabase (silencioso por threading)</td>
+                    <td>Revisar logs del servidor (Render logs). Los errores de Supabase se imprimen en consola</td>
+                </tr>
+                <tr>
+                    <td>Envio masivo muestra 0 elegibles</td>
+                    <td>Ya se envio hoy o no hay clientes en ese estado</td>
+                    <td>Revisar lista de excluidos y sus razones. Verificar directamente en Cloud Run que hay datos</td>
+                </tr>
+                <tr>
+                    <td>Timer de docs no funciona tras restart</td>
+                    <td>threading.Timer se pierde en restart</td>
+                    <td>Es esperado. El cliente simplemente no recibe el mensaje de confirmacion. Los docs SI se guardan</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Logs</h3>
+        <pre><code># Render: Dashboard → Service → Logs (en tiempo real)
+# Todo print() y logging aparece aqui
+# Errores criticos notifican a ADMIN_NOTIFY_NUMBERS via WhatsApp</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 26. SCRIPTS -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="scripts">
+        <h2><span class="num">26</span> Scripts de Utilidad</h2>
+
+        <table>
+            <thead>
+                <tr><th>Script</th><th>Proposito</th><th>Uso</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>scripts/test_message.py</code></td><td>Enviar mensaje de prueba via WhatsApp API</td><td><code>python scripts/test_message.py</code></td></tr>
+                <tr><td><code>scripts/check_status.py</code></td><td>Probar consulta de estado de solicitud</td><td><code>python scripts/check_status.py</code></td></tr>
+                <tr><td><code>scripts/debug_query.py</code></td><td>Probar queries al Cloud Run</td><td><code>python scripts/debug_query.py</code></td></tr>
+                <tr><td><code>scripts/debug_token.py</code></td><td>Verificar token de WhatsApp API</td><td><code>python scripts/debug_token.py</code></td></tr>
+                <tr><td><code>scripts/get_waba_id.py</code></td><td>Obtener WhatsApp Business Account ID</td><td><code>python scripts/get_waba_id.py</code></td></tr>
+                <tr><td><code>scripts/subscribe_app.py</code></td><td>Suscribir app a webhook events</td><td><code>python scripts/subscribe_app.py</code></td></tr>
+                <tr><td><code>scripts/inspect_db.py</code></td><td>Inspeccionar tablas Supabase</td><td><code>python scripts/inspect_db.py</code></td></tr>
+                <tr><td><code>scripts/inspect_columns.py</code></td><td>Ver columnas de tablas</td><td><code>python scripts/inspect_columns.py</code></td></tr>
+                <tr><td><code>scripts/list_states.py</code></td><td>Listar estados unicos en bot_conversations</td><td><code>python scripts/list_states.py</code></td></tr>
+                <tr><td><code>scripts/test_local.py</code></td><td>Simular flujos localmente</td><td><code>python scripts/test_local.py</code></td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 27. COMO EXTENDER EL BOT -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="extend">
+        <h2><span class="num">27</span> Como Extender el Bot (Guia para Desarrolladores)</h2>
+
+        <h3>Agregar un nuevo estado al flujo</h3>
+        <div class="card">
+            <ol>
+                <li>Definir el nombre del estado (ej: <code>waiting_for_referencia</code>)</li>
+                <li>En <code>flows.py</code> → <code>process_text_input()</code>: agregar un nuevo <code>elif state == "waiting_for_referencia":</code></li>
+                <li>Implementar la logica: validar input, guardar datos, transicionar al siguiente estado</li>
+                <li>Agregar la transicion de entrada (donde se hace <code>set_user_state(phone, "waiting_for_referencia")</code>)</li>
+            </ol>
+        </div>
+
+        <h3>Agregar un nuevo boton interactivo</h3>
+        <div class="card">
+            <ol>
+                <li>En el metodo que envia el menu, agregar el boton: <code>{"id": "mi_nuevo_btn", "title": "Mi Opcion"}</code> (max 3 botones por mensaje, titulo max 20 chars)</li>
+                <li>En <code>flows.py</code> → <code>process_button_click()</code>: agregar <code>elif btn_id == "mi_nuevo_btn":</code></li>
+                <li>Implementar la accion del boton</li>
+            </ol>
+        </div>
+
+        <h3>Agregar una nueva tabla en Supabase</h3>
+        <div class="card">
+            <ol>
+                <li>Crear la tabla en Supabase Dashboard → Table Editor</li>
+                <li>Configurar RLS (Row Level Security) si es necesario</li>
+                <li>En <code>conversation_log.py</code>: agregar funciones CRUD usando <code>supabase_client.table("mi_tabla")</code></li>
+                <li>Importar y usar desde <code>flows.py</code> o <code>admin.py</code></li>
+            </ol>
+        </div>
+
+        <h3>Agregar un nuevo template de WhatsApp</h3>
+        <div class="card">
+            <ol>
+                <li>Crear el template en Meta Business Manager → Message Templates</li>
+                <li>Esperar aprobacion (hasta 24h)</li>
+                <li>En <code>automation.py</code>: crear funciones <code>get_pending_*()</code> y <code>execute_bulk_*()</code> siguiendo el patron existente</li>
+                <li>En <code>admin.py</code>: agregar rutas GET (elegibles) y POST (envio)</li>
+                <li>En <code>admin.html</code>: agregar la UI en la pestana de Automatizacion</li>
+            </ol>
+        </div>
+
+        <h3>Agregar una nueva ruta en el panel admin</h3>
+        <div class="card">
+            <ol>
+                <li>En <code>admin.py</code>: agregar la ruta con <code>@admin_bp.route()</code> y <code>@requires_auth</code></li>
+                <li>En <code>admin.html</code>: agregar el fetch() correspondiente y la UI</li>
+            </ol>
+        </div>
+
+        <h3>Modificar el comportamiento del LLM</h3>
+        <div class="card">
+            <ol>
+                <li><strong>Sin tocar codigo:</strong> Editar los archivos en <code>context/</code>. Especialmente <code>capacidades_bot.md</code> y <code>ejemplos_conversacion.md</code></li>
+                <li><strong>Cambiando la logica:</strong> Editar <code>_SYSTEM_PROMPT</code> en <code>llm.py</code> (lineas ~43-139)</li>
+                <li><strong>Cambiando el modelo:</strong> Cambiar <code>"claude-haiku-4-5-20251001"</code> por otro modelo en <code>ask_llm()</code></li>
+                <li><strong>Agregar un nuevo tag:</strong> Definir en el system prompt, detectar en <code>flows.py</code> dentro del handler de <code>agent_llm</code></li>
+            </ol>
+        </div>
+
+        <h3>Agregar una nueva consulta al Cloud Run</h3>
+        <div class="card">
+            <ol>
+                <li>En <code>cloud_run/main.py</code>: agregar un nuevo <code>elif tipo == "mi_consulta":</code></li>
+                <li>Escribir la query SQL contra las vistas disponibles</li>
+                <li>Redesplegar Cloud Run: <code>gcloud functions deploy get_solicitud --runtime python311 --trigger-http</code></li>
+                <li>En <code>database.py</code>: agregar funcion <code>get_mi_consulta()</code></li>
+            </ol>
+        </div>
+
+        <h3>Patrones clave a seguir</h3>
+        <div class="card success">
+            <ul>
+                <li><strong>Logging asincrono:</strong> Siempre usar <code>log_message()</code> — nunca bloquear el webhook por logging</li>
+                <li><strong>Retornos None:</strong> Las funciones de <code>database.py</code> retornan <code>None</code> en error. Siempre validar antes de usar</li>
+                <li><strong>Estado como string:</strong> Los estados se guardan como string en Supabase. Usar nombres descriptivos con snake_case</li>
+                <li><strong>Telefonos con 57:</strong> Normalizar siempre al formato <code>57XXXXXXXXXX</code></li>
+                <li><strong>Templates:</strong> Los nombres deben coincidir exactamente con los aprobados en Meta</li>
+                <li><strong>Idioma:</strong> Todo en espanol colombiano, tuteo, tono profesional pero cercano</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div style="text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 13px;">
+        <p>ProAlto Bot — Playbook Tecnico v1.0 — Marzo 2026</p>
+        <p>Documento confidencial — Solo equipo de desarrollo</p>
+    </div>
+
+</div>
+
+<button id="pdf-btn" onclick="window.print()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+        <polyline points="14,2 14,8 20,8"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
+        <polyline points="9,15 12,18 15,15"></polyline>
+    </svg>
+    Exportar a PDF
+</button>
+
+<script>
+    function toggleToc() {
+        document.getElementById('toc').classList.toggle('collapsed');
+        document.getElementById('main').classList.toggle('expanded');
+        document.getElementById('toc-toggle').classList.toggle('shifted');
+    }
+    const sections = document.querySelectorAll('section[id]');
+    const tocLinks = document.querySelectorAll('nav.toc-sidebar a');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+        tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+    }, { passive: true });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProAlto Bot — Playbook General</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #fec05c;
+            --primary-dark: #283e52;
+            --primary-darker: #1e3044;
+            --primary-light: #fffbeb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --success-bg: #f0fdf4;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --info: #3b82f6;
+            --info-bg: #eff6ff;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        @media print {
+            body { background: white; font-size: 12px; line-height: 1.5; }
+            .no-print, #pdf-btn { display: none !important; }
+            .page-break { page-break-before: always; }
+            section { break-inside: avoid; }
+            .card { box-shadow: none !important; border: 1px solid #ddd; }
+        }
+
+        #pdf-btn {
+            position: fixed; bottom: 30px; right: 30px; z-index: 1000;
+            background: var(--primary-dark); color: white;
+            border: none; padding: 14px 28px; border-radius: 50px;
+            font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+            cursor: pointer; box-shadow: 0 8px 30px rgba(40,62,82,0.35);
+            display: flex; align-items: center; gap: 10px;
+            transition: all 0.2s;
+        }
+        #pdf-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(40,62,82,0.45); }
+        #pdf-btn svg { width: 20px; height: 20px; }
+
+        .container {
+            max-width: 900px; margin: 0 auto;
+            padding: 40px 48px 120px;
+        }
+
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-darker) 100%);
+            color: white; padding: 60px 48px; border-radius: 20px;
+            margin-bottom: 48px; position: relative; overflow: hidden;
+            text-align: center;
+        }
+        .hero::before {
+            content: ''; position: absolute; left: -80px; bottom: -80px;
+            width: 300px; height: 300px; background: var(--primary);
+            border-radius: 50%; opacity: 0.06;
+        }
+        .hero::after {
+            content: ''; position: absolute; right: -60px; top: -60px;
+            width: 250px; height: 250px; background: var(--primary);
+            border-radius: 50%; opacity: 0.08;
+        }
+        .hero .badge {
+            display: inline-block; background: rgba(254,192,92,0.2);
+            color: var(--primary); padding: 6px 20px; border-radius: 50px;
+            font-size: 12px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 20px;
+        }
+        .hero h1 { font-size: 2.6rem; font-weight: 800; margin-bottom: 16px; }
+        .hero p { font-size: 1.1rem; opacity: 0.85; max-width: 600px; margin: 0 auto; }
+        .hero .meta {
+            margin-top: 24px; display: flex; gap: 24px; flex-wrap: wrap;
+            font-size: 13px; opacity: 0.65; justify-content: center;
+        }
+
+        /* Sections */
+        section { margin-bottom: 48px; }
+        section > h2 {
+            font-size: 1.5rem; font-weight: 700; color: var(--primary-dark);
+            padding-bottom: 12px; border-bottom: 3px solid var(--primary);
+            margin-bottom: 24px; display: flex; align-items: center; gap: 12px;
+        }
+        section > h2 .num {
+            background: var(--primary-dark); color: white; width: 36px; height: 36px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 16px; font-weight: 700; flex-shrink: 0;
+        }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 24px 0 12px; color: var(--primary-dark); }
+
+        /* Cards */
+        .card {
+            background: white; border-radius: var(--radius); padding: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .card.success { border-left: 4px solid var(--success); background: var(--success-bg); }
+        .card.danger { border-left: 4px solid var(--danger); background: var(--danger-bg); }
+        .card.warning { border-left: 4px solid var(--warning); background: var(--warning-bg); }
+        .card.info { border-left: 4px solid var(--info); background: var(--info-bg); }
+
+        .card-title {
+            font-weight: 700; font-size: 1rem; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%; border-collapse: collapse; margin: 16px 0;
+            background: white; border-radius: var(--radius); overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        thead { background: var(--primary-dark); color: white; }
+        th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        tbody tr:hover { background: var(--primary-light); }
+        tbody tr:last-child td { border-bottom: none; }
+
+        /* Lists */
+        ul, ol { padding-left: 24px; margin: 8px 0; }
+        li { margin-bottom: 6px; }
+
+        /* Columns */
+        .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .cols { grid-template-columns: 1fr; } }
+        .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (max-width: 900px) { .cols-3 { grid-template-columns: 1fr; } }
+
+        /* Callout */
+        .callout {
+            background: var(--primary-light); border: 1px solid rgba(254,192,92,0.3);
+            border-radius: var(--radius); padding: 20px 24px; margin: 16px 0;
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+        .callout .icon { font-size: 24px; flex-shrink: 0; }
+
+        /* Flow */
+        .flow {
+            display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+            margin: 16px 0; justify-content: center;
+        }
+        .flow-step {
+            background: white; border: 2px solid var(--primary); border-radius: 12px;
+            padding: 12px 18px; font-size: 13px; font-weight: 600; text-align: center;
+            min-width: 110px;
+        }
+        .flow-step.highlight { background: var(--primary); color: var(--primary-dark); }
+        .flow-arrow { font-size: 20px; color: var(--primary-dark); margin: 0 4px; font-weight: 700; }
+
+        /* Badges */
+        .badge-inline {
+            display: inline-block; padding: 3px 10px; border-radius: 50px;
+            font-size: 12px; font-weight: 600;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+
+        /* Stats */
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 16px 0; }
+        @media (max-width: 768px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+        .stat {
+            background: white; border-radius: var(--radius); padding: 24px;
+            text-align: center; border: 1px solid var(--border);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .stat .number { font-size: 2rem; font-weight: 800; color: var(--primary-dark); }
+        .stat .label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Divider */
+        hr { border: none; border-top: 2px solid var(--border); margin: 40px 0; }
+
+        /* Chat simulation */
+        .chat-sim { max-width: 400px; margin: 16px auto; }
+        .chat-bubble {
+            padding: 10px 16px; border-radius: 16px; margin-bottom: 8px;
+            font-size: 14px; max-width: 85%; line-height: 1.5;
+        }
+        .chat-bubble.bot {
+            background: white; border: 1px solid var(--border);
+            border-bottom-left-radius: 4px; margin-right: auto;
+        }
+        .chat-bubble.user {
+            background: var(--primary-dark); color: white;
+            border-bottom-right-radius: 4px; margin-left: auto;
+        }
+        .chat-bubble .lbl {
+            font-size: 11px; font-weight: 600; margin-bottom: 4px;
+            opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 32px; margin: 16px 0; }
+        .timeline::before {
+            content: ''; position: absolute; left: 12px; top: 8px; bottom: 8px;
+            width: 3px; background: var(--primary); border-radius: 2px;
+        }
+        .timeline-item { position: relative; margin-bottom: 20px; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -26px; top: 6px;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--primary); border: 3px solid white;
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        .timeline-item h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+        .timeline-item p { font-size: 14px; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="badge">Playbook General</div>
+        <h1>Bot WhatsApp ProAlto</h1>
+        <p>Vision ejecutiva del asistente virtual de WhatsApp. Que es, que hace, como funciona y cual es su alcance dentro de la operacion de ProAlto.</p>
+        <div class="meta">
+            <span>Version 1.0</span>
+            <span>Marzo 2026</span>
+            <span>Para gerencia y areas transversales</span>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 1. RESUMEN EJECUTIVO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="resumen">
+        <h2><span class="num">1</span> Resumen Ejecutivo</h2>
+
+        <div class="card info">
+            <p>El <strong>Bot de WhatsApp de ProAlto</strong> es un asistente virtual que automatiza la atencion al cliente a traves de WhatsApp, el canal de comunicacion mas utilizado en Colombia. Funciona 24 horas al dia, 7 dias a la semana, permitiendo a los clientes consultar el estado de sus solicitudes, enviar documentos, recibir notificaciones de aprobacion, y conectar con asesores humanos cuando es necesario.</p>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat">
+                <div class="number">24/7</div>
+                <div class="label">Disponibilidad</div>
+            </div>
+            <div class="stat">
+                <div class="number">4</div>
+                <div class="label">Tipos de notificacion masiva</div>
+            </div>
+            <div class="stat">
+                <div class="number">100%</div>
+                <div class="label">Digital</div>
+            </div>
+            <div class="stat">
+                <div class="number">IA</div>
+                <div class="label">Con inteligencia artificial</div>
+            </div>
+        </div>
+
+        <h3>Problema que resuelve</h3>
+        <div class="cols">
+            <div class="card danger">
+                <div class="card-title">Antes (sin Bot)</div>
+                <ul>
+                    <li>Los asesores respondian manualmente cada mensaje de WhatsApp</li>
+                    <li>Consultas de estado repetitivas consumian horas del equipo</li>
+                    <li>Documentos se pedian y recibian de forma desordenada</li>
+                    <li>Clientes fuera de horario no recibian atencion</li>
+                    <li>Notificaciones de estado se enviaban una a una</li>
+                    <li>No habia trazabilidad centralizada de las conversaciones</li>
+                </ul>
+            </div>
+            <div class="card success">
+                <div class="card-title">Ahora (con Bot)</div>
+                <ul>
+                    <li>El bot atiende automaticamente las consultas mas comunes</li>
+                    <li>Consultas de estado se resuelven en segundos, sin intervenir</li>
+                    <li>Documentos se reciben, almacenan y organizan automaticamente</li>
+                    <li>Atencion 24/7 incluyendo fines de semana y festivos</li>
+                    <li>Notificaciones masivas con un clic desde el panel</li>
+                    <li>Todo queda registrado: mensajes, documentos, emails, cuentas</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 2. COMO FUNCIONA -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="funcionamiento">
+        <h2><span class="num">2</span> Como Funciona (Vision General)</h2>
+
+        <h3>El recorrido del cliente</h3>
+        <div class="flow">
+            <div class="flow-step">Cliente escribe por WhatsApp</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Bot da bienvenida y pide consentimiento</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">Menu de opciones</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Bot resuelve o escala</div>
+        </div>
+
+        <h3>Ejemplo real de conversacion</h3>
+        <div class="chat-sim">
+            <div class="chat-bubble user"><div class="lbl">Cliente</div>Hola, quiero saber el estado de mi credito</div>
+            <div class="chat-bubble bot"><div class="lbl">Bot</div>¡Hola! Con gusto te ayudo. Por favor, ingresa tu numero de cedula.</div>
+            <div class="chat-bubble user"><div class="lbl">Cliente</div>1098765432</div>
+            <div class="chat-bubble bot"><div class="lbl">Bot</div>¡Buenas noticias, Juan! Tu credito de $5.000.000 a 12 meses fue aprobado. Para enviarte el contrato por DocuSign, necesito tu correo electronico.</div>
+            <div class="chat-bubble user"><div class="lbl">Cliente</div>juan@email.com</div>
+            <div class="chat-bubble bot"><div class="lbl">Bot</div>Listo, Juan. Tu contrato sera enviado a juan@email.com. ¡Gracias!</div>
+        </div>
+
+        <h3>Arquitectura simplificada</h3>
+        <div class="card">
+            <div class="flow">
+                <div class="flow-step">WhatsApp del cliente</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Meta (WhatsApp Business API)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step highlight">Bot ProAlto (Render)</div>
+                <span class="flow-arrow">↔</span>
+                <div class="flow-step">Base de Datos (Supabase + PostgreSQL)</div>
+            </div>
+            <p style="text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 12px;">
+                El bot recibe mensajes de WhatsApp, los procesa, consulta la base de datos y responde automaticamente.
+            </p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 3. FUNCIONALIDADES -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="funcionalidades">
+        <h2><span class="num">3</span> Funcionalidades del Bot</h2>
+
+        <h3>A. Atencion automatica al cliente</h3>
+        <div class="cols">
+            <div class="card">
+                <div class="card-title">Consulta de estado de solicitud</div>
+                <p>El cliente ingresa su cedula y el bot le muestra en que etapa esta su solicitud de credito. El estado se consulta en tiempo real desde la base de datos de ProAlto.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Consulta de saldo</div>
+                <p>Clientes con creditos activos pueden consultar su saldo pendiente, cuotas restantes y fecha del ultimo pago.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Solicitud de nuevo credito</div>
+                <p>Clientes interesados reciben el enlace directo al formulario de solicitud de credito.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Hablar con un asesor</div>
+                <p>En cualquier momento, el cliente puede pedir hablar con un asesor humano. El bot transfiere el chat y un asesor lo atiende desde el panel.</p>
+            </div>
+        </div>
+
+        <h3>B. Captura automatica de informacion</h3>
+        <div class="cols">
+            <div class="card success">
+                <div class="card-title">Correo electronico</div>
+                <p>Cuando un credito es aprobado, el bot pide el correo electronico para enviar el contrato de firma digital (DocuSign). Valida el formato automaticamente.</p>
+            </div>
+            <div class="card success">
+                <div class="card-title">Cuenta bancaria</div>
+                <p>Cuando el contrato esta listo, el bot captura el numero de cuenta y banco del cliente para procesar el desembolso.</p>
+            </div>
+            <div class="card success">
+                <div class="card-title">Documentos</div>
+                <p>El bot recibe fotos y PDFs enviados por WhatsApp, los almacena de forma segura en la nube y los organiza por cliente para revision del equipo.</p>
+            </div>
+            <div class="card success">
+                <div class="card-title">Solicitudes especiales</div>
+                <p>La IA detecta y registra automaticamente solicitudes como paz y salvo, prepagos, cambios de cuenta, reclamos, etc.</p>
+            </div>
+        </div>
+
+        <h3>C. Notificaciones masivas</h3>
+        <div class="card">
+            <p>El equipo operativo puede enviar notificaciones masivas desde el panel de administracion para informar a los clientes sobre cambios en sus solicitudes:</p>
+            <table>
+                <thead>
+                    <tr><th>Tipo</th><th>Destinatarios</th><th>Proposito</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge-inline badge-green">Verde</span></td>
+                        <td>Clientes con credito aprobado</td>
+                        <td>Notificar la aprobacion y capturar correo para DocuSign</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-red">Rojo</span></td>
+                        <td>Clientes con documentos faltantes</td>
+                        <td>Pedir documentos pendientes</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-yellow">Amarillo</span></td>
+                        <td>Clientes listos para firma</td>
+                        <td>Capturar cuenta bancaria para desembolso</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge-inline badge-blue">Leads</span></td>
+                        <td>Prospectos / clientes potenciales</td>
+                        <td>Primer contacto comercial</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="margin-top: 12px; font-size: 14px; color: var(--text-muted);">El sistema incluye filtros inteligentes para no enviar duplicados ni molestar a clientes que ya respondieron.</p>
+        </div>
+
+        <h3>D. Inteligencia artificial</h3>
+        <div class="card info">
+            <div class="card-title">Agente con IA (Claude)</div>
+            <p>El bot cuenta con un modo de inteligencia artificial que puede responder preguntas en lenguaje natural sobre productos, procesos, requisitos y estados de ProAlto. Esta entrenado con toda la informacion de la empresa y puede manejar conversaciones complejas sin intervension humana. Cuando detecta una situacion que requiere atencion humana, registra la solicitud automaticamente en el panel.</p>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 4. FLUJO DE LA SOLICITUD -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="flujo-solicitud">
+        <h2><span class="num">4</span> El Bot en el Flujo de la Solicitud</h2>
+
+        <p>El bot participa en multiples etapas del proceso de credito:</p>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <h4>1. Prospectacion</h4>
+                <p>El equipo envia mensajes masivos a leads. El bot recibe las respuestas y los guia al formulario de solicitud.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>2. Solicitud enviada</h4>
+                <p>El cliente puede consultar el estado de su solicitud en cualquier momento a traves del bot.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>3. Documentos pendientes</h4>
+                <p>Si faltan documentos, el bot notifica al cliente, le muestra cuales faltan, y recibe los documentos directamente por WhatsApp.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>4. Credito aprobado</h4>
+                <p>El bot notifica la aprobacion, muestra el monto y plazo, y captura el correo electronico para enviar el contrato por DocuSign.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>5. Contrato listo (DocuSign)</h4>
+                <p>El bot notifica que el contrato esta listo y captura la cuenta bancaria del cliente para procesar el desembolso.</p>
+            </div>
+            <div class="timeline-item">
+                <h4>6. Post-desembolso</h4>
+                <p>El cliente puede consultar su saldo, cuotas restantes y fecha del ultimo pago. Tambien puede solicitar paz y salvo o reportar novedades.</p>
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 5. ALCANCE Y LIMITES -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="alcance">
+        <h2><span class="num">5</span> Alcance y Limites</h2>
+
+        <h3>Lo que el bot SI hace</h3>
+        <div class="card success">
+            <ul>
+                <li>Atender clientes 24/7 por WhatsApp</li>
+                <li>Consultar estados de solicitud y saldos en tiempo real</li>
+                <li>Recibir y almacenar documentos</li>
+                <li>Capturar correos y cuentas bancarias</li>
+                <li>Enviar notificaciones masivas segmentadas</li>
+                <li>Responder preguntas con inteligencia artificial</li>
+                <li>Registrar solicitudes especiales automaticamente</li>
+                <li>Escalar a asesores humanos cuando sea necesario</li>
+                <li>Mantener un historial completo de cada conversacion</li>
+                <li>Cumplir con Habeas Data (consentimiento previo obligatorio)</li>
+            </ul>
+        </div>
+
+        <h3>Lo que el bot NO hace</h3>
+        <div class="card danger">
+            <ul>
+                <li><strong>No aprueba ni rechaza creditos</strong> — solo consulta e informa el estado</li>
+                <li><strong>No procesa pagos ni recibe dinero</strong> — no es un canal transaccional</li>
+                <li><strong>No modifica condiciones de credito</strong> — cuotas, plazos, tasas</li>
+                <li><strong>No da tasas de interes especificas</strong> — dependen del estudio de cada caso</li>
+                <li><strong>No cambia datos del cliente</strong> — nombre, direccion, cuenta bancaria registrada</li>
+                <li><strong>No da asesoria legal o financiera</strong> — redirige al asesor</li>
+                <li><strong>No genera ni envia contratos</strong> — solo captura el correo para DocuSign</li>
+                <li><strong>No procesa audio ni video</strong> — solo texto, imagenes y documentos PDF</li>
+                <li><strong>No envia correos ni SMS</strong> — solo mensajes por WhatsApp</li>
+            </ul>
+        </div>
+
+        <div class="callout">
+            <span class="icon">💡</span>
+            <div>
+                <strong>En resumen:</strong> El bot es un canal de <strong>informacion, captura y notificacion</strong>, no un canal transaccional. Todo lo que implique decisiones financieras, modificaciones de credito o compromisos contractuales requiere la intervencion de un asesor humano.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 6. PANEL DE ADMINISTRACION -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="panel">
+        <h2><span class="num">6</span> Panel de Administracion</h2>
+
+        <p>El equipo operativo gestiona el bot desde un panel web donde puede:</p>
+
+        <div class="cols-3">
+            <div class="card">
+                <div class="card-title">Conversaciones</div>
+                <p>Ver y responder chats, tomar control como asesor humano, escalar o devolver al bot.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Automatizacion</div>
+                <p>Lanzar envios masivos de notificaciones (verde, rojo, amarillo, leads).</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Emails</div>
+                <p>Ver y editar correos electronicos capturados para DocuSign.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Cuentas</div>
+                <p>Ver las cuentas bancarias capturadas para desembolsos.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Documentos</div>
+                <p>Revisar y descargar documentos enviados por clientes.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Solicitudes IA</div>
+                <p>Gestionar solicitudes especiales detectadas por la inteligencia artificial.</p>
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 7. MODELO HIBRIDO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="modelo">
+        <h2><span class="num">7</span> Modelo Hibrido: Bot + Humano</h2>
+
+        <div class="card">
+            <p>El bot no reemplaza al equipo humano — lo complementa. El modelo es hibrido:</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>Escenario</th><th>Quien atiende</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Consulta de estado de solicitud</td><td><span class="badge-inline badge-blue">Bot automatico</span></td></tr>
+                <tr><td>Consulta de saldo</td><td><span class="badge-inline badge-blue">Bot automatico</span></td></tr>
+                <tr><td>Recepcion de documentos</td><td><span class="badge-inline badge-blue">Bot automatico</span></td></tr>
+                <tr><td>Captura de email / cuenta</td><td><span class="badge-inline badge-blue">Bot automatico</span></td></tr>
+                <tr><td>Preguntas sobre productos y procesos</td><td><span class="badge-inline badge-green">IA (Claude)</span></td></tr>
+                <tr><td>Solicitudes de paz y salvo, prepago, etc.</td><td><span class="badge-inline badge-green">IA registra</span> → <span class="badge-inline badge-yellow">Humano resuelve</span></td></tr>
+                <tr><td>Reclamos, quejas formales</td><td><span class="badge-inline badge-green">IA registra</span> → <span class="badge-inline badge-red">Humano atiende</span></td></tr>
+                <tr><td>Casos complejos o insistencia del cliente</td><td><span class="badge-inline badge-yellow">Asesor humano</span></td></tr>
+                <tr><td>Negociaciones, excepciones, compromisos</td><td><span class="badge-inline badge-yellow">Asesor humano</span></td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">📊</span>
+            <div>
+                <strong>Impacto esperado:</strong> El bot maneja automaticamente la mayoria de interacciones repetitivas (consultas de estado, captura de datos), liberando al equipo para enfocarse en los casos que realmente necesitan atencion humana: negociaciones, reclamos, excepciones y cierre.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 8. SEGURIDAD Y CUMPLIMIENTO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="seguridad">
+        <h2><span class="num">8</span> Seguridad y Cumplimiento</h2>
+
+        <div class="cols">
+            <div class="card">
+                <div class="card-title">Habeas Data (Ley 1581 de 2012)</div>
+                <ul>
+                    <li>El bot solicita consentimiento explicito antes de interactuar</li>
+                    <li>Politica de tratamiento de datos accesible desde el bot</li>
+                    <li>El cliente puede ejercer sus derechos ARCO (acceso, rectificacion, cancelacion, oposicion)</li>
+                </ul>
+            </div>
+            <div class="card">
+                <div class="card-title">Seguridad tecnica</div>
+                <ul>
+                    <li>WhatsApp cifra los mensajes de extremo a extremo</li>
+                    <li>Documentos almacenados en nube segura (Supabase)</li>
+                    <li>Panel protegido con autenticacion</li>
+                    <li>API del bot protegida con firma digital (HMAC-SHA256)</li>
+                    <li>Sin credenciales en codigo (variables de entorno)</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 9. TECNOLOGIA -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="tecnologia">
+        <h2><span class="num">9</span> Tecnologia (Para Contexto)</h2>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr><th>Componente</th><th>Tecnologia</th><th>Proposito</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Servidor del bot</td><td>Python / Flask</td><td>Logica del bot, procesamiento de mensajes</td></tr>
+                    <tr><td>Hosting</td><td>Render</td><td>Ejecucion del bot en la nube</td></tr>
+                    <tr><td>Base de datos</td><td>Supabase (PostgreSQL)</td><td>Conversaciones, mensajes, datos capturados</td></tr>
+                    <tr><td>Base de datos operativa</td><td>PostgreSQL via Cloud Run</td><td>Solicitudes, saldos, estados de credito</td></tr>
+                    <tr><td>WhatsApp</td><td>Meta Cloud API v21.0</td><td>Envio y recepcion de mensajes</td></tr>
+                    <tr><td>Inteligencia artificial</td><td>Claude (Anthropic)</td><td>Respuestas en lenguaje natural</td></tr>
+                    <tr><td>Almacenamiento</td><td>Supabase Storage</td><td>Documentos e imagenes de clientes</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 10. DATOS Y TRAZABILIDAD -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="datos">
+        <h2><span class="num">10</span> Datos y Trazabilidad</h2>
+
+        <div class="card">
+            <p>Todo lo que pasa por el bot queda registrado:</p>
+            <table>
+                <thead>
+                    <tr><th>Que se registra</th><th>Donde</th><th>Quien puede verlo</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Cada mensaje (entrante y saliente)</td><td>Base de datos</td><td>Equipo operativo (panel admin)</td></tr>
+                    <tr><td>Correos electronicos capturados</td><td>Base de datos</td><td>Equipo operativo</td></tr>
+                    <tr><td>Cuentas bancarias capturadas</td><td>Base de datos</td><td>Equipo operativo</td></tr>
+                    <tr><td>Documentos recibidos</td><td>Almacenamiento en nube</td><td>Equipo operativo</td></tr>
+                    <tr><td>Solicitudes especiales (IA)</td><td>Base de datos</td><td>Equipo operativo</td></tr>
+                    <tr><td>Envios masivos realizados</td><td>Base de datos</td><td>Equipo operativo</td></tr>
+                    <tr><td>Historial de conversacion completo</td><td>Base de datos</td><td>Equipo operativo</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 11. HORARIOS -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="horarios">
+        <h2><span class="num">11</span> Horarios de Operacion</h2>
+
+        <table>
+            <thead>
+                <tr><th>Componente</th><th>Horario</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>Bot automatico</strong> (menus, consultas, capturas)</td><td>24 horas / 7 dias / 365 dias</td></tr>
+                <tr><td><strong>Agente IA</strong> (respuestas con inteligencia artificial)</td><td>24 horas / 7 dias / 365 dias</td></tr>
+                <tr><td><strong>Asesores humanos</strong></td><td>Lunes a viernes, 7:30 AM - 5:30 PM (hora Colombia)</td></tr>
+                <tr><td><strong>Envios masivos</strong></td><td>Disponibles siempre (recomendado en horario laboral)</td></tr>
+                <tr><td><strong>Panel de administracion</strong></td><td>Disponible 24/7</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">🕐</span>
+            <div>
+                <strong>Fuera de horario:</strong> Cuando un cliente pide hablar con un asesor fuera de horario, el bot le informa el horario de atencion y registra la solicitud. El equipo la atiende al dia habil siguiente.
+            </div>
+        </div>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 12. PREGUNTAS FRECUENTES -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="faq">
+        <h2><span class="num">12</span> Preguntas Frecuentes</h2>
+
+        <div class="card">
+            <h4>¿El bot reemplaza a los asesores?</h4>
+            <p>No. El bot automatiza las tareas repetitivas (consultas de estado, captura de datos, envio de notificaciones) para que los asesores se concentren en atencion personalizada, cierre de negocios y resolucion de casos complejos.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Que pasa si el bot da una respuesta incorrecta?</h4>
+            <p>El equipo operativo puede tomar el control del chat inmediatamente, corregir la informacion con el cliente y reportar el error para correccion tecnica. El bot solo informa lo que esta en la base de datos — si el dato es correcto en el sistema, la respuesta del bot es correcta.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿El bot puede aprobar creditos?</h4>
+            <p>No. El bot solo <strong>consulta e informa</strong> el estado. Las aprobaciones se hacen en el sistema interno de ProAlto por el equipo de credito.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Los datos del cliente estan seguros?</h4>
+            <p>Si. WhatsApp usa cifrado de extremo a extremo, los documentos se almacenan en nube segura, y el bot solicita consentimiento de datos antes de interactuar (cumplimiento de Habeas Data, Ley 1581/2012).</p>
+        </div>
+
+        <div class="card">
+            <h4>¿El bot funciona en otros canales ademas de WhatsApp?</h4>
+            <p>Actualmente solo funciona en WhatsApp, que es el canal de comunicacion preferido por los clientes de ProAlto.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Que pasa si el servidor se cae?</h4>
+            <p>Los clientes no reciben respuesta del bot pero sus mensajes quedan en la cola de WhatsApp. Cuando el servidor se recupera, los mensajes se procesan. El equipo tecnico monitorea la disponibilidad del servicio.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Como afecta el bot a las metricas del area comercial?</h4>
+            <p>El bot contribuye directamente a: (1) reduccion del tiempo de respuesta al cliente, (2) aumento en la tasa de entrega de documentos, (3) captura mas rapida de correos y cuentas para DocuSign y desembolso, (4) atencion fuera de horario que antes no existia.</p>
+        </div>
+
+        <div class="card">
+            <h4>¿Quien es responsable del bot?</h4>
+            <p>El equipo operativo lo gestiona dia a dia (envios masivos, atencion de chats, revision de documentos). El equipo tecnico se encarga del mantenimiento, mejoras y resolucion de errores.</p>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- 13. CONTACTO -->
+    <!-- ════════════════════════════════════════════ -->
+    <section id="contacto">
+        <h2><span class="num">13</span> Contacto y Soporte</h2>
+
+        <div class="cols">
+            <div class="card">
+                <div class="card-title">Para temas operativos</div>
+                <p>Contacta al equipo que opera el bot diariamente. Ellos pueden resolver dudas sobre conversaciones, envios masivos y gestion de clientes.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Para temas tecnicos</div>
+                <p>Si el bot presenta errores, el panel no funciona, o se necesita una nueva funcionalidad, contacta al equipo de tecnologia.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <div style="text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 13px;">
+        <p>ProAlto Bot — Playbook General v1.0 — Marzo 2026</p>
+        <p>Documento confidencial de uso interno</p>
+    </div>
+
+</div>
+
+<!-- PDF Export Button -->
+<button id="pdf-btn" onclick="window.print()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+        <polyline points="14,2 14,8 20,8"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
+        <polyline points="9,15 12,18 15,18"></polyline>
+    </svg>
+    Exportar a PDF
+</button>
+
+</body>
+</html>
