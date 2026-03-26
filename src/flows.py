@@ -6,6 +6,36 @@ from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
 import json
 import re
+import threading
+
+# ── Document confirmation debounce ───────────────────────────────────────────
+# Waits DOC_CONFIRM_DELAY seconds after the last document before sending the
+# final confirmation, so the client has time to attach all their files.
+DOC_CONFIRM_DELAY = 60  # seconds
+_doc_timers: dict[str, threading.Timer] = {}
+_doc_timers_lock = threading.Lock()
+
+
+def _send_doc_confirmation(user_phone: str):
+    """Fires after debounce delay to send the final confirmation message."""
+    with _doc_timers_lock:
+        _doc_timers.pop(user_phone, None)
+    WhatsAppService.send_message(
+        user_phone,
+        "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto."
+    )
+
+
+def _schedule_doc_confirmation(user_phone: str):
+    """Cancels any pending timer and schedules a fresh one (debounce)."""
+    with _doc_timers_lock:
+        existing = _doc_timers.pop(user_phone, None)
+        if existing:
+            existing.cancel()
+        t = threading.Timer(DOC_CONFIRM_DELAY, _send_doc_confirmation, args=[user_phone])
+        t.daemon = True
+        t.start()
+        _doc_timers[user_phone] = t
 
 # Pre-load status mapping for optimization throughout the lifecycle
 MAPPING_PATH = os.path.join(os.path.dirname(__file__), 'status_mapping.json')
@@ -77,15 +107,11 @@ class FlowHandler:
                         if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
                             # Only log if we have a persistent Supabase URL; local paths are ephemeral on Render
                             if public_url:
-                                prev_count = count_received_documents(user_phone)
                                 client_name = get_client_name(user_phone)
                                 log_received_document(user_phone, client_name, filename, mime_type, final_path)
-                            else:
-                                prev_count = count_received_documents(user_phone)
-                            if prev_count == 0:
-                                WhatsAppService.send_message(user_phone, "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto.")
-                            else:
-                                WhatsAppService.send_message(user_phone, "📎 Documento recibido.")
+                            # Acknowledge each file immediately, then schedule the final confirmation
+                            WhatsAppService.send_message(user_phone, "📎 Documento recibido.")
+                            _schedule_doc_confirmation(user_phone)
 
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:
