@@ -59,7 +59,7 @@ def get_funnel_metrics(date_from: str = None, date_to: str = None) -> dict:
     """
     dt_from, dt_to = _default_date_range(date_from, date_to)
 
-    # Button titles logged as inbound button_reply messages
+    # Only main menu buttons (initial user intent)
     MENU_BUTTONS = {
         'Estado Solicitud': 'Estado Solicitud',
         'Solicitar Crédito': 'Solicitar Crédito',
@@ -68,8 +68,6 @@ def get_funnel_metrics(date_from: str = None, date_to: str = None) -> dict:
         'Consultar Saldo': 'Consultar Saldo',
         'Hablar con Asesor': 'Hablar con Asesor',
         'Hablar con un asesor': 'Hablar con Asesor',
-        'Cargar documentos': 'Cargar Documentos',
-        'Enviar número de cuenta': 'Enviar Cuenta Bancaria',
     }
 
     try:
