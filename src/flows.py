@@ -287,6 +287,7 @@ class FlowHandler:
                         + docs_part.split("\n\n", 1)[1]
                     )
                     WhatsAppService.send_message(user_phone, combined)
+                    log_message(user_phone, "outbound", "[Menu: estado_rojo]", "text")
                 else:
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
                     WhatsAppService.send_message(user_phone, response_msg)

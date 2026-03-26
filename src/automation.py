@@ -6,7 +6,7 @@ from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_
 from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
-    get_notified_phones_rojo_batch, get_template_stats_batch_rojo,
+    get_notified_phones_rojo_batch, get_phones_menu_contacted_rojo_batch, get_template_stats_batch_rojo,
     get_phones_with_email, get_phones_with_docs_completos,
     get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
     get_phones_with_cuenta, set_solicitud_context
@@ -325,6 +325,7 @@ def get_pending_falta_documento_notifications():
         return {"eligible": [], "excluded": []}
 
     notified_today = get_notified_phones_rojo_batch(phones_to_check)
+    menu_contacted_today = get_phones_menu_contacted_rojo_batch(phones_to_check)
     docs_completos = get_phones_with_docs_completos(phones_to_check)
 
     # Separate eligible from excluded, capturing the reason for each exclusion
@@ -333,7 +334,9 @@ def get_pending_falta_documento_notifications():
     for u in raw_users:
         reasons = []
         if u["phone"] in notified_today:
-            reasons.append("Ya notificado hoy")
+            reasons.append("Template enviado hoy (masivo)")
+        if u["phone"] in menu_contacted_today:
+            reasons.append("Consultó su estado hoy por el bot")
         if u["phone"] in docs_completos:
             reasons.append("Docs marcados como completos")
         if reasons:

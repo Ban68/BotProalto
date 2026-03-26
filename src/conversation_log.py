@@ -527,6 +527,28 @@ def get_notified_phones_rojo_batch(phones: list) -> set:
         return set()
 
 
+def get_phones_menu_contacted_rojo_batch(phones: list) -> set:
+    """
+    Returns a SET of phones that were contacted today via the bot menu
+    (consulta de estado → Falta algún documento), not via bulk template.
+    """
+    if not supabase_client or not phones:
+        return set()
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .eq("text", "[Menu: estado_rojo]")\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_phones_menu_contacted_rojo_batch error: {e}")
+        return set()
+
+
 def count_received_documents(phone: str) -> int:
     """Returns how many documents have already been received from this phone."""
     if not supabase_client:
