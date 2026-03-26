@@ -887,6 +887,7 @@
                     <table style="width:100%; border-collapse:collapse;">
                         <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
                             <tr>
+                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
                                 <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
@@ -898,7 +899,8 @@
                 </div>
             </div>
         </div>
-        
+        <p style="font-size:0.78rem; color:#9ca3af; margin: 4px 0 16px 0;">Puedes incluir excluidos marcando su casilla en "Ver excluidos". Se pedirá confirmación explícita antes de enviar.</p>
+
         <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
             <button id="btnExecuteEnvios" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 24px;" onclick="executeBulkSend()" disabled>🚀 Ejecutar Envío a Seleccionados</button>
         </div>
@@ -1046,6 +1048,7 @@
                     <table style="width:100%; border-collapse:collapse;">
                         <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
                             <tr>
+                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
                                 <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
@@ -1155,6 +1158,7 @@
                     <table style="width:100%; border-collapse:collapse;">
                         <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
                             <tr>
+                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
                                 <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
                                 <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
@@ -1179,6 +1183,34 @@
             <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
                 <strong>Fallos:</strong> <span id="rojoFailCount">0</span>
                 <ul id="rojoErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmación de envío a contactos excluidos -->
+    <div id="excludedConfirmModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:28px 32px; max-width:540px; width:92%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="color:#dc2626; margin:0 0 8px 0; font-size:1.1rem;">⚠️ Estás incluyendo contactos excluidos</h3>
+            <p style="color:#4b5563; font-size:0.9rem; margin:0 0 16px 0;">
+                Los siguientes contactos están excluidos por las razones indicadas. Revísalos antes de continuar:
+            </p>
+            <div id="excludedConfirmList" style="border:1px solid #fecaca; border-radius:8px; overflow:hidden; margin-bottom:16px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead style="background:#fef2f2;">
+                        <tr>
+                            <th style="padding:8px 12px; text-align:left; font-size:0.8rem; color:#991b1b;">Nombre</th>
+                            <th style="padding:8px 12px; text-align:left; font-size:0.8rem; color:#991b1b;">Razón de exclusión</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excludedConfirmTableBody"></tbody>
+                </table>
+            </div>
+            <p style="font-size:0.82rem; color:#9ca3af; margin:0 0 20px 0;">
+                Al confirmar, estos contactos recibirán el mensaje <strong>junto con</strong> los contactos elegibles seleccionados.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="closeExcludedConfirmModal()" style="padding:9px 20px; border:1px solid #d1d5db; border-radius:6px; background:white; color:#374151; font-size:0.9rem; cursor:pointer;">Cancelar</button>
+                <button id="excludedConfirmBtn" onclick="confirmExcludedSend()" style="padding:9px 20px; border:none; border-radius:6px; background:#dc2626; color:white; font-size:0.9rem; font-weight:600; cursor:pointer;">Sí, incluir excluidos y enviar</button>
             </div>
         </div>
     </div>
@@ -1708,13 +1740,18 @@
             }
 
             let rows = '';
-            excludedData.forEach(user => {
+            excludedData.forEach((user, idx) => {
                 const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#9ca3af;">${user.empresa}</span>` : '';
                 const sendCount = user.send_count || 0;
                 const reasons = (user.excluded_reasons || []).map(r =>
                     `<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:0.75rem;border:1px solid #fecaca;margin-right:4px;">${r}</span>`
                 ).join('');
                 rows += `<tr style="border-bottom:1px solid #f3f4f6;">
+                    <td style="padding:8px 10px;text-align:center;">
+                        <input type="checkbox" class="${panel}-excl-check" data-excl-idx="${idx}"
+                            title="Incluir en el envío (requiere confirmación)"
+                            style="cursor:pointer;accent-color:#dc2626;">
+                    </td>
                     <td style="padding:8px 10px;color:#9ca3af;font-size:0.85rem;">${user.phone}</td>
                     <td style="padding:8px 10px;color:#6b7280;font-size:0.85rem;">${user.name}${empresaLabel}</td>
                     <td style="padding:8px 10px;text-align:center;color:#9ca3af;font-size:0.85rem;">${sendCount}</td>
@@ -1722,6 +1759,42 @@
                 </tr>`;
             });
             if (body) body.innerHTML = rows;
+        }
+
+        // ── Excluded data storage (for force-send feature) ───────────
+        let pendingExcludedEnviosData = [];
+        let pendingExcludedRojoData = [];
+        let pendingExcludedAmarilloData = [];
+        let _excludedConfirmCallback = null;
+
+        function showExcludedConfirmModal(excludedUsers, callback) {
+            _excludedConfirmCallback = callback;
+            const tbody = document.getElementById('excludedConfirmTableBody');
+            let rows = '';
+            excludedUsers.forEach(u => {
+                const reasons = (u.excluded_reasons || []).join(', ');
+                rows += `<tr style="border-bottom:1px solid #fecaca;">
+                    <td style="padding:7px 12px; font-size:0.85rem; color:#374151;">${u.name}<br><span style="color:#9ca3af;font-size:0.78rem;">${u.phone}</span></td>
+                    <td style="padding:7px 12px; font-size:0.82rem; color:#991b1b;">${reasons}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = rows;
+            const modal = document.getElementById('excludedConfirmModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeExcludedConfirmModal() {
+            document.getElementById('excludedConfirmModal').style.display = 'none';
+            _excludedConfirmCallback = null;
+        }
+
+        function confirmExcludedSend() {
+            document.getElementById('excludedConfirmModal').style.display = 'none';
+            if (_excludedConfirmCallback) {
+                const cb = _excludedConfirmCallback;
+                _excludedConfirmCallback = null;
+                cb();
+            }
         }
 
         // ── Estado Rojo: Falta Documento ──────────────────────────────
@@ -1736,6 +1809,7 @@
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingRojoData = [];
+            pendingExcludedRojoData = [];
             document.getElementById('rojoExcludedSection').style.display = 'none';
             document.getElementById('rojoStatLine').innerHTML = '';
 
@@ -1773,7 +1847,8 @@
                         populatePanelEmpresaFilter(pendingRojoData, 'rojoEmpresaDrop');
                         updateSelectedCountRojo();
                     }
-                    renderExcludedSection('rojo', data.excluded || []);
+                    pendingExcludedRojoData = data.excluded || [];
+                    renderExcludedSection('rojo', pendingExcludedRojoData);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -1799,21 +1874,35 @@
         function updateSelectedCountRojo() {
             const total = document.querySelectorAll('.rojo-check').length;
             const selected = document.querySelectorAll('.rojo-check:checked').length;
+            const exclSelected = document.querySelectorAll('.rojo-excl-check:checked').length;
             document.getElementById('rojoCount').innerText = `${selected} / ${total}`;
-            document.getElementById('btnExecuteRojo').disabled = selected === 0;
+            document.getElementById('btnExecuteRojo').disabled = (selected + exclSelected) === 0;
             const masterCb = document.getElementById('checkAllRojo');
             if (masterCb) {
                 masterCb.indeterminate = selected > 0 && selected < total;
-                masterCb.checked = selected === total;
+                masterCb.checked = total > 0 && selected === total;
             }
         }
 
         async function executeBulkRojo() {
             const checked = document.querySelectorAll('.rojo-check:checked');
-            const selectedUsers = Array.from(checked).map(cb => pendingRojoData[parseInt(cb.dataset.idx)]);
-            if (selectedUsers.length === 0) return;
-            if (!confirm(`¿Estás seguro de enviar el template "estado_rojo" a ${selectedUsers.length} clientes seleccionados?`)) return;
+            const selectedEligible = Array.from(checked).map(cb => pendingRojoData[parseInt(cb.dataset.idx)]);
+            const exclChecked = document.querySelectorAll('.rojo-excl-check:checked');
+            const selectedExcluded = Array.from(exclChecked).map(cb => pendingExcludedRojoData[parseInt(cb.dataset.exclIdx)]);
 
+            if (selectedEligible.length === 0 && selectedExcluded.length === 0) return;
+
+            const doSend = () => _doExecuteBulkRojo([...selectedEligible, ...selectedExcluded]);
+
+            if (selectedExcluded.length > 0) {
+                showExcludedConfirmModal(selectedExcluded, doSend);
+                return;
+            }
+            if (!confirm(`¿Estás seguro de enviar el template "estado_rojo" a ${selectedEligible.length} clientes seleccionados?`)) return;
+            doSend();
+        }
+
+        async function _doExecuteBulkRojo(selectedUsers) {
             const btn = document.getElementById('btnExecuteRojo');
             btn.disabled = true;
             btn.innerText = '⌛ Procesando...';
@@ -1878,6 +1967,7 @@
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingAmarilloData = [];
+            pendingExcludedAmarilloData = [];
             document.getElementById('amarilloExcludedSection').style.display = 'none';
             document.getElementById('amarilloStatLine').innerHTML = '';
 
@@ -1912,7 +2002,8 @@
                         populatePanelEmpresaFilter(pendingAmarilloData, 'amarilloEmpresaDrop');
                         updateSelectedCountAmarillo();
                     }
-                    renderExcludedSection('amarillo', data.excluded || []);
+                    pendingExcludedAmarilloData = data.excluded || [];
+                    renderExcludedSection('amarillo', pendingExcludedAmarilloData);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -1938,21 +2029,35 @@
         function updateSelectedCountAmarillo() {
             const total = document.querySelectorAll('.amarillo-check').length;
             const selected = document.querySelectorAll('.amarillo-check:checked').length;
+            const exclSelected = document.querySelectorAll('.amarillo-excl-check:checked').length;
             document.getElementById('amarilloCount').innerText = `${selected} / ${total}`;
-            document.getElementById('btnExecuteAmarillo').disabled = selected === 0;
+            document.getElementById('btnExecuteAmarillo').disabled = (selected + exclSelected) === 0;
             const masterCb = document.getElementById('checkAllAmarillo');
             if (masterCb) {
                 masterCb.indeterminate = selected > 0 && selected < total;
-                masterCb.checked = selected === total;
+                masterCb.checked = total > 0 && selected === total;
             }
         }
 
         async function executeBulkAmarillo() {
             const checked = document.querySelectorAll('.amarillo-check:checked');
-            const selectedUsers = Array.from(checked).map(cb => pendingAmarilloData[parseInt(cb.dataset.idx)]);
-            if (selectedUsers.length === 0) return;
-            if (!confirm(`¿Estás seguro de enviar el template "estado_amarillo" a ${selectedUsers.length} clientes seleccionados?`)) return;
+            const selectedEligible = Array.from(checked).map(cb => pendingAmarilloData[parseInt(cb.dataset.idx)]);
+            const exclChecked = document.querySelectorAll('.amarillo-excl-check:checked');
+            const selectedExcluded = Array.from(exclChecked).map(cb => pendingExcludedAmarilloData[parseInt(cb.dataset.exclIdx)]);
 
+            if (selectedEligible.length === 0 && selectedExcluded.length === 0) return;
+
+            const doSend = () => _doExecuteBulkAmarillo([...selectedEligible, ...selectedExcluded]);
+
+            if (selectedExcluded.length > 0) {
+                showExcludedConfirmModal(selectedExcluded, doSend);
+                return;
+            }
+            if (!confirm(`¿Estás seguro de enviar el template "estado_amarillo" a ${selectedEligible.length} clientes seleccionados?`)) return;
+            doSend();
+        }
+
+        async function _doExecuteBulkAmarillo(selectedUsers) {
             const btn = document.getElementById('btnExecuteAmarillo');
             btn.disabled = true;
             btn.innerText = '⌛ Procesando...';
@@ -2489,6 +2594,7 @@
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingUsersData = [];
+            pendingExcludedEnviosData = [];
             document.getElementById('enviosExcludedSection').style.display = 'none';
             document.getElementById('enviosStatLine').innerHTML = '';
 
@@ -2523,7 +2629,8 @@
                         populatePanelEmpresaFilter(pendingUsersData, 'enviosEmpresaDrop');
                         updateSelectedCount();
                     }
-                    renderExcludedSection('envios', data.excluded || []);
+                    pendingExcludedEnviosData = data.excluded || [];
+                    renderExcludedSection('envios', pendingExcludedEnviosData);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -2549,21 +2656,35 @@
         function updateSelectedCount() {
             const total = document.querySelectorAll('.envio-check').length;
             const selected = document.querySelectorAll('.envio-check:checked').length;
+            const exclSelected = document.querySelectorAll('.envios-excl-check:checked').length;
             document.getElementById('enviosCount').innerText = `${selected} / ${total}`;
-            document.getElementById('btnExecuteEnvios').disabled = selected === 0;
+            document.getElementById('btnExecuteEnvios').disabled = (selected + exclSelected) === 0;
             const masterCb = document.getElementById('checkAll');
             if (masterCb) {
                 masterCb.indeterminate = selected > 0 && selected < total;
-                masterCb.checked = selected === total;
+                masterCb.checked = total > 0 && selected === total;
             }
         }
         
         async function executeBulkSend() {
             const checked = document.querySelectorAll('.envio-check:checked');
-            const selectedUsers = Array.from(checked).map(cb => pendingUsersData[parseInt(cb.dataset.idx)]);
-            if (selectedUsers.length === 0) return;
-            if (!confirm(`¿Estás seguro de enviar la notificación de Aprobado a ${selectedUsers.length} clientes seleccionados?`)) return;
+            const selectedEligible = Array.from(checked).map(cb => pendingUsersData[parseInt(cb.dataset.idx)]);
+            const exclChecked = document.querySelectorAll('.envios-excl-check:checked');
+            const selectedExcluded = Array.from(exclChecked).map(cb => pendingExcludedEnviosData[parseInt(cb.dataset.exclIdx)]);
 
+            if (selectedEligible.length === 0 && selectedExcluded.length === 0) return;
+
+            const doSend = () => _doExecuteBulkSend([...selectedEligible, ...selectedExcluded]);
+
+            if (selectedExcluded.length > 0) {
+                showExcludedConfirmModal(selectedExcluded, doSend);
+                return;
+            }
+            if (!confirm(`¿Estás seguro de enviar la notificación de Aprobado a ${selectedEligible.length} clientes seleccionados?`)) return;
+            doSend();
+        }
+
+        async function _doExecuteBulkSend(selectedUsers) {
             const btn = document.getElementById('btnExecuteEnvios');
             btn.disabled = true;
             btn.innerText = '⌛ Procesando...';
