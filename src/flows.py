@@ -75,8 +75,11 @@ class FlowHandler:
 
                         # Track documents received after estado_rojo or estado_amarillo bulk send
                         if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
-                            client_name = get_client_name(user_phone)
-                            log_received_document(user_phone, client_name, filename, mime_type, final_path)
+                            # Only log if we have a persistent Supabase URL; local paths are ephemeral on Render
+                            if public_url:
+                                client_name = get_client_name(user_phone)
+                                log_received_document(user_phone, client_name, filename, mime_type, final_path)
+                            WhatsAppService.send_message(user_phone, "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto.")
 
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:
