@@ -64,7 +64,6 @@ def get_funnel_metrics(date_from: str = None, date_to: str = None) -> dict:
         'Estado Solicitud': 'Estado Solicitud',
         'Solicitar Crédito': 'Solicitar Crédito',
         'Solicitar crédito': 'Solicitar Crédito',
-        'Soy Cliente': 'Soy Cliente',
         'Consultar Saldo': 'Consultar Saldo',
         'Hablar con Asesor': 'Hablar con Asesor',
         'Hablar con un asesor': 'Hablar con Asesor',
