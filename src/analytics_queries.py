@@ -419,9 +419,40 @@ def _format_transcript(messages: list) -> str:
     return "\n".join(lines)
 
 
+def _extract_json(text: str) -> dict:
+    """Extract JSON from LLM response, handling markdown code blocks."""
+    import json
+    import re
+
+    text = text.strip()
+
+    # Try direct parse first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting from markdown code block ```json ... ``` or ``` ... ```
+    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # Try finding first { ... } block
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Could not extract JSON from response: {text[:200]}")
+
+
 def _analyze_single_conversation(conversation: dict) -> dict:
     """Call Claude to analyze a single conversation."""
-    import json
     import anthropic
     import os
 
@@ -429,9 +460,19 @@ def _analyze_single_conversation(conversation: dict) -> dict:
         client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
         transcript = _format_transcript(conversation['messages'])
 
+        if not transcript.strip():
+            return {
+                "resolucion": "error",
+                "friccion": [],
+                "oportunidad_mejora": [],
+                "sentimiento": "neutral",
+                "categoria": "other",
+                "notable": "Conversación vacía"
+            }
+
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=600,
+            max_tokens=800,
             system=_AUDIT_SYSTEM_PROMPT,
             messages=[{
                 "role": "user",
@@ -440,7 +481,7 @@ def _analyze_single_conversation(conversation: dict) -> dict:
         )
 
         raw = response.content[0].text.strip()
-        return json.loads(raw)
+        return _extract_json(raw)
     except Exception as e:
         print(f"[Audit] Error analyzing conversation {conversation.get('phone')}: {e}")
         return {
