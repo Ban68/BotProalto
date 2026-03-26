@@ -2,7 +2,6 @@
 Admin Dashboard Blueprint for ProAlto WhatsApp Bot.
 Provides conversation monitoring and live agent intervention.
 """
-import functools
 from flask import (
     Blueprint, request, jsonify, render_template,
     Response, current_app
@@ -18,38 +17,13 @@ from src.conversation_log import (
     mark_message_deleted
 )
 from src.services import WhatsAppService
+from src.auth import requires_auth
 from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates')
 
 # Track active advisors { "advisor_name": last_seen_datetime }
 active_advisors = {}
-
-
-# ── HTTP Basic Auth ──────────────────────────────────────────────────
-def check_auth(username, password):
-    """Verify admin credentials."""
-    return username == Config.ADMIN_USER and password == Config.ADMIN_PASS
-
-
-def authenticate():
-    """Send a 401 response to prompt for credentials."""
-    return Response(
-        'Acceso no autorizado. Por favor ingresa tus credenciales.',
-        401,
-        {'WWW-Authenticate': 'Basic realm="ProAlto Admin"'}
-    )
-
-
-def requires_auth(f):
-    """Decorator that requires HTTP Basic Auth."""
-    @functools.wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
 
 
 # ── Page Routes ──────────────────────────────────────────────────────

@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #fec05c;
@@ -764,6 +765,7 @@
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
             <button type="button" class="tool-nav-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
             <button type="button" class="tool-nav-btn" id="tabLLMRequests" onclick="switchTab('llmrequests')">🤖 Solicitudes <span id="badgeLLMPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+            <button type="button" class="tool-nav-btn" id="tabAnalytics" onclick="switchTab('analytics')">📊 Analytics</button>
         </div>
         <div class="content-area">
 
@@ -1298,6 +1300,86 @@
         </div>
     </div>
 
+    <!-- ── Analytics Dashboard ─────────────────────────────────────── -->
+    <div class="main-chat" id="analyticsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #0891b2; margin-bottom: 20px;">📊 Analytics Dashboard</h2>
+
+        <!-- Date Range Controls -->
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap;">
+            <label style="font-size: 0.9rem; color: var(--text-muted);">Desde:</label>
+            <input type="date" id="analyticsFrom" style="padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit;">
+            <label style="font-size: 0.9rem; color: var(--text-muted);">Hasta:</label>
+            <input type="date" id="analyticsTo" style="padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit;">
+            <button class="btn btn-primary" onclick="fetchAnalytics()" style="background: #0891b2; border-color: #0891b2;">Aplicar</button>
+            <div style="margin-left: auto;">
+                <button class="btn btn-primary" onclick="runAIAudit()" style="background: #7c3aed; border-color: #7c3aed;" id="btnRunAudit">🤖 Auditoría AI</button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div id="kpiCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Conversaciones</div>
+                <div id="kpiTotalChats" style="font-size: 1.8rem; font-weight: 700; color: var(--text-main);">-</div>
+            </div>
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Usuarios Nuevos</div>
+                <div id="kpiNewUsers" style="font-size: 1.8rem; font-weight: 700; color: #059669;">-</div>
+            </div>
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Emails Capturados</div>
+                <div id="kpiEmails" style="font-size: 1.8rem; font-weight: 700; color: #3b82f6;">-</div>
+            </div>
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Docs Recibidos</div>
+                <div id="kpiDocs" style="font-size: 1.8rem; font-weight: 700; color: #b45309;">-</div>
+            </div>
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Cuentas Capturadas</div>
+                <div id="kpiCuentas" style="font-size: 1.8rem; font-weight: 700; color: #d97706;">-</div>
+            </div>
+            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Tiempo Resp. Prom.</div>
+                <div id="kpiAvgResponse" style="font-size: 1.8rem; font-weight: 700; color: #dc2626;">-</div>
+            </div>
+        </div>
+
+        <!-- Funnel Chart -->
+        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Funnel de Conversión</h3>
+            <div style="max-width: 700px; margin: 0 auto;">
+                <canvas id="funnelChart" height="220"></canvas>
+            </div>
+        </div>
+
+        <!-- Two columns: Volume + Response Times -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Volumen Diario</h3>
+                <canvas id="volumeChart" height="200"></canvas>
+            </div>
+            <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Tiempos de Respuesta (Asesor)</h3>
+                <canvas id="responseChart" height="200"></canvas>
+                <div id="responseStats" style="display: flex; gap: 16px; margin-top: 12px; justify-content: center; flex-wrap: wrap;"></div>
+            </div>
+        </div>
+
+        <!-- Templates Sent -->
+        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Templates Enviados</h3>
+            <div style="max-width: 400px; margin: 0 auto;">
+                <canvas id="templatesChart" height="180"></canvas>
+            </div>
+        </div>
+
+        <!-- AI Audit Reports -->
+        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">🤖 Reportes de Auditoría AI</h3>
+            <div id="auditReportsList" style="color: var(--text-muted);">Haz clic en "Auditoría AI" para generar un reporte.</div>
+        </div>
+    </div>
+
         </div><!-- /content-area -->
     </div><!-- /content-wrapper -->
 
@@ -1507,7 +1589,7 @@
             currentTab = tab;
             currentActivePhone = null;
             document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests') {
+            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
                 document.getElementById('emptyState').style.display = 'none';
             }
             document.getElementById('mainChat').style.display = 'none';
@@ -1543,6 +1625,7 @@
                 tabRojo:        { active: '#dc2626', tab: 'rojo'         },
                 tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos' },
                 tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests'  },
+                tabAnalytics:   { active: '#0891b2', tab: 'analytics'    },
             };
             for (const [id, cfg] of Object.entries(toolColors)) {
                 const el = document.getElementById(id);
@@ -1583,6 +1666,12 @@
                 llmRequestsState.style.flexDirection = 'column';
             }
 
+            const analyticsState = document.getElementById('analyticsState');
+            if(analyticsState) {
+                analyticsState.style.display = tab === 'analytics' ? 'flex' : 'none';
+                analyticsState.style.flexDirection = 'column';
+            }
+
             if (tab === 'activas') {
                 fetchList();
             } else if (tab === 'archivadas') {
@@ -1600,6 +1689,10 @@
                 fetchReceivedDocuments();
             } else if (tab === 'llmrequests') {
                 fetchLLMRequests();
+            } else if (tab === 'analytics') {
+                initAnalyticsDates();
+                fetchAnalytics();
+                fetchAuditReports();
             }
         }
 
@@ -3736,6 +3829,423 @@
                 e.preventDefault();
             });
         })();
+
+        // ══════════════════════════════════════════════════════════════
+        // ══  ANALYTICS  ══════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════
+
+        let chartFunnel = null, chartVolume = null, chartResponse = null, chartTemplates = null;
+
+        function initAnalyticsDates() {
+            const toEl = document.getElementById('analyticsTo');
+            const fromEl = document.getElementById('analyticsFrom');
+            if (!toEl.value) {
+                const today = new Date();
+                toEl.value = today.toISOString().slice(0, 10);
+                const from = new Date(today);
+                from.setDate(from.getDate() - 30);
+                fromEl.value = from.toISOString().slice(0, 10);
+            }
+        }
+
+        function getAnalyticsDates() {
+            return {
+                from: document.getElementById('analyticsFrom').value,
+                to: document.getElementById('analyticsTo').value,
+            };
+        }
+
+        async function fetchAnalytics() {
+            const { from, to } = getAnalyticsDates();
+            const qs = `from=${from}&to=${to}`;
+            try {
+                const [funnelRes, volumeRes, responseRes] = await Promise.all([
+                    fetch(`/admin/api/analytics/funnel?${qs}`, { credentials: 'same-origin' }),
+                    fetch(`/admin/api/analytics/volume?${qs}`, { credentials: 'same-origin' }),
+                    fetch(`/admin/api/analytics/response-times?${qs}`, { credentials: 'same-origin' }),
+                ]);
+                const funnelData = await funnelRes.json();
+                const volumeData = await volumeRes.json();
+                const responseData = await responseRes.json();
+
+                renderKPICards(volumeData, responseData);
+                renderFunnelChart(funnelData.funnel);
+                renderVolumeChart(volumeData.daily_breakdown);
+                renderResponseChart(responseData);
+                renderTemplatesChart(volumeData.templates_sent);
+            } catch (e) {
+                console.error('Analytics fetch error:', e);
+            }
+        }
+
+        function renderKPICards(vol, resp) {
+            document.getElementById('kpiTotalChats').textContent = vol.unique_users || 0;
+            document.getElementById('kpiNewUsers').textContent = vol.new_conversations || 0;
+            document.getElementById('kpiEmails').textContent = vol.emails_captured || 0;
+            document.getElementById('kpiDocs').textContent = vol.documents_received || 0;
+            document.getElementById('kpiCuentas').textContent = vol.cuentas_captured || 0;
+            const avgSecs = resp.avg_response_seconds || 0;
+            document.getElementById('kpiAvgResponse').textContent = avgSecs > 0 ? formatSeconds(avgSecs) : 'N/A';
+        }
+
+        function formatSeconds(s) {
+            if (s < 60) return Math.round(s) + 's';
+            if (s < 3600) return Math.round(s / 60) + 'min';
+            return (s / 3600).toFixed(1) + 'h';
+        }
+
+        function renderFunnelChart(funnel) {
+            const ctx = document.getElementById('funnelChart').getContext('2d');
+            if (chartFunnel) chartFunnel.destroy();
+
+            const labels = ['Contacto', 'Consentimiento', 'Menú', 'Consulta Estado', 'Datos Capturados'];
+            const values = [
+                funnel.total_contacts,
+                funnel.consent_given,
+                funnel.menu_interaction,
+                funnel.status_check,
+                funnel.data_captured,
+            ];
+            const colors = ['#059669', '#10b981', '#f59e0b', '#f97316', '#ef4444'];
+
+            chartFunnel = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const val = ctx.raw;
+                                    const total = values[0] || 1;
+                                    const pct = ((val / total) * 100).toFixed(1);
+                                    return `${val} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, grid: { display: false } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderVolumeChart(daily) {
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+            if (chartVolume) chartVolume.destroy();
+
+            const labels = daily.map(d => d.date.slice(5));
+            const inbound = daily.map(d => d.inbound);
+            const outbound = daily.map(d => d.outbound);
+            const users = daily.map(d => d.unique_users);
+
+            chartVolume = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Entrantes',
+                            data: inbound,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                        },
+                        {
+                            label: 'Salientes',
+                            data: outbound,
+                            borderColor: '#fec05c',
+                            backgroundColor: 'rgba(254,192,92,0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                        },
+                        {
+                            label: 'Usuarios',
+                            data: users,
+                            borderColor: '#059669',
+                            borderDash: [5, 3],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+        }
+
+        function renderResponseChart(data) {
+            const ctx = document.getElementById('responseChart').getContext('2d');
+            if (chartResponse) chartResponse.destroy();
+
+            chartResponse = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.histogram_labels,
+                    datasets: [{
+                        label: 'Respuestas',
+                        data: data.histogram,
+                        backgroundColor: ['#059669', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#dc2626'],
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+
+            const statsEl = document.getElementById('responseStats');
+            statsEl.innerHTML = `
+                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Promedio</span><br><strong>${formatSeconds(data.avg_response_seconds)}</strong></div>
+                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Mediana</span><br><strong>${formatSeconds(data.median_response_seconds)}</strong></div>
+                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">P90</span><br><strong>${formatSeconds(data.p90_response_seconds)}</strong></div>
+                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Sesiones Asesor</span><br><strong>${data.total_agent_conversations}</strong></div>
+            `;
+        }
+
+        function renderTemplatesChart(templates) {
+            const ctx = document.getElementById('templatesChart').getContext('2d');
+            if (chartTemplates) chartTemplates.destroy();
+
+            chartTemplates = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Aprobados (Verde)', 'Falta Doc (Rojo)', 'PandaDoc (Amarillo)'],
+                    datasets: [{
+                        data: [templates.estado_verde, templates.estado_rojo, templates.estado_amarillo],
+                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'],
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+        }
+
+        // ── AI Audit ──────────────────────────────────────────────
+        async function runAIAudit() {
+            const { from, to } = getAnalyticsDates();
+            const btn = document.getElementById('btnRunAudit');
+            btn.disabled = true;
+            btn.textContent = '⏳ Ejecutando...';
+
+            try {
+                const res = await fetch('/admin/api/analytics/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ sample_size: 10, from, to }),
+                });
+                const data = await res.json();
+                if (data.audit_id) {
+                    pollAudit(data.audit_id);
+                }
+            } catch (e) {
+                console.error('Audit error:', e);
+                btn.disabled = false;
+                btn.textContent = '🤖 Auditoría AI';
+            }
+        }
+
+        async function pollAudit(auditId) {
+            const btn = document.getElementById('btnRunAudit');
+            let attempts = 0;
+            const interval = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(`/admin/api/analytics/audit/${auditId}`, { credentials: 'same-origin' });
+                    const data = await res.json();
+                    if (data.status === 'completed' || data.status === 'failed' || attempts > 60) {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        btn.textContent = '🤖 Auditoría AI';
+                        fetchAuditReports();
+                    }
+                } catch {
+                    clearInterval(interval);
+                    btn.disabled = false;
+                    btn.textContent = '🤖 Auditoría AI';
+                }
+            }, 5000);
+        }
+
+        async function fetchAuditReports() {
+            try {
+                const res = await fetch('/admin/api/analytics/audits', { credentials: 'same-origin' });
+                const audits = await res.json();
+                renderAuditList(audits);
+            } catch (e) {
+                console.error('Fetch audits error:', e);
+            }
+        }
+
+        function renderAuditList(audits) {
+            const container = document.getElementById('auditReportsList');
+            if (!audits || audits.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted);">No hay auditorías aún. Haz clic en "Auditoría AI" para generar una.</p>';
+                return;
+            }
+
+            let html = '';
+            for (const a of audits) {
+                const date = new Date(a.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const statusBadge = a.status === 'completed'
+                    ? '<span style="background:#22c55e; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Completado</span>'
+                    : a.status === 'running'
+                    ? '<span style="background:#f59e0b; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">En proceso...</span>'
+                    : '<span style="background:#ef4444; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Error</span>';
+
+                html += `
+                    <div style="border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; background: white; cursor: pointer;" onclick="loadAuditDetail('${a.id}', this)">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${date}</strong>
+                                <span style="color: var(--text-muted); margin-left: 8px;">${a.date_from} → ${a.date_to} | ${a.sample_size} conversaciones</span>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="audit-detail" style="display: none; margin-top: 12px;"></div>
+                    </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        async function loadAuditDetail(auditId, el) {
+            const detailDiv = el.querySelector('.audit-detail');
+            if (detailDiv.style.display === 'block') {
+                detailDiv.style.display = 'none';
+                return;
+            }
+
+            detailDiv.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+            detailDiv.style.display = 'block';
+
+            try {
+                const res = await fetch(`/admin/api/analytics/audit/${auditId}`, { credentials: 'same-origin' });
+                const data = await res.json();
+
+                if (data.status === 'running') {
+                    detailDiv.innerHTML = '<p style="color: #f59e0b;">Auditoría en proceso, intenta de nuevo en unos segundos...</p>';
+                    return;
+                }
+                if (data.status === 'failed') {
+                    detailDiv.innerHTML = `<p style="color: #ef4444;">Error: ${data.error || 'desconocido'}</p>`;
+                    return;
+                }
+
+                const report = data.report;
+                if (!report || !report.summary) {
+                    detailDiv.innerHTML = '<p style="color: var(--text-muted);">Sin datos.</p>';
+                    return;
+                }
+
+                const s = report.summary;
+                let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 12px;">`;
+
+                // Resolution breakdown
+                const resCounts = s.resolucion || {};
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Resueltas</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#22c55e;">${resCounts.resolved || 0}</div>
+                </div>`;
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Parciales</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#f59e0b;">${resCounts.partial || 0}</div>
+                </div>`;
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">No Resueltas</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#ef4444;">${resCounts.unresolved || 0}</div>
+                </div>`;
+
+                // Sentiment
+                const sent = s.sentimiento || {};
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Positivo</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#22c55e;">${sent.positive || 0}</div>
+                </div>`;
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Neutral</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#64748b;">${sent.neutral || 0}</div>
+                </div>`;
+                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Negativo</div>
+                    <div style="font-size:1.2rem; font-weight:700; color:#ef4444;">${sent.negative || 0}</div>
+                </div>`;
+                html += `</div>`;
+
+                // Friction points
+                if (report.top_friction_points && report.top_friction_points.length > 0) {
+                    html += `<div style="margin-bottom: 12px;"><strong style="color:#dc2626;">Puntos de Fricción:</strong><ul style="margin:6px 0 0 16px;">`;
+                    for (const f of report.top_friction_points.slice(0, 5)) {
+                        html += `<li style="margin-bottom:4px;">${f.text} <span style="color:var(--text-muted);">(${f.count}x)</span></li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+
+                // Improvements
+                if (report.top_improvements && report.top_improvements.length > 0) {
+                    html += `<div style="margin-bottom: 12px;"><strong style="color:#059669;">Oportunidades de Mejora:</strong><ul style="margin:6px 0 0 16px;">`;
+                    for (const i of report.top_improvements.slice(0, 5)) {
+                        html += `<li style="margin-bottom:4px;">${i.text} <span style="color:var(--text-muted);">(${i.count}x)</span></li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+
+                // Notable
+                if (report.notable_findings && report.notable_findings.length > 0) {
+                    html += `<div style="margin-bottom: 12px;"><strong style="color:#7c3aed;">Hallazgos Notables:</strong><ul style="margin:6px 0 0 16px;">`;
+                    for (const n of report.notable_findings) {
+                        html += `<li style="margin-bottom:4px;">${n}</li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+
+                // Category breakdown
+                if (s.categoria) {
+                    html += `<div><strong>Categorías:</strong> `;
+                    const cats = Object.entries(s.categoria).sort((a, b) => b[1] - a[1]);
+                    html += cats.map(([k, v]) => `${k}: ${v}`).join(' | ');
+                    html += `</div>`;
+                }
+
+                detailDiv.innerHTML = html;
+            } catch (e) {
+                detailDiv.innerHTML = `<p style="color: #ef4444;">Error cargando detalle: ${e.message}</p>`;
+            }
+        }
     </script>
 </body>
 

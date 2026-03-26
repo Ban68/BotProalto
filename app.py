@@ -2,6 +2,7 @@ from flask import Flask
 from config import Config
 from src.webhook import webhook_bp
 from src.admin import admin_bp
+from src.analytics_api import analytics_bp
 
 def create_app():
     app = Flask(__name__)
@@ -10,6 +11,7 @@ def create_app():
     # Register Blueprints
     app.register_blueprint(webhook_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(analytics_bp)
     
     @app.route('/')
     def index():
