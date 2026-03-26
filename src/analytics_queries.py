@@ -54,75 +54,61 @@ def _paginated_fetch(table: str, select: str, filters: dict, gte_field: str = No
 
 def get_funnel_metrics(date_from: str = None, date_to: str = None) -> dict:
     """
-    Compute conversion funnel for the given date range.
-    Stages: contact → consent → menu → status_check → data_captured
+    Compute menu usage breakdown: which buttons users click most.
+    Also tracks secondary actions (document upload, advisor requests, etc.)
     """
     dt_from, dt_to = _default_date_range(date_from, date_to)
 
+    # Button titles logged as inbound button_reply messages
+    MENU_BUTTONS = {
+        'Estado Solicitud': 'Estado Solicitud',
+        'Solicitar Crédito': 'Solicitar Crédito',
+        'Solicitar crédito': 'Solicitar Crédito',
+        'Soy Cliente': 'Soy Cliente',
+        'Consultar Saldo': 'Consultar Saldo',
+        'Hablar con Asesor': 'Hablar con Asesor',
+        'Hablar con un asesor': 'Hablar con Asesor',
+        'Cargar documentos': 'Cargar Documentos',
+        'Enviar número de cuenta': 'Enviar Cuenta Bancaria',
+    }
+
     try:
-        # Stage 1: All distinct phones that sent/received messages in range
+        # Fetch all inbound button_reply messages in the range
         msgs = _paginated_fetch(
-            'bot_messages', 'phone, direction, text',
-            {}, gte_field='created_at', gte_val=dt_from,
+            'bot_messages', 'phone, text, msg_type',
+            {'direction': 'inbound', 'msg_type': 'button_reply'},
+            gte_field='created_at', gte_val=dt_from,
             lte_field='created_at', lte_val=dt_to,
-            order_field='created_at'
         )
-        all_phones = {m['phone'] for m in msgs}
-        total_contacts = len(all_phones)
 
-        # Stage 2: Phones not stuck in pending_consent
-        if all_phones:
-            phones_list = list(all_phones)
-            consent_phones = set()
-            for i in range(0, len(phones_list), 50):
-                batch = phones_list[i:i+50]
-                res = supabase_client.table('bot_conversations') \
-                    .select('phone') \
-                    .in_('phone', batch) \
-                    .neq('status', 'pending_consent') \
-                    .execute()
-                consent_phones.update(r['phone'] for r in res.data)
-        else:
-            consent_phones = set()
+        # Count button clicks (total clicks and unique users per button)
+        click_counts = Counter()
+        unique_users = defaultdict(set)
 
-        # Stage 3: Phones that received the main menu
-        menu_phones = set()
         for m in msgs:
-            if m['direction'] == 'outbound' and m.get('text') and 'en qué podemos ayudarte' in (m['text'] or '').lower():
-                menu_phones.add(m['phone'])
+            txt = (m.get('text') or '').strip()
+            label = MENU_BUTTONS.get(txt)
+            if label:
+                click_counts[label] += 1
+                unique_users[label].add(m['phone'])
 
-        # Stage 4: Phones that reached status check (cedula prompt)
-        status_phones = set()
-        for m in msgs:
-            if m['direction'] == 'outbound' and m.get('text'):
-                txt = (m['text'] or '').lower()
-                if 'para consultar tu solicitud' in txt or 'para consultar tu saldo' in txt or 'ingresa tu número de cédula' in txt:
-                    status_phones.add(m['phone'])
-
-        # Stage 5: Phones that captured data (email, cuenta, or documents)
-        data_phones = set()
-        for tbl in ['captured_emails', 'captured_cuentas']:
-            ts_field = 'created_at'
-            res_data = _paginated_fetch(tbl, 'phone', {}, gte_field=ts_field, gte_val=dt_from, lte_field=ts_field, lte_val=dt_to)
-            data_phones.update(r['phone'] for r in res_data)
-
-        docs_data = _paginated_fetch('received_documents', 'phone', {}, gte_field='received_at', gte_val=dt_from, lte_field='received_at', lte_val=dt_to)
-        data_phones.update(r['phone'] for r in docs_data)
+        # Build ordered results (by click count descending)
+        buttons = sorted(click_counts.keys(), key=lambda k: click_counts[k], reverse=True)
 
         return {
-            'total_contacts': total_contacts,
-            'consent_given': len(consent_phones),
-            'menu_interaction': len(menu_phones),
-            'status_check': len(status_phones),
-            'data_captured': len(data_phones),
+            'buttons': [
+                {
+                    'label': b,
+                    'clicks': click_counts[b],
+                    'unique_users': len(unique_users[b]),
+                }
+                for b in buttons
+            ],
+            'total_button_clicks': sum(click_counts.values()),
         }
     except Exception as e:
         print(f"[Analytics] get_funnel_metrics error: {e}")
-        return {
-            'total_contacts': 0, 'consent_given': 0,
-            'menu_interaction': 0, 'status_check': 0,
-            'data_captured': 0,
-        }
+        return {'buttons': [], 'total_button_clicks': 0}
 
 
 # ── Volume Statistics ────────────────────────────────────────────────
