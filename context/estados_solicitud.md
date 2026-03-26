@@ -57,10 +57,10 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 **Mensaje al cliente:** "✅ ¡SOLICITUD APROBADA!"
 **Qué sigue:** Igual que el estado anterior.
 
-### `LISTO EN DOCUSIGN`
-**Significado interno:** El contrato ya está en la plataforma DocuSign esperando firma. Después de firmar, se procede al desembolso.
+### `LISTO EN PANDADOC` (antes `LISTO EN DOCUSIGN`)
+**Significado interno:** El contrato ya está en la plataforma PandaDoc esperando firma. Después de firmar, se procede al desembolso.
 **Mensaje al cliente:** "En legalización de contratos para proceder a desembolso"
-**Qué debe hacer el cliente:** Revisar su correo electrónico y firmar el contrato en DocuSign.
+**Qué debe hacer el cliente:** Revisar su correo electrónico y firmar el contrato en PandaDoc.
 **Acción del bot:** Si no tiene cuenta bancaria registrada, el bot la solicita.
 
 ---
