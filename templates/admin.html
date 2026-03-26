@@ -842,15 +842,18 @@
         </p>
         
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Clientes listos para notificar: <span id="enviosCount">0</span></h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="enviosCount">0</span></h3>
+                    <div id="enviosStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
+                </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-outline-danger" onclick="selectOnlyNewClients()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
                     <button id="btnRefreshEnvios" class="btn btn-outline-danger" onclick="fetchPendingEnvios()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Refrescar Lista</button>
                 </div>
             </div>
-            
-            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+
+            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
                 <input type="text" id="enviosSearch" oninput="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
                 <div class="empresa-multi-wrap" data-search="enviosSearch" data-tbody="enviosTableBody" style="position:relative; min-width:180px;">
                     <button type="button" id="enviosEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('enviosEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
@@ -874,6 +877,25 @@
                         <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <!-- Excluded users section -->
+            <div id="enviosExcludedSection" style="display:none; margin-top:10px;">
+                <button onclick="toggleExcludedSection('envios')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
+                    <span id="enviosExcludedToggleLabel">▶ Ver excluidos (0)</span>
+                </button>
+                <div id="enviosExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
+                            <tr>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
+                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="enviosExcludedBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
         
@@ -979,15 +1001,18 @@
         </p>
 
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Clientes listos para notificar: <span id="amarilloCount">0</span></h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="amarilloCount">0</span></h3>
+                    <div id="amarilloStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
+                </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsAmarillo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
                     <button id="btnRefreshAmarillo" class="btn" onclick="fetchPendingAmarillo()" style="border-color: #d97706; color: #92400e; background: white; border: 1px solid #d97706;">🔄 Refrescar Lista</button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
                 <input type="text" id="amarilloSearch" oninput="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
                 <div class="empresa-multi-wrap" data-search="amarilloSearch" data-tbody="amarilloTableBody" style="position:relative; min-width:180px;">
                     <button type="button" id="amarilloEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('amarilloEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
@@ -1011,6 +1036,25 @@
                         <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <!-- Excluded users section -->
+            <div id="amarilloExcludedSection" style="display:none; margin-top:10px;">
+                <button onclick="toggleExcludedSection('amarillo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
+                    <span id="amarilloExcludedToggleLabel">▶ Ver excluidos (0)</span>
+                </button>
+                <div id="amarilloExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
+                            <tr>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
+                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="amarilloExcludedBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -1066,15 +1110,18 @@
         </p>
 
         <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Clientes listos para notificar: <span id="rojoCount">0</span></h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="rojoCount">0</span></h3>
+                    <div id="rojoStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
+                </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsRojo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
                     <button id="btnRefreshRojo" class="btn btn-outline-danger" onclick="fetchPendingRojo()" style="border-color: #dc2626; color: #991b1b;">🔄 Refrescar Lista</button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
                 <input type="text" id="rojoSearch" oninput="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
                 <div class="empresa-multi-wrap" data-search="rojoSearch" data-tbody="rojoTableBody" style="position:relative; min-width:180px;">
                     <button type="button" id="rojoEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('rojoEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
@@ -1098,6 +1145,25 @@
                         <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
+            </div>
+            <!-- Excluded users section -->
+            <div id="rojoExcludedSection" style="display:none; margin-top:10px;">
+                <button onclick="toggleExcludedSection('rojo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
+                    <span id="rojoExcludedToggleLabel">▶ Ver excluidos (0)</span>
+                </button>
+                <div id="rojoExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
+                            <tr>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
+                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rojoExcludedBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -1598,6 +1664,66 @@
             }
         }
 
+        // ── Shared helpers for excluded users sections ────────────────
+        function toggleExcludedSection(panel) {
+            const content = document.getElementById(`${panel}ExcludedContent`);
+            const label = document.getElementById(`${panel}ExcludedToggleLabel`);
+            const open = content.style.display !== 'none';
+            content.style.display = open ? 'none' : 'block';
+            const count = label.textContent.match(/\d+/)?.[0] || '0';
+            label.textContent = (open ? '▶' : '▼') + ` Ver excluidos (${count})`;
+        }
+
+        function renderExcludedSection(panel, excludedData) {
+            const section = document.getElementById(`${panel}ExcludedSection`);
+            const body = document.getElementById(`${panel}ExcludedBody`);
+            const label = document.getElementById(`${panel}ExcludedToggleLabel`);
+            const statLine = document.getElementById(`${panel}StatLine`);
+
+            const eligibleCount = {
+                'envios': () => document.querySelectorAll('.envio-check').length,
+                'rojo': () => document.querySelectorAll('.rojo-check').length,
+                'amarillo': () => document.querySelectorAll('.amarillo-check').length
+            }[panel]?.() || 0;
+
+            const totalCount = eligibleCount + (excludedData ? excludedData.length : 0);
+
+            if (statLine) {
+                if (totalCount > 0) {
+                    statLine.innerHTML = `Total en estado: <strong>${totalCount}</strong> &nbsp;·&nbsp; <span style="color:#16a34a;font-weight:600;">${eligibleCount} aplican</span> &nbsp;·&nbsp; <span style="color:#dc2626;font-weight:600;">${excludedData ? excludedData.length : 0} excluidos</span>`;
+                } else {
+                    statLine.innerHTML = '';
+                }
+            }
+
+            if (!excludedData || excludedData.length === 0) {
+                if (section) section.style.display = 'none';
+                return;
+            }
+
+            if (section) section.style.display = 'block';
+            if (label) label.textContent = `▶ Ver excluidos (${excludedData.length})`;
+            if (document.getElementById(`${panel}ExcludedContent`)) {
+                document.getElementById(`${panel}ExcludedContent`).style.display = 'none';
+            }
+
+            let rows = '';
+            excludedData.forEach(user => {
+                const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#9ca3af;">${user.empresa}</span>` : '';
+                const sendCount = user.send_count || 0;
+                const reasons = (user.excluded_reasons || []).map(r =>
+                    `<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#fef2f2;color:#991b1b;font-size:0.75rem;border:1px solid #fecaca;margin-right:4px;">${r}</span>`
+                ).join('');
+                rows += `<tr style="border-bottom:1px solid #f3f4f6;">
+                    <td style="padding:8px 10px;color:#9ca3af;font-size:0.85rem;">${user.phone}</td>
+                    <td style="padding:8px 10px;color:#6b7280;font-size:0.85rem;">${user.name}${empresaLabel}</td>
+                    <td style="padding:8px 10px;text-align:center;color:#9ca3af;font-size:0.85rem;">${sendCount}</td>
+                    <td style="padding:8px 10px;">${reasons}</td>
+                </tr>`;
+            });
+            if (body) body.innerHTML = rows;
+        }
+
         // ── Estado Rojo: Falta Documento ──────────────────────────────
         let pendingRojoData = [];
 
@@ -1610,6 +1736,8 @@
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingRojoData = [];
+            document.getElementById('rojoExcludedSection').style.display = 'none';
+            document.getElementById('rojoStatLine').innerHTML = '';
 
             try {
                 const res = await fetch('/admin/api/pending-falta-documento');
@@ -1645,6 +1773,7 @@
                         populatePanelEmpresaFilter(pendingRojoData, 'rojoEmpresaDrop');
                         updateSelectedCountRojo();
                     }
+                    renderExcludedSection('rojo', data.excluded || []);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -1749,6 +1878,8 @@
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingAmarilloData = [];
+            document.getElementById('amarilloExcludedSection').style.display = 'none';
+            document.getElementById('amarilloStatLine').innerHTML = '';
 
             try {
                 const res = await fetch('/admin/api/pending-listo-docusign');
@@ -1781,6 +1912,7 @@
                         populatePanelEmpresaFilter(pendingAmarilloData, 'amarilloEmpresaDrop');
                         updateSelectedCountAmarillo();
                     }
+                    renderExcludedSection('amarillo', data.excluded || []);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
@@ -2353,10 +2485,12 @@
             if (hideResults) {
                 document.getElementById('enviosResults').style.display = 'none';
             }
-            
+
             tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
             btn.disabled = true;
             pendingUsersData = [];
+            document.getElementById('enviosExcludedSection').style.display = 'none';
+            document.getElementById('enviosStatLine').innerHTML = '';
 
             try {
                 const res = await fetch('/admin/api/pending-notifications');
@@ -2389,6 +2523,7 @@
                         populatePanelEmpresaFilter(pendingUsersData, 'enviosEmpresaDrop');
                         updateSelectedCount();
                     }
+                    renderExcludedSection('envios', data.excluded || []);
                 } else {
                     tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }

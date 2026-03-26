@@ -352,11 +352,11 @@ def api_send_media():
 @admin_bp.route('/admin/api/pending-notifications')
 @requires_auth
 def api_pending_notifications():
-    """Get list of users eligible for 'Aprobado' automation today."""
+    """Get list of users eligible for 'Aprobado' automation today, plus excluded users with reasons."""
     from src.automation import get_pending_approved_notifications
     try:
-        pending = get_pending_approved_notifications()
-        return jsonify({"status": "ok", "pending": pending})
+        result = get_pending_approved_notifications()
+        return jsonify({"status": "ok", "pending": result["eligible"], "excluded": result["excluded"]})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -423,11 +423,11 @@ def api_update_captured_email(phone):
 @admin_bp.route('/admin/api/pending-falta-documento')
 @requires_auth
 def api_pending_falta_documento():
-    """Get list of users eligible for 'Falta algún documento' bulk send today."""
+    """Get list of users eligible for 'Falta algún documento' bulk send today, plus excluded users with reasons."""
     from src.automation import get_pending_falta_documento_notifications
     try:
-        pending = get_pending_falta_documento_notifications()
-        return jsonify({"status": "ok", "pending": pending})
+        result = get_pending_falta_documento_notifications()
+        return jsonify({"status": "ok", "pending": result["eligible"], "excluded": result["excluded"]})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -510,11 +510,11 @@ def api_download_doc():
 @admin_bp.route('/admin/api/pending-listo-docusign')
 @requires_auth
 def api_pending_listo_docusign():
-    """Get list of users eligible for 'Listo en DocuSign' bulk send today."""
+    """Get list of users eligible for 'Listo en DocuSign' bulk send today, plus excluded users with reasons."""
     from src.automation import get_pending_listo_docusign_notifications
     try:
-        pending = get_pending_listo_docusign_notifications()
-        return jsonify({"status": "ok", "pending": pending})
+        result = get_pending_listo_docusign_notifications()
+        return jsonify({"status": "ok", "pending": result["eligible"], "excluded": result["excluded"]})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

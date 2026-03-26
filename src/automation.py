@@ -19,36 +19,34 @@ TEST_NUMBER = "573106176713"
 
 def get_pending_approved_notifications():
     """
-    Returns a list of applications in 'Aprobado por el cliente' state
-    who are eligible to receive a notification today.
+    Returns a dict with 'eligible' and 'excluded' lists for 'Aprobado por el cliente' state.
+    Excluded users include an 'excluded_reasons' list explaining why they were filtered out.
     """
     if TEST_MODE:
-        # En modo prueba solo mostramos el número de test (si no se le ha enviado hoy)
-        # Comentamos el filtro para poder probar varias veces el mismo día en modo test
-        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "monto": 1000000, "plazo": 12}]
+        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "monto": 1000000, "plazo": 12, "send_count": 0, "last_sent": None}], "excluded": []}
 
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
-        return []
+        return {"eligible": [], "excluded": []}
 
     raw_users = []
     phones_to_check = []
-    
+
     for user in aprobados:
         telefono = user.get("telefono")
         nombre = user.get("nombre_completo", "Cliente")
-        
+
         # We need a valid phone number
         phone_str = str(telefono).split(".")[0]
         phone_str = "".join(filter(str.isdigit, phone_str))
-        
+
         if not phone_str:
             continue
-            
+
         # Ensure country code
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
-            
+
         raw_users.append({
             "phone": phone_str,
             "name": nombre,
@@ -59,25 +57,46 @@ def get_pending_approved_notifications():
         phones_to_check.append(phone_str)
 
     if not phones_to_check:
-        return []
+        return {"eligible": [], "excluded": []}
 
     # SINGLE query to Supabase for all phones
     notified_today = get_notified_phones_batch(phones_to_check)
     already_emailed = get_phones_with_email(phones_to_check)
 
-    # Filter out those already notified today OR who already sent their email
-    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in already_emailed]
+    # Separate eligible from excluded, capturing the reason for each exclusion
+    eligible_users = []
+    excluded_users = []
+    for u in raw_users:
+        reasons = []
+        if u["phone"] in notified_today:
+            reasons.append("Ya notificado hoy")
+        if u["phone"] in already_emailed:
+            reasons.append("Ya envió email")
+        if reasons:
+            u["excluded_reasons"] = reasons
+            excluded_users.append(u)
+        else:
+            eligible_users.append(u)
 
-    # Enrich with total send count and last send timestamp
+    # Enrich eligible with total send count and last send timestamp
     eligible_phones = [u["phone"] for u in eligible_users]
     stats = get_template_stats_batch(eligible_phones)
     for user in eligible_users:
         s = stats.get(user["phone"], {})
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
-
     eligible_users.sort(key=lambda u: u["send_count"])
-    return eligible_users
+
+    # Also enrich excluded with stats for context in the UI
+    if excluded_users:
+        excl_phones = [u["phone"] for u in excluded_users]
+        excl_stats = get_template_stats_batch(excl_phones)
+        for user in excluded_users:
+            s = excl_stats.get(user["phone"], {})
+            user["send_count"] = s.get("count", 0)
+            user["last_sent"] = s.get("last_sent", None)
+
+    return {"eligible": eligible_users, "excluded": excluded_users}
 
 def execute_bulk_approved_notifications(users_list):
     """
@@ -267,15 +286,15 @@ def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
 
 def get_pending_falta_documento_notifications():
     """
-    Returns a list of applications in 'Falta algún documento' state
-    who are eligible to receive a notification today.
+    Returns a dict with 'eligible' and 'excluded' lists for 'Falta algún documento' state.
+    Excluded users include an 'excluded_reasons' list explaining why they were filtered out.
     """
     if TEST_MODE:
-        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}]
+        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}], "excluded": []}
 
     clientes = get_falta_documento()
     if not clientes:
-        return []
+        return {"eligible": [], "excluded": []}
 
     raw_users = []
     phones_to_check = []
@@ -303,13 +322,25 @@ def get_pending_falta_documento_notifications():
         phones_to_check.append(phone_str)
 
     if not phones_to_check:
-        return []
+        return {"eligible": [], "excluded": []}
 
     notified_today = get_notified_phones_rojo_batch(phones_to_check)
     docs_completos = get_phones_with_docs_completos(phones_to_check)
 
-    # Filter out those already notified today OR whose docs are marked as complete
-    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in docs_completos]
+    # Separate eligible from excluded, capturing the reason for each exclusion
+    eligible_users = []
+    excluded_users = []
+    for u in raw_users:
+        reasons = []
+        if u["phone"] in notified_today:
+            reasons.append("Ya notificado hoy")
+        if u["phone"] in docs_completos:
+            reasons.append("Docs marcados como completos")
+        if reasons:
+            u["excluded_reasons"] = reasons
+            excluded_users.append(u)
+        else:
+            eligible_users.append(u)
 
     eligible_phones = [u["phone"] for u in eligible_users]
     stats = get_template_stats_batch_rojo(eligible_phones)
@@ -318,7 +349,16 @@ def get_pending_falta_documento_notifications():
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
 
-    return eligible_users
+    # Also enrich excluded with stats for context in the UI
+    if excluded_users:
+        excl_phones = [u["phone"] for u in excluded_users]
+        excl_stats = get_template_stats_batch_rojo(excl_phones)
+        for user in excluded_users:
+            s = excl_stats.get(user["phone"], {})
+            user["send_count"] = s.get("count", 0)
+            user["last_sent"] = s.get("last_sent", None)
+
+    return {"eligible": eligible_users, "excluded": excluded_users}
 
 
 def execute_bulk_falta_documento_notifications(users_list):
@@ -373,15 +413,15 @@ def execute_bulk_falta_documento_notifications(users_list):
 
 def get_pending_listo_docusign_notifications():
     """
-    Returns a list of applications in 'Listo en DocuSign' state
-    who are eligible to receive a notification today.
+    Returns a dict with 'eligible' and 'excluded' lists for 'Listo en DocuSign' state.
+    Excluded users include an 'excluded_reasons' list explaining why they were filtered out.
     """
     if TEST_MODE:
-        return [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}]
+        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}], "excluded": []}
 
     clientes = get_listo_en_docusign()
     if not clientes:
-        return []
+        return {"eligible": [], "excluded": []}
 
     raw_users = []
     phones_to_check = []
@@ -407,13 +447,25 @@ def get_pending_listo_docusign_notifications():
         phones_to_check.append(phone_str)
 
     if not phones_to_check:
-        return []
+        return {"eligible": [], "excluded": []}
 
     notified_today = get_notified_phones_amarillo_batch(phones_to_check)
     already_cuenta = get_phones_with_cuenta(phones_to_check)
 
-    # Filter out those already notified today OR who already sent their account number
-    eligible_users = [u for u in raw_users if u["phone"] not in notified_today and u["phone"] not in already_cuenta]
+    # Separate eligible from excluded, capturing the reason for each exclusion
+    eligible_users = []
+    excluded_users = []
+    for u in raw_users:
+        reasons = []
+        if u["phone"] in notified_today:
+            reasons.append("Ya notificado hoy")
+        if u["phone"] in already_cuenta:
+            reasons.append("Ya envió número de cuenta")
+        if reasons:
+            u["excluded_reasons"] = reasons
+            excluded_users.append(u)
+        else:
+            eligible_users.append(u)
 
     eligible_phones = [u["phone"] for u in eligible_users]
     stats = get_template_stats_batch_amarillo(eligible_phones)
@@ -422,7 +474,16 @@ def get_pending_listo_docusign_notifications():
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
 
-    return eligible_users
+    # Also enrich excluded with stats for context in the UI
+    if excluded_users:
+        excl_phones = [u["phone"] for u in excluded_users]
+        excl_stats = get_template_stats_batch_amarillo(excl_phones)
+        for user in excluded_users:
+            s = excl_stats.get(user["phone"], {})
+            user["send_count"] = s.get("count", 0)
+            user["last_sent"] = s.get("last_sent", None)
+
+    return {"eligible": eligible_users, "excluded": excluded_users}
 
 
 def execute_bulk_listo_docusign_notifications(users_list):
