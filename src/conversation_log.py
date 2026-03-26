@@ -527,6 +527,18 @@ def get_notified_phones_rojo_batch(phones: list) -> set:
         return set()
 
 
+def count_received_documents(phone: str) -> int:
+    """Returns how many documents have already been received from this phone."""
+    if not supabase_client:
+        return 0
+    try:
+        result = supabase_client.table('received_documents').select("id", count="exact").eq("phone", phone).execute()
+        return result.count or 0
+    except Exception as e:
+        print(f"Supabase count_received_documents error: {e}")
+        return 0
+
+
 def log_received_document(phone: str, client_name: str, filename: str, mime_type: str, storage_url: str):
     """Logs a received document to the received_documents table."""
     if not supabase_client:

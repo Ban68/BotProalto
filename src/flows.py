@@ -1,7 +1,7 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet
-from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document
+from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
 import json
@@ -77,9 +77,15 @@ class FlowHandler:
                         if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
                             # Only log if we have a persistent Supabase URL; local paths are ephemeral on Render
                             if public_url:
+                                prev_count = count_received_documents(user_phone)
                                 client_name = get_client_name(user_phone)
                                 log_received_document(user_phone, client_name, filename, mime_type, final_path)
-                            WhatsAppService.send_message(user_phone, "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto.")
+                            else:
+                                prev_count = count_received_documents(user_phone)
+                            if prev_count == 0:
+                                WhatsAppService.send_message(user_phone, "✅ Perfecto, gracias. Nuestro equipo revisará los documentos que enviaste y te contactaremos pronto.")
+                            else:
+                                WhatsAppService.send_message(user_phone, "📎 Documento recibido.")
 
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:
