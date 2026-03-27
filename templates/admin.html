@@ -809,6 +809,59 @@
             background: var(--danger);
             color: white;
         }
+
+        /* ── BI Analytics Dashboard ───────────────────────────────── */
+        .bi-kpi-card {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 16px;
+            border-left: 4px solid var(--kpi-color, #3b82f6);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s, transform 0.18s;
+        }
+        .bi-kpi-card:hover {
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        .bi-kpi-icon { font-size: 1rem; margin-bottom: 6px; opacity: 0.8; }
+        .bi-kpi-label {
+            font-size: 0.67rem; color: #64748b; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .bi-kpi-value { font-size: 1.85rem; font-weight: 700; color: #1e293b; line-height: 1; }
+        .bi-chart-card {
+            background: white;
+            border-radius: 10px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .bi-chart-header {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; margin-bottom: 14px;
+        }
+        .bi-chart-title { font-size: 0.87rem; font-weight: 700; color: #1e293b; }
+        .bi-chart-subtitle { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+        .date-chip {
+            padding: 4px 12px;
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 999px;
+            background: transparent;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.76rem;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-weight: 500;
+        }
+        .date-chip:hover { background: rgba(254,192,92,0.2); color: white; border-color: rgba(254,192,92,0.5); }
+        .date-chip.active { background: #fec05c; color: #1e293b; border-color: #fec05c; font-weight: 700; }
+        .bi-stat-pill {
+            background: #f8fafc; border-radius: 8px; padding: 10px;
+            text-align: center; border: 1px solid #e2e8f0;
+        }
+        .bi-stat-pill-label { font-size: 0.68rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+        .bi-stat-pill-value { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
     </style>
 </head>
 
@@ -1492,82 +1545,141 @@
     </div>
 
     <!-- ── Analytics Dashboard ─────────────────────────────────────── -->
-    <div class="main-chat" id="analyticsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #0891b2; margin-bottom: 20px;">📊 Analytics Dashboard</h2>
+    <div class="main-chat" id="analyticsState" style="display: none; flex-direction: column; overflow-y: auto; background: #f1f5f9;">
 
-        <!-- Date Range Controls -->
-        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap;">
-            <label style="font-size: 0.9rem; color: var(--text-muted);">Desde:</label>
-            <input type="date" id="analyticsFrom" style="padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit;">
-            <label style="font-size: 0.9rem; color: var(--text-muted);">Hasta:</label>
-            <input type="date" id="analyticsTo" style="padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit;">
-            <button class="btn btn-primary" onclick="fetchAnalytics()" style="background: #0891b2; border-color: #0891b2;">Aplicar</button>
-            <div style="margin-left: auto;">
-                <button class="btn btn-primary" onclick="runAIAudit()" style="background: #7c3aed; border-color: #7c3aed;" id="btnRunAudit">🤖 Auditoría AI</button>
+        <!-- Dashboard Header -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #283e52 100%); padding: 16px 22px 14px; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px;">
+                <div>
+                    <div style="color: #fec05c; font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 2px;">ProAlto · Panel de Control</div>
+                    <h2 style="color: white; margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em;">Analytics Dashboard</h2>
+                </div>
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;">
+                    <div id="dateChips" style="display: flex; gap: 5px;">
+                        <button class="date-chip active" data-days="30" onclick="applyDateChip(this, 30)">30 días</button>
+                        <button class="date-chip" data-days="7" onclick="applyDateChip(this, 7)">7 días</button>
+                        <button class="date-chip" data-days="90" onclick="applyDateChip(this, 90)">90 días</button>
+                        <button class="date-chip" data-days="0" onclick="toggleCustomRange(this)">Personalizado ▾</button>
+                    </div>
+                    <button onclick="runAIAudit()" id="btnRunAudit" style="padding: 5px 13px; background: #7c3aed; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer; white-space: nowrap;">🤖 Auditoría AI</button>
+                </div>
             </div>
+            <div id="customDateRange" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <span style="color: #94a3b8; font-size: 0.78rem;">Desde:</span>
+                <input type="date" id="analyticsFrom" style="padding: 4px 9px; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; background: rgba(255,255,255,0.08); color: white; font-family: 'Outfit', sans-serif; font-size: 0.78rem; color-scheme: dark;">
+                <span style="color: #64748b;">→</span>
+                <input type="date" id="analyticsTo" style="padding: 4px 9px; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; background: rgba(255,255,255,0.08); color: white; font-family: 'Outfit', sans-serif; font-size: 0.78rem; color-scheme: dark;">
+                <button onclick="fetchAnalytics()" style="padding: 4px 13px; background: #fec05c; color: #1e293b; border: none; border-radius: 6px; font-weight: 700; font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer;">Aplicar</button>
+            </div>
+            <div id="analyticsLastUpdated" style="color: rgba(255,255,255,0.3); font-size: 0.7rem; margin-top: 8px;"></div>
         </div>
 
-        <!-- KPI Cards -->
-        <div id="kpiCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px;">
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Conversaciones</div>
-                <div id="kpiTotalChats" style="font-size: 1.8rem; font-weight: 700; color: var(--text-main);">-</div>
-            </div>
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Usuarios Nuevos</div>
-                <div id="kpiNewUsers" style="font-size: 1.8rem; font-weight: 700; color: #059669;">-</div>
-            </div>
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Emails Capturados</div>
-                <div id="kpiEmails" style="font-size: 1.8rem; font-weight: 700; color: #3b82f6;">-</div>
-            </div>
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Docs Recibidos</div>
-                <div id="kpiDocs" style="font-size: 1.8rem; font-weight: 700; color: #b45309;">-</div>
-            </div>
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Cuentas Capturadas</div>
-                <div id="kpiCuentas" style="font-size: 1.8rem; font-weight: 700; color: #d97706;">-</div>
-            </div>
-            <div class="kpi-card" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Tiempo Resp. Prom.</div>
-                <div id="kpiAvgResponse" style="font-size: 1.8rem; font-weight: 700; color: #dc2626;">-</div>
-            </div>
-        </div>
+        <!-- Content -->
+        <div style="padding: 16px 18px; flex: 1;">
 
-        <!-- Menu Usage Chart -->
-        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
-            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Motivos de Consulta (Clicks en Menú)</h3>
-            <div style="max-width: 700px; margin: 0 auto;">
-                <canvas id="funnelChart" height="220"></canvas>
+            <!-- KPI Cards -->
+            <div id="kpiCards" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px;">
+                <div class="bi-kpi-card" style="--kpi-color: #3b82f6;">
+                    <div class="bi-kpi-icon">💬</div>
+                    <div class="bi-kpi-label">Conversaciones</div>
+                    <div id="kpiTotalChats" class="bi-kpi-value">—</div>
+                </div>
+                <div class="bi-kpi-card" style="--kpi-color: #059669;">
+                    <div class="bi-kpi-icon">👤</div>
+                    <div class="bi-kpi-label">Usuarios Nuevos</div>
+                    <div id="kpiNewUsers" class="bi-kpi-value">—</div>
+                </div>
+                <div class="bi-kpi-card" style="--kpi-color: #0891b2;">
+                    <div class="bi-kpi-icon">📧</div>
+                    <div class="bi-kpi-label">Emails Captados</div>
+                    <div id="kpiEmails" class="bi-kpi-value">—</div>
+                </div>
+                <div class="bi-kpi-card" style="--kpi-color: #b45309;">
+                    <div class="bi-kpi-icon">📄</div>
+                    <div class="bi-kpi-label">Docs Recibidos</div>
+                    <div id="kpiDocs" class="bi-kpi-value">—</div>
+                </div>
+                <div class="bi-kpi-card" style="--kpi-color: #d97706;">
+                    <div class="bi-kpi-icon">🏦</div>
+                    <div class="bi-kpi-label">Cuentas Captadas</div>
+                    <div id="kpiCuentas" class="bi-kpi-value">—</div>
+                </div>
+                <div class="bi-kpi-card" style="--kpi-color: #dc2626;">
+                    <div class="bi-kpi-icon">⚡</div>
+                    <div class="bi-kpi-label">T. Resp. Asesor</div>
+                    <div id="kpiAvgResponse" class="bi-kpi-value">—</div>
+                </div>
             </div>
-        </div>
 
-        <!-- Two columns: Volume + Response Times -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-            <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Volumen Diario</h3>
-                <canvas id="volumeChart" height="200"></canvas>
+            <!-- Row 1: Motivos (2/3) + Templates doughnut (1/3) -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div class="bi-chart-card">
+                    <div class="bi-chart-header">
+                        <div>
+                            <div class="bi-chart-title">Motivos de Consulta</div>
+                            <div class="bi-chart-subtitle">Clicks en el menú principal por intent</div>
+                        </div>
+                        <div id="funnelTotal" style="font-size: 0.75rem; color: #94a3b8; text-align: right;"></div>
+                    </div>
+                    <canvas id="funnelChart" height="165"></canvas>
+                </div>
+                <div class="bi-chart-card" style="display: flex; flex-direction: column;">
+                    <div class="bi-chart-header">
+                        <div>
+                            <div class="bi-chart-title">Notificaciones Enviadas</div>
+                            <div class="bi-chart-subtitle">Templates por estado</div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                        <div style="position: relative; width: 180px; height: 180px;">
+                            <canvas id="templatesChart"></canvas>
+                            <div id="templatesCenterLabel" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
+                                <div id="templatesTotalNum" style="font-size: 1.5rem; font-weight: 700; color: #1e293b;">—</div>
+                                <div style="font-size: 0.67rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Total</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="templatesLegend" style="margin-top: 12px; display: flex; flex-direction: column; gap: 5px;"></div>
+                </div>
             </div>
-            <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;">
-                <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Tiempos de Respuesta (Asesor)</h3>
-                <canvas id="responseChart" height="200"></canvas>
-                <div id="responseStats" style="display: flex; gap: 16px; margin-top: 12px; justify-content: center; flex-wrap: wrap;"></div>
-            </div>
-        </div>
 
-        <!-- Templates Sent -->
-        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
-            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Templates Enviados</h3>
-            <div style="max-width: 400px; margin: 0 auto;">
-                <canvas id="templatesChart" height="180"></canvas>
+            <!-- Row 2: Volume + Response Times -->
+            <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 12px; margin-bottom: 12px;">
+                <div class="bi-chart-card">
+                    <div class="bi-chart-header">
+                        <div>
+                            <div class="bi-chart-title">Volumen Diario de Mensajes</div>
+                            <div class="bi-chart-subtitle">Entrantes, salientes y usuarios únicos</div>
+                        </div>
+                        <div id="volumeSummary" style="font-size: 0.75rem; color: #94a3b8; text-align: right;"></div>
+                    </div>
+                    <canvas id="volumeChart" height="155"></canvas>
+                </div>
+                <div class="bi-chart-card">
+                    <div class="bi-chart-header">
+                        <div>
+                            <div class="bi-chart-title">Tiempo de Respuesta</div>
+                            <div class="bi-chart-subtitle">Distribución de tiempos de los asesores</div>
+                        </div>
+                    </div>
+                    <canvas id="responseChart" height="125"></canvas>
+                    <div id="responseStats" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px;"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- AI Audit Reports -->
-        <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
-            <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">🤖 Reportes de Auditoría AI</h3>
-            <div id="auditReportsList" style="color: var(--text-muted);">Haz clic en "Auditoría AI" para generar un reporte.</div>
+            <!-- AI Audit -->
+            <div class="bi-chart-card">
+                <div class="bi-chart-header">
+                    <div>
+                        <div class="bi-chart-title">🤖 Auditorías de Conversación (IA)</div>
+                        <div class="bi-chart-subtitle">Análisis automático de muestras con Claude AI</div>
+                    </div>
+                </div>
+                <div id="auditReportsList" style="color: var(--text-muted); font-size: 0.85rem;">
+                    Haz clic en "Auditoría AI" para generar un reporte.
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -4239,15 +4351,36 @@
         let chartFunnel = null, chartVolume = null, chartResponse = null, chartTemplates = null;
 
         function initAnalyticsDates() {
+            const today = new Date();
             const toEl = document.getElementById('analyticsTo');
             const fromEl = document.getElementById('analyticsFrom');
-            if (!toEl.value) {
-                const today = new Date();
+            if (toEl && !toEl.value) {
                 toEl.value = today.toISOString().slice(0, 10);
                 const from = new Date(today);
                 from.setDate(from.getDate() - 30);
                 fromEl.value = from.toISOString().slice(0, 10);
             }
+        }
+
+        function applyDateChip(btn, days) {
+            document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            if (days === 0) { toggleCustomRange(btn); return; }
+            const custom = document.getElementById('customDateRange');
+            if (custom) custom.style.display = 'none';
+            const today = new Date();
+            const to = today.toISOString().slice(0, 10);
+            const from = new Date(today);
+            from.setDate(from.getDate() - days);
+            document.getElementById('analyticsTo').value = to;
+            document.getElementById('analyticsFrom').value = from.toISOString().slice(0, 10);
+            fetchAnalytics();
+        }
+
+        function toggleCustomRange(btn) {
+            const custom = document.getElementById('customDateRange');
+            const isHidden = !custom.style.display || custom.style.display === 'none';
+            custom.style.display = isHidden ? 'flex' : 'none';
         }
 
         function getAnalyticsDates() {
@@ -4275,17 +4408,23 @@
                 renderVolumeChart(volumeData.daily_breakdown);
                 renderResponseChart(responseData);
                 renderTemplatesChart(volumeData.templates_sent);
+
+                const now = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+                const el = document.getElementById('analyticsLastUpdated');
+                if (el) el.textContent = `Actualizado a las ${now}`;
+
+                fetchAuditReports();
             } catch (e) {
                 console.error('Analytics fetch error:', e);
             }
         }
 
         function renderKPICards(vol, resp) {
-            document.getElementById('kpiTotalChats').textContent = vol.unique_users || 0;
-            document.getElementById('kpiNewUsers').textContent = vol.new_conversations || 0;
-            document.getElementById('kpiEmails').textContent = vol.emails_captured || 0;
-            document.getElementById('kpiDocs').textContent = vol.documents_received || 0;
-            document.getElementById('kpiCuentas').textContent = vol.cuentas_captured || 0;
+            document.getElementById('kpiTotalChats').textContent = (vol.unique_users || 0).toLocaleString('es-CO');
+            document.getElementById('kpiNewUsers').textContent = (vol.new_conversations || 0).toLocaleString('es-CO');
+            document.getElementById('kpiEmails').textContent = (vol.emails_captured || 0).toLocaleString('es-CO');
+            document.getElementById('kpiDocs').textContent = (vol.documents_received || 0).toLocaleString('es-CO');
+            document.getElementById('kpiCuentas').textContent = (vol.cuentas_captured || 0).toLocaleString('es-CO');
             const avgSecs = resp.avg_response_seconds || 0;
             document.getElementById('kpiAvgResponse').textContent = avgSecs > 0 ? formatSeconds(avgSecs) : 'N/A';
         }
@@ -4303,20 +4442,25 @@
             const buttons = funnel.buttons || [];
             const labels = buttons.map(b => b.label);
             const clicks = buttons.map(b => b.clicks);
-            const users = buttons.map(b => b.unique_users);
+            const total = funnel.total_button_clicks || 1;
 
-            const palette = ['#0891b2', '#059669', '#f59e0b', '#ef4444', '#7c3aed', '#3b82f6', '#d97706', '#dc2626'];
-            const colors = buttons.map((_, i) => palette[i % palette.length]);
+            const totalEl = document.getElementById('funnelTotal');
+            if (totalEl) totalEl.innerHTML = `<strong style="color:#1e293b;">${total.toLocaleString('es-CO')}</strong><br><span>clicks totales</span>`;
+
+            const colors = ['#0891b2', '#059669', '#fec05c', '#ef4444', '#7c3aed', '#3b82f6', '#d97706', '#dc2626'];
 
             chartFunnel = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels,
                     datasets: [{
                         label: 'Clicks',
                         data: clicks,
-                        backgroundColor: colors,
-                        borderRadius: 4,
+                        backgroundColor: buttons.map((_, i) => colors[i % colors.length] + 'cc'),
+                        borderColor: buttons.map((_, i) => colors[i % colors.length]),
+                        borderWidth: 1.5,
+                        borderRadius: 5,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
@@ -4328,71 +4472,94 @@
                             callbacks: {
                                 label: (tipCtx) => {
                                     const idx = tipCtx.dataIndex;
-                                    const total = funnel.total_button_clicks || 1;
                                     const pct = ((clicks[idx] / total) * 100).toFixed(1);
-                                    return `${clicks[idx]} clicks (${pct}%) — ${users[idx]} usuarios`;
+                                    const u = buttons[idx]?.unique_users || 0;
+                                    return [`${clicks[idx].toLocaleString('es-CO')} clicks (${pct}%)`, `${u} usuarios únicos`];
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: { beginAtZero: true, grid: { display: false } },
-                        y: { grid: { display: false } }
+                        x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+                        y: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#374151' } }
                     }
                 }
             });
-
         }
 
         function renderVolumeChart(daily) {
             const ctx = document.getElementById('volumeChart').getContext('2d');
             if (chartVolume) chartVolume.destroy();
 
-            const labels = daily.map(d => d.date.slice(5));
-            const inbound = daily.map(d => d.inbound);
-            const outbound = daily.map(d => d.outbound);
-            const users = daily.map(d => d.unique_users);
+            const labels = (daily || []).map(d => d.date.slice(5));
+            const inbound = (daily || []).map(d => d.inbound);
+            const outbound = (daily || []).map(d => d.outbound);
+            const users = (daily || []).map(d => d.unique_users);
+
+            const totalIn = inbound.reduce((a, b) => a + b, 0);
+            const totalOut = outbound.reduce((a, b) => a + b, 0);
+            const summaryEl = document.getElementById('volumeSummary');
+            if (summaryEl) summaryEl.innerHTML = `<strong style="color:#3b82f6;">${totalIn.toLocaleString('es-CO')}</strong> entrantes<br><strong style="color:#b45309;">${totalOut.toLocaleString('es-CO')}</strong> salientes`;
+
+            const gradIn = ctx.createLinearGradient(0, 0, 0, 280);
+            gradIn.addColorStop(0, 'rgba(59,130,246,0.22)');
+            gradIn.addColorStop(1, 'rgba(59,130,246,0.02)');
+
+            const gradOut = ctx.createLinearGradient(0, 0, 0, 280);
+            gradOut.addColorStop(0, 'rgba(254,192,92,0.22)');
+            gradOut.addColorStop(1, 'rgba(254,192,92,0.02)');
 
             chartVolume = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels,
                     datasets: [
                         {
                             label: 'Entrantes',
                             data: inbound,
                             borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            backgroundColor: gradIn,
                             fill: true,
-                            tension: 0.3,
-                            pointRadius: 2,
+                            tension: 0.4,
+                            pointRadius: daily && daily.length <= 14 ? 3 : 0,
+                            pointHoverRadius: 5,
+                            borderWidth: 2,
                         },
                         {
                             label: 'Salientes',
                             data: outbound,
                             borderColor: '#fec05c',
-                            backgroundColor: 'rgba(254,192,92,0.1)',
+                            backgroundColor: gradOut,
                             fill: true,
-                            tension: 0.3,
-                            pointRadius: 2,
+                            tension: 0.4,
+                            pointRadius: daily && daily.length <= 14 ? 3 : 0,
+                            pointHoverRadius: 5,
+                            borderWidth: 2,
                         },
                         {
                             label: 'Usuarios',
                             data: users,
                             borderColor: '#059669',
-                            borderDash: [5, 3],
+                            backgroundColor: 'transparent',
+                            borderDash: [6, 3],
                             fill: false,
-                            tension: 0.3,
-                            pointRadius: 2,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            borderWidth: 1.5,
                         }
                     ]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 11 } } },
+                        tooltip: { padding: 10, cornerRadius: 6 }
+                    },
                     scales: {
-                        x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 } } },
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                        x: { grid: { display: false }, ticks: { maxRotation: 0, font: { size: 10 }, color: '#94a3b8' } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, color: '#94a3b8' } }
                     }
                 }
             });
@@ -4409,26 +4576,29 @@
                     datasets: [{
                         label: 'Respuestas',
                         data: data.histogram,
-                        backgroundColor: ['#059669', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#dc2626'],
-                        borderRadius: 4,
+                        backgroundColor: ['#059669cc', '#10b981cc', '#f59e0bcc', '#f97316cc', '#ef4444cc', '#dc2626cc'],
+                        borderColor: ['#059669', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#dc2626'],
+                        borderWidth: 1.5,
+                        borderRadius: 5,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: false }, tooltip: { cornerRadius: 6 } },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, color: '#94a3b8' } }
                     }
                 }
             });
 
             const statsEl = document.getElementById('responseStats');
             statsEl.innerHTML = `
-                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Promedio</span><br><strong>${formatSeconds(data.avg_response_seconds)}</strong></div>
-                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Mediana</span><br><strong>${formatSeconds(data.median_response_seconds)}</strong></div>
-                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">P90</span><br><strong>${formatSeconds(data.p90_response_seconds)}</strong></div>
-                <div style="text-align:center;"><span style="font-size:0.75rem; color:var(--text-muted);">Sesiones Asesor</span><br><strong>${data.total_agent_conversations}</strong></div>
+                <div class="bi-stat-pill"><div class="bi-stat-pill-label">Promedio</div><div class="bi-stat-pill-value">${formatSeconds(data.avg_response_seconds)}</div></div>
+                <div class="bi-stat-pill"><div class="bi-stat-pill-label">Mediana</div><div class="bi-stat-pill-value">${formatSeconds(data.median_response_seconds)}</div></div>
+                <div class="bi-stat-pill"><div class="bi-stat-pill-label">P90</div><div class="bi-stat-pill-value">${formatSeconds(data.p90_response_seconds)}</div></div>
+                <div class="bi-stat-pill"><div class="bi-stat-pill-label">Sesiones</div><div class="bi-stat-pill-value">${data.total_agent_conversations}</div></div>
             `;
         }
 
@@ -4436,25 +4606,61 @@
             const ctx = document.getElementById('templatesChart').getContext('2d');
             if (chartTemplates) chartTemplates.destroy();
 
+            const values = [
+                templates.estado_verde || 0,
+                templates.estado_rojo || 0,
+                templates.estado_amarillo || 0,
+                templates.estado_negados || 0,
+            ];
+            const templateLabels = ['Aprobados', 'Falta Doc', 'PandaDoc', 'Negados'];
+            const colors = ['#22c55e', '#ef4444', '#f59e0b', '#6b7280'];
+            const total = values.reduce((a, b) => a + b, 0);
+
+            const totalEl = document.getElementById('templatesTotalNum');
+            if (totalEl) totalEl.textContent = total.toLocaleString('es-CO');
+
             chartTemplates = new Chart(ctx, {
-                type: 'bar',
+                type: 'doughnut',
                 data: {
-                    labels: ['Aprobados (Verde)', 'Falta Doc (Rojo)', 'PandaDoc (Amarillo)', 'Negados (Gris)'],
+                    labels: templateLabels,
                     datasets: [{
-                        data: [templates.estado_verde, templates.estado_rojo, templates.estado_amarillo, templates.estado_negados || 0],
-                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#6b7280'],
-                        borderRadius: 4,
+                        data: values,
+                        backgroundColor: colors.map(c => c + 'dd'),
+                        borderColor: colors,
+                        borderWidth: 2,
+                        hoverOffset: 6,
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false } },
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+                    cutout: '68%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (tipCtx) => {
+                                    const v = tipCtx.raw;
+                                    const pct = total > 0 ? ((v / total) * 100).toFixed(1) : 0;
+                                    return `${v.toLocaleString('es-CO')} (${pct}%)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
+
+            const legend = document.getElementById('templatesLegend');
+            if (legend) {
+                legend.innerHTML = templateLabels.map((label, i) => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 10px; height: 10px; border-radius: 2px; background: ${colors[i]}; flex-shrink: 0;"></span>
+                            <span style="color: #374151;">${label}</span>
+                        </div>
+                        <span style="font-weight: 700; color: #1e293b;">${values[i].toLocaleString('es-CO')}</span>
+                    </div>
+                `).join('');
+            }
         }
 
         // ── AI Audit ──────────────────────────────────────────────
@@ -4525,21 +4731,26 @@
             for (const a of audits) {
                 const date = new Date(a.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const statusBadge = a.status === 'completed'
-                    ? '<span style="background:#22c55e; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Completado</span>'
+                    ? '<span style="background:#22c55e; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">Completado</span>'
                     : a.status === 'running'
-                    ? '<span style="background:#f59e0b; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">En proceso...</span>'
-                    : '<span style="background:#ef4444; color:white; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Error</span>';
+                    ? '<span style="background:#f59e0b; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">En proceso...</span>'
+                    : '<span style="background:#ef4444; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">Error</span>';
 
                 html += `
-                    <div style="border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; background: white; cursor: pointer;" onclick="loadAuditDetail('${a.id}', this)">
+                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; background: #f8fafc; cursor: pointer; transition: background 0.15s;"
+                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'"
+                         onclick="loadAuditDetail('${a.id}', this)">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <strong>${date}</strong>
-                                <span style="color: var(--text-muted); margin-left: 8px;">${a.date_from} → ${a.date_to} | ${a.sample_size} conversaciones</span>
+                                <strong style="font-size:0.85rem;">${date}</strong>
+                                <span style="color:var(--text-muted); margin-left:10px; font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conversaciones</span>
                             </div>
-                            ${statusBadge}
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                ${statusBadge}
+                                <span style="color:#94a3b8; font-size:0.8rem;">▾</span>
+                            </div>
                         </div>
-                        <div class="audit-detail" style="display: none; margin-top: 12px;"></div>
+                        <div class="audit-detail" style="display: none; margin-top: 14px;"></div>
                     </div>`;
             }
             container.innerHTML = html;
@@ -4552,7 +4763,7 @@
                 return;
             }
 
-            detailDiv.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+            detailDiv.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Cargando...</p>';
             detailDiv.style.display = 'block';
 
             try {
@@ -4560,92 +4771,71 @@
                 const data = await res.json();
 
                 if (data.status === 'running') {
-                    detailDiv.innerHTML = '<p style="color: #f59e0b;">Auditoría en proceso, intenta de nuevo en unos segundos...</p>';
+                    detailDiv.innerHTML = '<p style="color:#f59e0b; font-size:0.85rem;">Auditoría en proceso, intenta de nuevo en unos segundos...</p>';
                     return;
                 }
                 if (data.status === 'failed') {
-                    detailDiv.innerHTML = `<p style="color: #ef4444;">Error: ${data.error || 'desconocido'}</p>`;
+                    detailDiv.innerHTML = `<p style="color:#ef4444; font-size:0.85rem;">Error: ${data.error || 'desconocido'}</p>`;
                     return;
                 }
 
                 const report = data.report;
                 if (!report || !report.summary) {
-                    detailDiv.innerHTML = '<p style="color: var(--text-muted);">Sin datos.</p>';
+                    detailDiv.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Sin datos.</p>';
                     return;
                 }
 
                 const s = report.summary;
-                let html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 12px;">`;
-
-                // Resolution breakdown
                 const resCounts = s.resolucion || {};
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Resueltas</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#22c55e;">${resCounts.resolved || 0}</div>
-                </div>`;
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Parciales</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#f59e0b;">${resCounts.partial || 0}</div>
-                </div>`;
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">No Resueltas</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#ef4444;">${resCounts.unresolved || 0}</div>
-                </div>`;
-
-                // Sentiment
                 const sent = s.sentimiento || {};
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Positivo</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#22c55e;">${sent.positive || 0}</div>
-                </div>`;
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Neutral</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#64748b;">${sent.neutral || 0}</div>
-                </div>`;
-                html += `<div style="background:var(--bg-color); padding:10px; border-radius:var(--radius); text-align:center;">
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Negativo</div>
-                    <div style="font-size:1.2rem; font-weight:700; color:#ef4444;">${sent.negative || 0}</div>
-                </div>`;
+
+                let html = `<div style="display: grid; grid-template-columns: repeat(3,1fr) 1px repeat(3,1fr); gap: 8px; margin-bottom: 14px; align-items: stretch;">`;
+                html += `<div class="bi-stat-pill" style="border-left:3px solid #22c55e;"><div class="bi-stat-pill-label">Resueltas</div><div class="bi-stat-pill-value" style="color:#22c55e;">${resCounts.resolved || 0}</div></div>`;
+                html += `<div class="bi-stat-pill" style="border-left:3px solid #f59e0b;"><div class="bi-stat-pill-label">Parciales</div><div class="bi-stat-pill-value" style="color:#f59e0b;">${resCounts.partial || 0}</div></div>`;
+                html += `<div class="bi-stat-pill" style="border-left:3px solid #ef4444;"><div class="bi-stat-pill-label">No Resueltas</div><div class="bi-stat-pill-value" style="color:#ef4444;">${resCounts.unresolved || 0}</div></div>`;
+                html += `<div style="background:var(--border); width:1px; align-self:stretch;"></div>`;
+                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😊 Positivo</div><div class="bi-stat-pill-value" style="color:#22c55e;">${sent.positive || 0}</div></div>`;
+                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😐 Neutral</div><div class="bi-stat-pill-value" style="color:#64748b;">${sent.neutral || 0}</div></div>`;
+                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😞 Negativo</div><div class="bi-stat-pill-value" style="color:#ef4444;">${sent.negative || 0}</div></div>`;
                 html += `</div>`;
 
-                // Friction points
-                if (report.top_friction_points && report.top_friction_points.length > 0) {
-                    html += `<div style="margin-bottom: 12px;"><strong style="color:#dc2626;">Puntos de Fricción:</strong><ul style="margin:6px 0 0 16px;">`;
-                    for (const f of report.top_friction_points.slice(0, 5)) {
-                        html += `<li style="margin-bottom:4px;">${f.text} <span style="color:var(--text-muted);">(${f.count}x)</span></li>`;
-                    }
-                    html += `</ul></div>`;
-                }
+                const auditSection = (title, color, items) => {
+                    if (!items || !items.length) return '';
+                    return `<div style="background:#f8fafc; border-radius:8px; padding:12px; margin-bottom:10px;">
+                        <div style="font-size:0.8rem; font-weight:700; color:${color}; margin-bottom:8px;">${title}</div>
+                        ${items.slice(0, 5).map(f => `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:5px; font-size:0.8rem;">
+                                <span style="color:#374151;">${f.text}</span>
+                                <span style="background:${color}22; color:${color}; padding:1px 7px; border-radius:999px; font-weight:700; font-size:0.7rem; white-space:nowrap;">${f.count}x</span>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                };
 
-                // Improvements
-                if (report.top_improvements && report.top_improvements.length > 0) {
-                    html += `<div style="margin-bottom: 12px;"><strong style="color:#059669;">Oportunidades de Mejora:</strong><ul style="margin:6px 0 0 16px;">`;
-                    for (const i of report.top_improvements.slice(0, 5)) {
-                        html += `<li style="margin-bottom:4px;">${i.text} <span style="color:var(--text-muted);">(${i.count}x)</span></li>`;
-                    }
-                    html += `</ul></div>`;
-                }
+                html += auditSection('⚠️ Puntos de Fricción', '#dc2626', report.top_friction_points);
+                html += auditSection('💡 Oportunidades de Mejora', '#059669', report.top_improvements);
 
-                // Notable
                 if (report.notable_findings && report.notable_findings.length > 0) {
-                    html += `<div style="margin-bottom: 12px;"><strong style="color:#7c3aed;">Hallazgos Notables:</strong><ul style="margin:6px 0 0 16px;">`;
-                    for (const n of report.notable_findings) {
-                        html += `<li style="margin-bottom:4px;">${n}</li>`;
-                    }
-                    html += `</ul></div>`;
+                    html += `<div style="background:#faf5ff; border-radius:8px; padding:12px; border-left:3px solid #7c3aed; margin-bottom:10px;">
+                        <div style="font-size:0.8rem; font-weight:700; color:#7c3aed; margin-bottom:8px;">✨ Hallazgos Notables</div>
+                        ${report.notable_findings.map(n => `<div style="font-size:0.8rem; color:#374151; margin-bottom:4px;">· ${n}</div>`).join('')}
+                    </div>`;
                 }
 
-                // Category breakdown
                 if (s.categoria) {
-                    html += `<div><strong>Categorías:</strong> `;
                     const cats = Object.entries(s.categoria).sort((a, b) => b[1] - a[1]);
-                    html += cats.map(([k, v]) => `${k}: ${v}`).join(' | ');
+                    const catTotal = cats.reduce((sum, [, v]) => sum + v, 0);
+                    html += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
+                    for (const [k, v] of cats) {
+                        const pct = catTotal > 0 ? Math.round((v / catTotal) * 100) : 0;
+                        html += `<span style="background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:600;">${k}: ${v} (${pct}%)</span>`;
+                    }
                     html += `</div>`;
                 }
 
                 detailDiv.innerHTML = html;
             } catch (e) {
-                detailDiv.innerHTML = `<p style="color: #ef4444;">Error cargando detalle: ${e.message}</p>`;
+                detailDiv.innerHTML = `<p style="color:#ef4444; font-size:0.85rem;">Error cargando detalle: ${e.message}</p>`;
             }
         }
     </script>
