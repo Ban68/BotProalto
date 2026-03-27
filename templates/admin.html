@@ -1313,12 +1313,13 @@
                             <th style="padding: 10px; text-align: center;"><input type="checkbox" id="checkAllNegados" onchange="toggleAllChecksNegados(this)"></th>
                             <th style="padding: 10px; text-align: left;">Teléfono</th>
                             <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: left;">Fecha Solicitud</th>
                             <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_negados">Envíos</th>
                             <th style="padding: 10px; text-align: left;">Último Envío</th>
                         </tr>
                     </thead>
                     <tbody id="negadosTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                        <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2609,11 +2610,13 @@
                             const lastSent = user.last_sent
                                 ? new Date(user.last_sent).toLocaleDateString('es-CO')
                                 : '—';
+                            const fechaSolicitud = user.fecha_solicitud || '—';
                             const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#6b7280;">${user.empresa}</span>` : '';
                             rows += `<tr style="border-bottom: 1px solid #eee;" data-empresa="${(user.empresa||'').toLowerCase()}">
                                 <td style="padding: 10px; text-align: center;"><input type="checkbox" class="negados-check" data-idx="${idx}" checked onchange="updateSelectedCountNegados()"></td>
                                 <td style="padding: 10px;">${user.phone}</td>
                                 <td style="padding: 10px;">${user.name}${empresaLabel}</td>
+                                <td style="padding: 10px; white-space: nowrap;">${fechaSolicitud}</td>
                                 <td style="padding: 10px; text-align: center;">${user.send_count}</td>
                                 <td style="padding: 10px;">${lastSent}</td>
                             </tr>`;

@@ -568,6 +568,7 @@ def get_pending_denegado_notifications():
             "phone": phone_str,
             "name": nombre,
             "empresa": user.get("empresa", ""),
+            "fecha_solicitud": user.get("fecha_de_solicitud", ""),
         })
         phones_to_check.append(phone_str)
 
