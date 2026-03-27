@@ -869,6 +869,7 @@
                 </div>
             </div>
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
+            <button type="button" class="tool-nav-btn" id="tabNegados" onclick="switchTab('negados')">🚫 Negados</button>
             <!-- Grupo: Documentos -->
             <div class="tool-nav-group">
                 <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos" onclick="toggleNavGroup(this)">
@@ -1222,6 +1223,81 @@
                         <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Envíos Masivos: Créditos Negados -->
+    <div class="main-chat" id="negadosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #6b7280; margin-bottom: 20px;">Envíos Masivos: Créditos Negados</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Notifica a los clientes con solicitud en estado <strong>DENEGADO</strong> o <strong>CANCELADO POR LA EMPRESA</strong>. Se enviará el template <strong>estado_negados</strong>. Cada cliente solo recibe esta notificación <strong>una vez</strong>.
+        </p>
+        <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="negadosCount">0</span></h3>
+                    <div id="negadosStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btnExecuteNegados" class="btn" onclick="executeBulkNegados()" disabled style="background: #6b7280; color: white;">🚫 Enviar a Seleccionados</button>
+                    <button class="btn btn-outline-secondary" onclick="fetchPendingNegados()">🔄 Actualizar</button>
+                </div>
+            </div>
+            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
+                <input type="text" id="negadosSearch" oninput="applyPanelFilter('negadosSearch','negadosTableBody','negadosEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
+                <div class="empresa-multi-wrap" data-search="negadosSearch" data-tbody="negadosTableBody" style="position:relative; min-width:180px;">
+                    <button type="button" id="negadosEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('negadosEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
+                    </button>
+                    <div id="negadosEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+                </div>
+            </div>
+            <div id="negadosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #6b7280; color: white; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 10px; text-align: center;"><input type="checkbox" id="checkAllNegados" onchange="toggleAllChecksNegados(this)"></th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Nombre</th>
+                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_negados">Envíos</th>
+                            <th style="padding: 10px; text-align: left;">Último Envío</th>
+                        </tr>
+                    </thead>
+                    <tbody id="negadosTableBody">
+                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="negadosExcludedSection" style="display:none; margin-top:10px;">
+                <button onclick="toggleExcludedSection('negados')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
+                    <span id="negadosExcludedToggleLabel">▶ Ver excluidos (0)</span>
+                </button>
+                <div id="negadosExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
+                            <tr>
+                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Reenviar</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Teléfono</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Nombre</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Razón de exclusión</th>
+                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Envíos</th>
+                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Último envío</th>
+                            </tr>
+                        </thead>
+                        <tbody id="negadosExcludedBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="negadosResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="negadosSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="negadosFailCount">0</span>
+                <ul id="negadosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
             </div>
         </div>
     </div>
@@ -1764,6 +1840,7 @@
                 tabLeads:       { active: '#059669', tab: 'leads',        isDropdown: false },
                 tabCorreos:     { active: '#3b82f6', tab: 'correos',      isDropdown: true  },
                 tabAmarillo:    { active: '#d97706', tab: 'amarillo',     isDropdown: false },
+                tabNegados:     { active: '#6b7280', tab: 'negados',      isDropdown: false },
                 tabRojo:        { active: '#dc2626', tab: 'rojo',         isDropdown: true  },
                 tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos', isDropdown: true  },
                 tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests',  isDropdown: false },
@@ -1818,6 +1895,12 @@
                 amarilloState.style.flexDirection = 'column';
             }
 
+            const negadosState = document.getElementById('negadosState');
+            if(negadosState) {
+                negadosState.style.display = tab === 'negados' ? 'flex' : 'none';
+                negadosState.style.flexDirection = 'column';
+            }
+
             const rojoState = document.getElementById('rojoState');
             if(rojoState) {
                 rojoState.style.display = tab === 'rojo' ? 'flex' : 'none';
@@ -1855,6 +1938,8 @@
             } else if (tab === 'amarillo') {
                 fetchPendingAmarillo();
                 fetchCapturedCuentas();
+            } else if (tab === 'negados') {
+                fetchPendingNegados();
             } else if (tab === 'rojo') {
                 fetchPendingRojo();
             } else if (tab === 'docrecibidos') {
@@ -1984,7 +2069,8 @@
             const eligibleCount = {
                 'envios': () => document.querySelectorAll('.envio-check').length,
                 'rojo': () => document.querySelectorAll('.rojo-check').length,
-                'amarillo': () => document.querySelectorAll('.amarillo-check').length
+                'amarillo': () => document.querySelectorAll('.amarillo-check').length,
+                'negados':  () => document.querySelectorAll('.negados-check').length
             }[panel]?.() || 0;
 
             const totalCount = eligibleCount + (excludedData ? excludedData.length : 0);
@@ -2034,6 +2120,7 @@
         let pendingExcludedEnviosData = [];
         let pendingExcludedRojoData = [];
         let pendingExcludedAmarilloData = [];
+        let pendingExcludedNegadosData = [];
         let _excludedConfirmCallback = null;
 
         function showExcludedConfirmModal(excludedUsers, callback) {
@@ -2375,6 +2462,136 @@
             btn.innerText = '🟡 Ejecutar Envío a Seleccionados';
             btn.disabled = false;
             await fetchPendingAmarillo(false);
+            alert(`Proceso finalizado.\nÉxitos: ${totalSuccess}\nFallos: ${totalFailed}`);
+        }
+
+        // ── Estado Negados: Créditos Denegados / Cancelados ───────────────────────
+        let pendingNegadosData = [];
+
+        async function fetchPendingNegados(hideResults = true) {
+            const tbody = document.getElementById('negadosTableBody');
+            const btn = document.getElementById('btnExecuteNegados');
+            if (hideResults) {
+                document.getElementById('negadosResults').style.display = 'none';
+            }
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Consultando clientes elegibles...</td></tr>';
+            if (btn) btn.disabled = true;
+            pendingNegadosData = [];
+            pendingExcludedNegadosData = [];
+            document.getElementById('negadosExcludedSection').style.display = 'none';
+            document.getElementById('negadosStatLine').innerHTML = '';
+
+            try {
+                const res = await fetch('/admin/api/pending-denegado');
+                const data = await res.json();
+
+                if (res.ok && data.pending) {
+                    pendingNegadosData = data.pending;
+
+                    if (pendingNegadosData.length === 0) {
+                        document.getElementById('negadosCount').innerText = '0';
+                        tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--success); font-weight: bold;">✅ No hay clientes pendientes por notificar.</td></tr>';
+                    } else {
+                        let rows = '';
+                        pendingNegadosData.forEach((user, idx) => {
+                            const lastSent = user.last_sent
+                                ? new Date(user.last_sent).toLocaleDateString('es-CO')
+                                : '—';
+                            const empresaLabel = user.empresa ? `<br><span style="font-size:0.75rem;color:#6b7280;">${user.empresa}</span>` : '';
+                            rows += `<tr style="border-bottom: 1px solid #eee;" data-empresa="${(user.empresa||'').toLowerCase()}">
+                                <td style="padding: 10px; text-align: center;"><input type="checkbox" class="negados-check" data-idx="${idx}" checked onchange="updateSelectedCountNegados()"></td>
+                                <td style="padding: 10px;">${user.phone}</td>
+                                <td style="padding: 10px;">${user.name}${empresaLabel}</td>
+                                <td style="padding: 10px; text-align: center;">${user.send_count}</td>
+                                <td style="padding: 10px;">${lastSent}</td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                        populatePanelEmpresaFilter(pendingNegadosData, 'negadosEmpresaDrop');
+                        updateSelectedCountNegados();
+                    }
+                    pendingExcludedNegadosData = data.excluded || [];
+                    renderExcludedSection('negados', pendingExcludedNegadosData);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión</td></tr>';
+            }
+        }
+
+        function toggleAllChecksNegados(masterCb) {
+            document.querySelectorAll('.negados-check').forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCountNegados();
+        }
+
+        function updateSelectedCountNegados() {
+            const total = document.querySelectorAll('.negados-check').length;
+            const selected = document.querySelectorAll('.negados-check:checked').length;
+            const exclSelected = document.querySelectorAll('.negados-excl-check:checked').length;
+            document.getElementById('negadosCount').innerText = `${selected} / ${total}`;
+            document.getElementById('btnExecuteNegados').disabled = (selected + exclSelected) === 0;
+            const masterCb = document.getElementById('checkAllNegados');
+            if (masterCb) masterCb.indeterminate = selected > 0 && selected < total;
+        }
+
+        async function executeBulkNegados() {
+            const checked = document.querySelectorAll('.negados-check:checked');
+            const selectedEligible = Array.from(checked).map(cb => pendingNegadosData[parseInt(cb.dataset.idx)]);
+            const exclChecked = document.querySelectorAll('.negados-excl-check:checked');
+            const selectedExcluded = Array.from(exclChecked).map(cb => pendingExcludedNegadosData[parseInt(cb.dataset.exclIdx)]);
+            const selectedUsers = [...selectedEligible, ...selectedExcluded];
+
+            if (selectedUsers.length === 0) {
+                alert('No hay clientes seleccionados.');
+                return;
+            }
+            if (!confirm(`¿Estás seguro de enviar el template "estado_negados" a ${selectedUsers.length} cliente(s) seleccionado(s)?\n\nRecuerda: cada cliente solo debería recibir esta notificación una vez.`)) return;
+
+            const btn = document.getElementById('btnExecuteNegados');
+            btn.innerText = '⏳ Enviando...';
+            btn.disabled = true;
+
+            const batchSize = 20;
+            let totalSuccess = 0, totalFailed = 0, allErrors = [];
+
+            document.getElementById('negadosResults').style.display = 'block';
+
+            for (let i = 0; i < selectedUsers.length; i += batchSize) {
+                const chunk = selectedUsers.slice(i, i + batchSize);
+                try {
+                    const res = await fetch('/admin/api/trigger-bulk-denegado', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ users: chunk })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.results) {
+                        totalSuccess += data.results.success;
+                        totalFailed += data.results.fail;
+                        if (data.results.errors) allErrors = allErrors.concat(data.results.errors);
+
+                        document.getElementById('negadosSuccessCount').innerText = totalSuccess;
+                        document.getElementById('negadosFailCount').innerText = totalFailed;
+
+                        const errorList = document.getElementById('negadosErrorList');
+                        errorList.innerHTML = allErrors.length > 0
+                            ? allErrors.map(err => `<li>${err}</li>`).join('')
+                            : '<li>Sin errores en este lote.</li>';
+                    } else {
+                        totalFailed += chunk.length;
+                        allErrors.push(`Lote: ${data.message || 'Error de servidor'}`);
+                    }
+                } catch (e) {
+                    totalFailed += chunk.length;
+                    allErrors.push('Red: Error de conexión');
+                }
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            btn.innerText = '🚫 Enviar a Seleccionados';
+            btn.disabled = false;
+            await fetchPendingNegados(false);
             alert(`Proceso finalizado.\nÉxitos: ${totalSuccess}\nFallos: ${totalFailed}`);
         }
 
@@ -3413,6 +3630,7 @@
             document.getElementById('emptyState').style.display = 'none';
             document.getElementById('enviosState').style.display = 'none';
             document.getElementById('amarilloState').style.display = 'none';
+            document.getElementById('negadosState').style.display = 'none';
             document.getElementById('rojoState').style.display = 'none';
             document.getElementById('docRecibidosState').style.display = 'none';
             document.getElementById('mainChat').style.display = 'flex';
@@ -4221,10 +4439,10 @@
             chartTemplates = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Aprobados (Verde)', 'Falta Doc (Rojo)', 'PandaDoc (Amarillo)'],
+                    labels: ['Aprobados (Verde)', 'Falta Doc (Rojo)', 'PandaDoc (Amarillo)', 'Negados (Gris)'],
                     datasets: [{
-                        data: [templates.estado_verde, templates.estado_rojo, templates.estado_amarillo],
-                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'],
+                        data: [templates.estado_verde, templates.estado_rojo, templates.estado_amarillo, templates.estado_negados || 0],
+                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#6b7280'],
                         borderRadius: 4,
                     }]
                 },
