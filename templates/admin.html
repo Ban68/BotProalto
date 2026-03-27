@@ -296,15 +296,13 @@
 
         .tool-nav-dropdown {
             display: none;
-            position: absolute;
-            top: calc(100% + 2px);
-            left: 0;
+            position: fixed;
             background: white;
             border: 1px solid var(--border);
             border-top: none;
             border-radius: 0 0 var(--radius) var(--radius);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.10);
-            z-index: 200;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            z-index: 1000;
             min-width: 170px;
             overflow: hidden;
         }
@@ -1702,15 +1700,24 @@
             }
         }
 
-        // Nav group toggle (click-based dropdowns)
+        // Nav group toggle (click-based dropdowns, position: fixed to escape overflow clipping)
         function toggleNavGroup(groupId) {
             const groups = ['grupoComunicaciones', 'grupoDocumentos'];
             groups.forEach(id => {
-                const el = document.getElementById('tab' + id[0].toUpperCase() + id.slice(1));
-                if (!el) return;
-                const wrapper = el.closest('.tool-nav-group');
+                const btnId = 'tabGrupo' + id[0].toUpperCase() + id.slice(1);
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                const wrapper = btn.closest('.tool-nav-group');
                 if (!wrapper) return;
+                const dropdown = wrapper.querySelector('.tool-nav-dropdown');
                 if (id === groupId) {
+                    const isOpen = wrapper.classList.contains('open');
+                    if (!isOpen) {
+                        // Position the dropdown below the button using fixed coords
+                        const rect = btn.getBoundingClientRect();
+                        dropdown.style.top  = rect.bottom + 'px';
+                        dropdown.style.left = rect.left + 'px';
+                    }
                     wrapper.classList.toggle('open');
                 } else {
                     wrapper.classList.remove('open');
