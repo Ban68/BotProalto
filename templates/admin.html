@@ -860,7 +860,7 @@
             <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
             <!-- Grupo: Comunicaciones -->
             <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones" onclick="toggleNavGroup('grupoComunicaciones')">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones" onclick="toggleNavGroup(this)">
                     🟢 Comunicaciones <span class="tool-nav-group-chevron">▾</span>
                 </button>
                 <div class="tool-nav-dropdown">
@@ -871,7 +871,7 @@
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
             <!-- Grupo: Documentos -->
             <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos" onclick="toggleNavGroup('grupoDocumentos')">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos" onclick="toggleNavGroup(this)">
                     📄 Documentos <span class="tool-nav-group-chevron">▾</span>
                 </button>
                 <div class="tool-nav-dropdown">
@@ -1701,28 +1701,20 @@
         }
 
         // Nav group toggle (click-based dropdowns, position: fixed to escape overflow clipping)
-        function toggleNavGroup(groupId) {
-            const groups = ['grupoComunicaciones', 'grupoDocumentos'];
-            groups.forEach(id => {
-                const btnId = 'tabGrupo' + id[0].toUpperCase() + id.slice(1);
-                const btn = document.getElementById(btnId);
-                if (!btn) return;
-                const wrapper = btn.closest('.tool-nav-group');
-                if (!wrapper) return;
-                const dropdown = wrapper.querySelector('.tool-nav-dropdown');
-                if (id === groupId) {
-                    const isOpen = wrapper.classList.contains('open');
-                    if (!isOpen) {
-                        // Position the dropdown below the button using fixed coords
-                        const rect = btn.getBoundingClientRect();
-                        dropdown.style.top  = rect.bottom + 'px';
-                        dropdown.style.left = rect.left + 'px';
-                    }
-                    wrapper.classList.toggle('open');
-                } else {
-                    wrapper.classList.remove('open');
-                }
-            });
+        function toggleNavGroup(btn) {
+            const wrapper = btn.closest('.tool-nav-group');
+            if (!wrapper) return;
+            const dropdown = wrapper.querySelector('.tool-nav-dropdown');
+            if (!dropdown) return;
+            const isOpen = wrapper.classList.contains('open');
+            // Close all other open groups first
+            document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
+            if (!isOpen) {
+                const rect = btn.getBoundingClientRect();
+                dropdown.style.top  = rect.bottom + 'px';
+                dropdown.style.left = rect.left + 'px';
+                wrapper.classList.add('open');
+            }
         }
 
         // Close nav dropdowns when clicking outside
