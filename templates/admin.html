@@ -362,6 +362,12 @@
             color: white;
         }
 
+        .status-lead {
+            background: #0891b2;
+            /* Cyan */
+            color: white;
+        }
+
         .conv-preview {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -743,7 +749,8 @@
         </div>
         <!-- Chat filter: Activas / Archivadas -->
         <div class="chat-filter-bar">
-            <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Activas</button>
+            <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Clientes</button>
+            <button type="button" class="chat-filter-btn" id="tabProspectos" onclick="switchTab('prospectos')">🎯 Leads</button>
             <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
         </div>
         <div class="conversation-list" id="convList">
@@ -1440,7 +1447,7 @@
         let currentActivePhone = null;
         let lastFetchTime = 0;
         let knownAgentModes = {};
-        let currentTab = 'activas'; // 'activas' | 'archivadas'
+        let currentTab = 'activas'; // 'activas' | 'prospectos' | 'archivadas'
         let advisorName = localStorage.getItem('proalto_advisor_name');
         let currentStatus = 'bot';
         let latestActiveAdvisors = []; // To store the list from heartbeat
@@ -1565,7 +1572,7 @@
                     closeNewChatModal();
 
                     // Switch to active tab if not already on it
-                    if (currentTab !== 'activas') {
+                    if (currentTab !== 'activas' && currentTab !== 'prospectos') {
                         switchTab('activas');
                     } else {
                         await fetchList();
@@ -1588,7 +1595,7 @@
         function switchTab(tab) {
             currentTab = tab;
             currentActivePhone = null;
-            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'archivadas') ? 'flex' : 'none';
+            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'archivadas') ? 'flex' : 'none';
             if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
                 document.getElementById('emptyState').style.display = 'none';
             }
@@ -1614,6 +1621,7 @@
 
             // Update tab styles
             document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
+            document.getElementById('tabProspectos').classList.toggle('active-tab', tab === 'prospectos');
             document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
             
             // Tool nav button active states (inactive → clear inline styles so CSS takes over)
@@ -1673,6 +1681,8 @@
             }
 
             if (tab === 'activas') {
+                fetchList();
+            } else if (tab === 'prospectos') {
                 fetchList();
             } else if (tab === 'archivadas') {
                 fetchArchivedList();
@@ -3068,8 +3078,15 @@
 
         function renderList(conversations) {
             const listEl = document.getElementById('convList');
-            if (conversations.length === 0) {
-                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: #777;">No hay conversaciones registradas</div>';
+
+            // Filtrar según el tab activo
+            const isLeadsTab = currentTab === 'prospectos';
+            const filtered = conversations.filter(c =>
+                isLeadsTab ? c.status === 'lead_notified' : c.status !== 'lead_notified'
+            );
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #777;">${isLeadsTab ? 'No hay leads registrados' : 'No hay conversaciones registradas'}</div>`;
                 return;
             }
 
@@ -3080,19 +3097,19 @@
             let newAgentDetected = false;
 
             // Ordenar: Primero los que están en modo ASESOR o BOT HUMANO, luego el resto por fecha de actualización
-            conversations.sort((a, b) => {
+            filtered.sort((a, b) => {
                 const priorityStatus = ['agent', 'agent_silent', 'agent_llm'];
                 const aIsPriority = priorityStatus.includes(a.status);
                 const bIsPriority = priorityStatus.includes(b.status);
 
                 if (aIsPriority && !bIsPriority) return -1;
                 if (!aIsPriority && bIsPriority) return 1;
-                
+
                 // Si ambos tienen la misma prioridad, ordenar por fecha de actualización (más reciente primero)
                 return new Date(b.updated_at) - new Date(a.updated_at);
             });
 
-            conversations.forEach(c => {
+            filtered.forEach(c => {
                 let statusClass = 'status-bot';
                 let statusLabel = 'BOT';
 
@@ -3109,6 +3126,7 @@
                     if (c.status === 'pending_consent') statusLabel = 'BOT (Habeas Data)';
                     else if (c.status === 'waiting_for_cedula') statusLabel = 'BOT (Ced. Solicitud)';
                     else if (c.status === 'waiting_for_cedula_saldo') statusLabel = 'BOT (Ced. Saldo)';
+                    else if (c.status === 'lead_notified') { statusClass = 'status-lead'; statusLabel = 'LEAD'; }
                 }
 
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
@@ -3132,15 +3150,18 @@
                     knownAgentModes[c.phone] = false;
                 }
 
+                const nameRow = c.client_name ? `<div style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${c.client_name}</div>` : '';
+
                 html += `
-    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" onclick="selectConversation('${c.phone}')">
+    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" data-name="${(c.client_name || '').toLowerCase()}" onclick="selectConversation('${c.phone}')">
         <div class="conv-avatar" style="background: ${getAvatarColor(c.phone)}">${c.phone.slice(-3)}</div>
         <div class="conv-body">
             <div class="conv-header">
                 <span class="conv-phone">${c.phone}</span>
                 <span class="conv-time">${formatTime(c.updated_at)}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 4px;">
+            ${nameRow}
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 2px;">
                 <span class="conv-preview">${c.last_message || '...'}</span>
                 <span class="conv-status ${statusClass}">${statusLabel.replace('🔴 ','').replace('🔇 ','').replace('🤖 ','')}</span>
             </div>
@@ -3167,7 +3188,8 @@
             let visibleCount = 0;
             items.forEach(item => {
                 const phone = item.querySelector('.conv-phone').innerText.toLowerCase();
-                if (phone.includes(val)) {
+                const name = item.dataset.name || '';
+                if (phone.includes(val) || name.includes(val)) {
                     item.style.display = 'flex';
                     visibleCount++;
                 } else {
@@ -3729,7 +3751,7 @@
         }
 
         setInterval(async () => {
-            if (currentTab === 'activas') {
+            if (currentTab === 'activas' || currentTab === 'prospectos') {
                 await fetchList();
             } else if (currentTab === 'archivadas') {
                 await fetchArchivedList();
