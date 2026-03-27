@@ -3082,7 +3082,7 @@
             // Filtrar según el tab activo
             const isLeadsTab = currentTab === 'prospectos';
             const filtered = conversations.filter(c =>
-                isLeadsTab ? c.status === 'lead_notified' : c.status !== 'lead_notified'
+                isLeadsTab ? c.is_lead : !c.is_lead
             );
 
             if (filtered.length === 0) {

@@ -136,6 +136,7 @@ def get_conversations() -> list:
         last_msgs = {}
         msg_counts = {}
         
+        lead_phones = set()
         if phones:
             msgs_res = supabase_client.table('bot_messages').select("phone, text, id").in_("phone", phones).order("created_at", desc=True).limit(1000).execute()
             for m in msgs_res.data:
@@ -143,13 +144,17 @@ def get_conversations() -> list:
                 if p not in last_msgs:
                     last_msgs[p] = m["text"]
                 msg_counts[p] = msg_counts.get(p, 0) + 1
-        
+
+            # Identify leads: phones that ever received the contacto_leads template
+            leads_res = supabase_client.table('bot_messages').select("phone").in_("phone", phones).eq("text", "[Template: contacto_leads]").execute()
+            lead_phones = {m["phone"] for m in leads_res.data}
+
         for c in convs.data:
             p = c["phone"]
             last_msg = last_msgs.get(p, "")
             if len(last_msg) > 80:
                 last_msg = last_msg[:80] + "…"
-                
+
             result.append({
                 "phone": p,
                 "client_name": c.get("client_name") or "",
@@ -157,6 +162,7 @@ def get_conversations() -> list:
                 "status": c.get("status", "active"),
                 "updated_at": c.get("updated_at", ""),
                 "message_count": msg_counts.get(p, 1),
+                "is_lead": p in lead_phones or c.get("status") == "lead_notified",
             })
         return result
     except Exception as e:
