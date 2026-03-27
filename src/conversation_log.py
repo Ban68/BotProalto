@@ -125,48 +125,71 @@ def set_agent_mode(phone: str, status: str = "agent"):
     set_user_state(phone, status)
 
 
-def get_conversations() -> list:
-    """Get a summary list of all conversations, sorted by most recent."""
+def _get_lead_phones() -> set:
+    """Get all phone numbers that ever received the contacto_leads template."""
     try:
-        # Don't show archived
-        convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(50).execute()
-        result = []
-        
-        phones = [c["phone"] for c in convs.data]
-        last_msgs = {}
-        msg_counts = {}
-        
-        lead_phones = set()
-        if phones:
-            msgs_res = supabase_client.table('bot_messages').select("phone, text, id").in_("phone", phones).order("created_at", desc=True).limit(1000).execute()
-            for m in msgs_res.data:
-                p = m["phone"]
-                if p not in last_msgs:
-                    last_msgs[p] = m["text"]
-                msg_counts[p] = msg_counts.get(p, 0) + 1
+        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: contacto_leads]").execute()
+        return {m["phone"] for m in res.data}
+    except Exception as e:
+        print(f"Supabase _get_lead_phones error: {e}")
+        return set()
 
-            # Identify leads: phones that ever received the contacto_leads template
-            leads_res = supabase_client.table('bot_messages').select("phone").in_("phone", phones).eq("text", "[Template: contacto_leads]").execute()
-            lead_phones = {m["phone"] for m in leads_res.data}
 
-        for c in convs.data:
-            p = c["phone"]
-            last_msg = last_msgs.get(p, "")
-            if len(last_msg) > 80:
-                last_msg = last_msg[:80] + "…"
+def _build_conversation_list(convs_data: list) -> list:
+    """Shared helper: given a list of bot_conversations rows, enrich with last message & count."""
+    phones = [c["phone"] for c in convs_data]
+    last_msgs = {}
+    msg_counts = {}
 
-            result.append({
-                "phone": p,
-                "client_name": c.get("client_name") or "",
-                "last_message": last_msg,
-                "status": c.get("status", "active"),
-                "updated_at": c.get("updated_at", ""),
-                "message_count": msg_counts.get(p, 1),
-                "is_lead": p in lead_phones or c.get("status") == "lead_notified",
-            })
-        return result
+    if phones:
+        msgs_res = supabase_client.table('bot_messages').select("phone, text, id").in_("phone", phones).order("created_at", desc=True).limit(1000).execute()
+        for m in msgs_res.data:
+            p = m["phone"]
+            if p not in last_msgs:
+                last_msgs[p] = m["text"]
+            msg_counts[p] = msg_counts.get(p, 0) + 1
+
+    result = []
+    for c in convs_data:
+        p = c["phone"]
+        last_msg = last_msgs.get(p, "")
+        if len(last_msg) > 80:
+            last_msg = last_msg[:80] + "…"
+        result.append({
+            "phone": p,
+            "client_name": c.get("client_name") or "",
+            "last_message": last_msg,
+            "status": c.get("status", "active"),
+            "updated_at": c.get("updated_at", ""),
+            "message_count": msg_counts.get(p, 1),
+        })
+    return result
+
+
+def get_conversations() -> list:
+    """Get non-lead conversations, sorted by most recent."""
+    try:
+        lead_phones = _get_lead_phones()
+        # Over-fetch to compensate for leads we'll exclude
+        convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(100).execute()
+        # Exclude leads and also lead_notified status
+        filtered = [c for c in convs.data if c["phone"] not in lead_phones and c.get("status") != "lead_notified"][:50]
+        return _build_conversation_list(filtered)
     except Exception as e:
         print(f"Supabase get_conversations error: {e}")
+        return []
+
+
+def get_lead_conversations() -> list:
+    """Get conversations that originated from the contacto_leads template."""
+    try:
+        lead_phones = list(_get_lead_phones())
+        if not lead_phones:
+            return []
+        convs = supabase_client.table('bot_conversations').select("*").in_("phone", lead_phones).neq("status", "archived").order("updated_at", desc=True).execute()
+        return _build_conversation_list(convs.data)
+    except Exception as e:
+        print(f"Supabase get_lead_conversations error: {e}")
         return []
 
 

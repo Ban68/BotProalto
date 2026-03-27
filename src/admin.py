@@ -11,7 +11,7 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from src.conversation_log import (
-    get_conversations, get_conversation,
+    get_conversations, get_conversation, get_lead_conversations,
     set_agent_mode, log_message, delete_conversation,
     get_archived_conversations, restore_conversation,
     mark_message_deleted
@@ -73,6 +73,13 @@ def api_presence():
 def api_conversations():
     """Get list of all conversations."""
     return jsonify(get_conversations())
+
+
+@admin_bp.route('/admin/api/lead-conversations')
+@requires_auth
+def api_lead_conversations():
+    """Get list of lead conversations (from contacto_leads template)."""
+    return jsonify(get_lead_conversations())
 
 
 @admin_bp.route('/admin/api/conversations/<phone>')

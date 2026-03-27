@@ -3556,7 +3556,10 @@
 
         async function fetchList() {
             try {
-                const res = await fetch('/admin/api/conversations');
+                const endpoint = currentTab === 'prospectos'
+                    ? '/admin/api/lead-conversations'
+                    : '/admin/api/conversations';
+                const res = await fetch(endpoint);
                 const data = await res.json();
                 renderList(data);
             } catch (err) {
@@ -3572,14 +3575,9 @@
 
         function renderList(conversations) {
             const listEl = document.getElementById('convList');
-
-            // Filtrar según el tab activo
             const isLeadsTab = currentTab === 'prospectos';
-            const filtered = conversations.filter(c =>
-                isLeadsTab ? c.is_lead : !c.is_lead
-            );
 
-            if (filtered.length === 0) {
+            if (conversations.length === 0) {
                 listEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #777;">${isLeadsTab ? 'No hay leads registrados' : 'No hay conversaciones registradas'}</div>`;
                 return;
             }
@@ -3591,7 +3589,7 @@
             let newAgentDetected = false;
 
             // Ordenar: Primero los que están en modo ASESOR o BOT HUMANO, luego el resto por fecha de actualización
-            filtered.sort((a, b) => {
+            conversations.sort((a, b) => {
                 const priorityStatus = ['agent', 'agent_silent', 'agent_llm'];
                 const aIsPriority = priorityStatus.includes(a.status);
                 const bIsPriority = priorityStatus.includes(b.status);
@@ -3603,7 +3601,7 @@
                 return new Date(b.updated_at) - new Date(a.updated_at);
             });
 
-            filtered.forEach(c => {
+            conversations.forEach(c => {
                 let statusClass = 'status-bot';
                 let statusLabel = 'BOT';
 
