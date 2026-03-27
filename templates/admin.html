@@ -277,7 +277,8 @@
             font-family: 'Outfit', sans-serif;
         }
 
-        .tool-nav-group:hover .tool-nav-group-btn {
+        .tool-nav-group.open .tool-nav-group-btn,
+        .tool-nav-group-btn:hover {
             color: var(--primary-dark);
             background: #f8fafc;
         }
@@ -289,7 +290,7 @@
             display: inline-block;
         }
 
-        .tool-nav-group:hover .tool-nav-group-chevron {
+        .tool-nav-group.open .tool-nav-group-chevron {
             transform: rotate(180deg);
         }
 
@@ -308,7 +309,7 @@
             overflow: hidden;
         }
 
-        .tool-nav-group:hover .tool-nav-dropdown {
+        .tool-nav-group.open .tool-nav-dropdown {
             display: block;
         }
 
@@ -861,7 +862,7 @@
             <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
             <!-- Grupo: Comunicaciones -->
             <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones" onclick="toggleNavGroup('grupoComunicaciones')">
                     🟢 Comunicaciones <span class="tool-nav-group-chevron">▾</span>
                 </button>
                 <div class="tool-nav-dropdown">
@@ -872,7 +873,7 @@
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
             <!-- Grupo: Documentos -->
             <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos" onclick="toggleNavGroup('grupoDocumentos')">
                     📄 Documentos <span class="tool-nav-group-chevron">▾</span>
                 </button>
                 <div class="tool-nav-dropdown">
@@ -1701,9 +1702,34 @@
             }
         }
 
+        // Nav group toggle (click-based dropdowns)
+        function toggleNavGroup(groupId) {
+            const groups = ['grupoComunicaciones', 'grupoDocumentos'];
+            groups.forEach(id => {
+                const el = document.getElementById('tab' + id[0].toUpperCase() + id.slice(1));
+                if (!el) return;
+                const wrapper = el.closest('.tool-nav-group');
+                if (!wrapper) return;
+                if (id === groupId) {
+                    wrapper.classList.toggle('open');
+                } else {
+                    wrapper.classList.remove('open');
+                }
+            });
+        }
+
+        // Close nav dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.tool-nav-group')) {
+                document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
+            }
+        });
+
         function switchTab(tab) {
             currentTab = tab;
             currentActivePhone = null;
+            // Close any open nav group dropdowns
+            document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
             document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'archivadas') ? 'flex' : 'none';
             if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
                 document.getElementById('emptyState').style.display = 'none';
