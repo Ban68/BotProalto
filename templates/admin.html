@@ -1347,9 +1347,8 @@
         <!-- Menu Usage Chart -->
         <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px;">
             <h3 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-main);">Motivos de Consulta (Clicks en Menú)</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;">
-                <canvas id="funnelChart" height="250"></canvas>
-                <div id="menuUsageTable" style="font-size: 0.9rem;"></div>
+            <div style="max-width: 700px; margin: 0 auto;">
+                <canvas id="funnelChart" height="220"></canvas>
             </div>
         </div>
 
@@ -3941,36 +3940,6 @@
                 }
             });
 
-            // Render detail table
-            const tableEl = document.getElementById('menuUsageTable');
-            if (buttons.length === 0) {
-                tableEl.innerHTML = '<p style="color: var(--text-muted);">Sin datos de botones en este período.</p>';
-                return;
-            }
-            const total = funnel.total_button_clicks || 1;
-            let thtml = `<table style="width:100%; border-collapse:collapse;">
-                <thead><tr style="border-bottom: 2px solid var(--border);">
-                    <th style="text-align:left; padding:8px 6px; font-size:0.8rem; color:var(--text-muted);">Opción</th>
-                    <th style="text-align:right; padding:8px 6px; font-size:0.8rem; color:var(--text-muted);">Clicks</th>
-                    <th style="text-align:right; padding:8px 6px; font-size:0.8rem; color:var(--text-muted);">%</th>
-                    <th style="text-align:right; padding:8px 6px; font-size:0.8rem; color:var(--text-muted);">Usuarios</th>
-                </tr></thead><tbody>`;
-            for (const b of buttons) {
-                const pct = ((b.clicks / total) * 100).toFixed(1);
-                thtml += `<tr style="border-bottom: 1px solid var(--border);">
-                    <td style="padding:6px; font-weight:500;">${b.label}</td>
-                    <td style="padding:6px; text-align:right;">${b.clicks}</td>
-                    <td style="padding:6px; text-align:right; color:var(--text-muted);">${pct}%</td>
-                    <td style="padding:6px; text-align:right;">${b.unique_users}</td>
-                </tr>`;
-            }
-            thtml += `<tr style="border-top: 2px solid var(--border); font-weight:700;">
-                <td style="padding:6px;">Total</td>
-                <td style="padding:6px; text-align:right;">${funnel.total_button_clicks}</td>
-                <td style="padding:6px; text-align:right;">100%</td>
-                <td style="padding:6px; text-align:right;">-</td>
-            </tr></tbody></table>`;
-            tableEl.innerHTML = thtml;
         }
 
         function renderVolumeChart(daily) {
