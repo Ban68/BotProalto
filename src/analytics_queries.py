@@ -130,6 +130,7 @@ def get_volume_stats(date_from: str = None, date_to: str = None) -> dict:
         template_verde = sum(1 for m in outbound if m.get('text') == '[Template: estado_verde]')
         template_rojo = sum(1 for m in outbound if m.get('text') == '[Template: estado_rojo]')
         template_amarillo = sum(1 for m in outbound if m.get('text') == '[Template: estado_amarillo]')
+        template_denegado = sum(1 for m in outbound if m.get('text') == '[Template: estado_negados]')
 
         # Capture counts
         emails = _paginated_fetch('captured_emails', 'id', {}, gte_field='created_at', gte_val=dt_from, lte_field='created_at', lte_val=dt_to)
@@ -196,6 +197,7 @@ def get_volume_stats(date_from: str = None, date_to: str = None) -> dict:
                 'estado_verde': template_verde,
                 'estado_rojo': template_rojo,
                 'estado_amarillo': template_amarillo,
+                'estado_negados': template_denegado,
             },
             'emails_captured': len(emails),
             'cuentas_captured': len(cuentas),

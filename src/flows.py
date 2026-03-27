@@ -407,6 +407,18 @@ class FlowHandler:
                 )
             return
 
+        # 2e. denegado_notified — template sent; acknowledgments are absorbed silently,
+        #     any other message shows the main menu
+        if state == "denegado_notified":
+            set_user_state(user_phone, "active")
+            ack_words = ["ok", "okay", "entendido", "gracias", "de acuerdo", "listo",
+                         "bien", "claro", "comprendo", "entiendo", "perfecto", "👍"]
+            norm = text.lower().strip()
+            is_ack = any(norm == w or norm.startswith(w + " ") or norm.startswith(w + ",") for w in ack_words)
+            if not is_ack:
+                FlowHandler.send_main_menu(user_phone)
+            return
+
         # 2d. Check if waiting for Cedula (Saldo / Balance)
         if state == "waiting_for_cedula_saldo":
             if not text.isdigit():
