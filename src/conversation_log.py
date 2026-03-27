@@ -152,6 +152,7 @@ def get_conversations() -> list:
                 
             result.append({
                 "phone": p,
+                "client_name": c.get("client_name") or "",
                 "last_message": last_msg,
                 "status": c.get("status", "active"),
                 "updated_at": c.get("updated_at", ""),
@@ -682,6 +683,54 @@ def get_notified_phones_amarillo_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_notified_phones_amarillo_batch error: {e}")
+        return set()
+
+
+def get_template_stats_batch_denegado(phones: list) -> dict:
+    """
+    Returns a dict mapping phone -> {count, last_sent} for estado_negados template sends.
+    """
+    if not supabase_client or not phones:
+        return {}
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: estado_negados]")\
+            .order("created_at", desc=True)\
+            .execute()
+        stats = {}
+        for item in res.data:
+            p = item["phone"]
+            if p not in stats:
+                stats[p] = {"count": 0, "last_sent": None}
+            stats[p]["count"] += 1
+            if stats[p]["last_sent"] is None:
+                stats[p]["last_sent"] = item["created_at"]
+        return stats
+    except Exception as e:
+        print(f"Supabase get_template_stats_batch_denegado error: {e}")
+        return {}
+
+
+def get_notified_phones_denegado_batch(phones: list) -> set:
+    """
+    Given a list of phone numbers, returns a SET of those that have EVER
+    received the estado_negados template (no date filter — this is a final decision).
+    """
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: estado_negados]")\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_notified_phones_denegado_batch error: {e}")
         return set()
 
 

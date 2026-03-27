@@ -2,14 +2,15 @@ import time
 import atexit
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_listo_en_docusign
+from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_listo_en_docusign, get_denegado
 from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
     get_notified_phones_rojo_batch, get_phones_menu_contacted_rojo_batch, get_template_stats_batch_rojo,
     get_phones_with_email, get_phones_with_docs_completos,
     get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
-    get_phones_with_cuenta, set_solicitud_context
+    get_phones_with_cuenta, set_solicitud_context,
+    get_notified_phones_denegado_batch, get_template_stats_batch_denegado
 )
 
 # --- TEST MODE CONFIG ---
@@ -520,6 +521,120 @@ def execute_bulk_listo_docusign_notifications(users_list):
 
         if response and response.get('messages'):
             set_user_state(phone_str, "waiting_for_cuenta_amarillo")
+            from src.conversation_log import set_client_name
+            set_client_name(phone_str, nombre)
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+
+    return results
+
+
+def get_pending_denegado_notifications():
+    """
+    Returns a dict with 'eligible' and 'excluded' lists for 'DENEGADO' /
+    'CANCELADO POR LA EMPRESA' states.
+    A phone is excluded if it has EVER received the estado_negados template
+    (final decision — should not be sent more than once).
+    """
+    if TEST_MODE:
+        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}], "excluded": []}
+
+    clientes = get_denegado()
+    if not clientes:
+        return {"eligible": [], "excluded": []}
+
+    raw_users = []
+    phones_to_check = []
+
+    for user in clientes:
+        telefono = user.get("telefono")
+        nombre = user.get("nombre_completo", "Cliente")
+
+        phone_str = str(telefono).split(".")[0]
+        phone_str = "".join(filter(str.isdigit, phone_str))
+
+        if not phone_str:
+            continue
+
+        if not phone_str.startswith("57"):
+            phone_str = f"57{phone_str}"
+
+        raw_users.append({
+            "phone": phone_str,
+            "name": nombre,
+            "empresa": user.get("empresa", ""),
+        })
+        phones_to_check.append(phone_str)
+
+    if not phones_to_check:
+        return {"eligible": [], "excluded": []}
+
+    # Exclude phones that have EVER received this template (no date filter)
+    already_notified = get_notified_phones_denegado_batch(phones_to_check)
+
+    eligible_users = []
+    excluded_users = []
+    for u in raw_users:
+        if u["phone"] in already_notified:
+            u["excluded_reasons"] = ["Ya notificado anteriormente"]
+            excluded_users.append(u)
+        else:
+            eligible_users.append(u)
+
+    eligible_phones = [u["phone"] for u in eligible_users]
+    stats = get_template_stats_batch_denegado(eligible_phones)
+    for user in eligible_users:
+        s = stats.get(user["phone"], {})
+        user["send_count"] = s.get("count", 0)
+        user["last_sent"] = s.get("last_sent", None)
+
+    if excluded_users:
+        excl_phones = [u["phone"] for u in excluded_users]
+        excl_stats = get_template_stats_batch_denegado(excl_phones)
+        for user in excluded_users:
+            s = excl_stats.get(user["phone"], {})
+            user["send_count"] = s.get("count", 0)
+            user["last_sent"] = s.get("last_sent", None)
+
+    return {"eligible": eligible_users, "excluded": excluded_users}
+
+
+def execute_bulk_denegado_notifications(users_list):
+    """
+    Sends the 'estado_negados' template to a list of denied/cancelled users.
+    Returns summary of results.
+    """
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+
+    for user in users_list:
+        phone_str = user.get("phone")
+        nombre = user.get("name")
+
+        if not phone_str:
+            continue
+
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": nombre,
+                        "parameter_name": "nombre"
+                    }
+                ]
+            }
+        ]
+
+        response = WhatsAppService.send_template(phone_str, "estado_negados", components=components)
+
+        if response and response.get('messages'):
+            set_user_state(phone_str, "denegado_notified")
             from src.conversation_log import set_client_name
             set_client_name(phone_str, nombre)
             results["success"] += 1

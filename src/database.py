@@ -141,6 +141,43 @@ def get_falta_documento():
         return None
 
 
+def get_denegado():
+    """
+    Queries the Cloud Run API bridge to get all applications
+    in state 'DENEGADO' or 'CANCELADO POR LA EMPRESA'.
+    Returns a list of dicts (each representing an application) or None.
+    """
+    if not CLOUD_RUN_URL:
+        print("❌ CLOUD_RUN_URL not configured")
+        return None
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"tipo": "denegado"},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=15
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return data.get("clientes", [])
+            return []
+        else:
+            print(f"❌ Cloud Run API Error ({response.status_code}): {response.text}")
+            return None
+    except requests.exceptions.Timeout:
+        print("❌ Cloud Run API: Request timed out for get_denegado")
+        return None
+    except Exception as e:
+        print(f"❌ Cloud Run API Error for get_denegado: {e}")
+        return None
+
+
 def get_listo_en_docusign():
     """
     Queries the Cloud Run API bridge to get all applications

@@ -511,6 +511,36 @@ def api_trigger_bulk_amarillo():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/pending-denegado')
+@requires_auth
+def api_pending_denegado():
+    """Get list of users eligible for 'estado_negados' bulk send (never notified before), plus excluded with reasons."""
+    from src.automation import get_pending_denegado_notifications
+    try:
+        result = get_pending_denegado_notifications()
+        return jsonify({"status": "ok", "pending": result["eligible"], "excluded": result["excluded"]})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/trigger-bulk-denegado', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_denegado():
+    """Execute bulk send of estado_negados template for denied/cancelled users."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_denegado_notifications
+    try:
+        results = execute_bulk_denegado_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/captured-cuentas')
 @requires_auth
 def api_captured_cuentas():
