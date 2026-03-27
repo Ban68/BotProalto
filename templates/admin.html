@@ -251,6 +251,99 @@
             font-weight: 700;
         }
 
+        /* Grouped nav dropdown */
+        .tool-nav-group {
+            position: relative;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .tool-nav-group-btn {
+            padding: 0 14px;
+            height: 42px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.18s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .tool-nav-group:hover .tool-nav-group-btn {
+            color: var(--primary-dark);
+            background: #f8fafc;
+        }
+
+        .tool-nav-group-chevron {
+            font-size: 0.65rem;
+            opacity: 0.5;
+            transition: transform 0.18s;
+            display: inline-block;
+        }
+
+        .tool-nav-group:hover .tool-nav-group-chevron {
+            transform: rotate(180deg);
+        }
+
+        .tool-nav-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+            z-index: 200;
+            min-width: 170px;
+            overflow: hidden;
+        }
+
+        .tool-nav-group:hover .tool-nav-dropdown {
+            display: block;
+        }
+
+        .tool-nav-dropdown-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-left: 3px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.15s;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .tool-nav-dropdown-btn:hover {
+            background: #f8fafc;
+            color: var(--primary-dark);
+            border-left-color: var(--border);
+        }
+
+        .tool-nav-dropdown-btn.active-tab {
+            background: var(--primary-light);
+            color: var(--primary-dark) !important;
+            font-weight: 700;
+            border-left-color: var(--primary) !important;
+        }
+
         /* Content area (holds all main panels) */
         .content-area {
             flex: 1;
@@ -765,12 +858,28 @@
     <div class="content-wrapper">
         <div class="tool-nav">
             <span class="tool-nav-label">Herramientas</span>
-            <button type="button" class="tool-nav-btn" id="tabEnvios" onclick="switchTab('envios')">⚡ Envíos</button>
             <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
-            <button type="button" class="tool-nav-btn" id="tabCorreos" onclick="switchTab('correos')">📧 Correos</button>
-            <button type="button" class="tool-nav-btn" id="tabRojo" onclick="switchTab('rojo')">🔴 Falta Doc</button>
+            <!-- Grupo: Comunicaciones -->
+            <div class="tool-nav-group">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones">
+                    🟢 Comunicaciones <span class="tool-nav-group-chevron">▾</span>
+                </button>
+                <div class="tool-nav-dropdown">
+                    <button type="button" class="tool-nav-dropdown-btn" id="tabEnvios" onclick="switchTab('envios')">⚡ Envíos</button>
+                    <button type="button" class="tool-nav-dropdown-btn" id="tabCorreos" onclick="switchTab('correos')">📧 Correos</button>
+                </div>
+            </div>
             <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
-            <button type="button" class="tool-nav-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+            <!-- Grupo: Documentos -->
+            <div class="tool-nav-group">
+                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos">
+                    📄 Documentos <span class="tool-nav-group-chevron">▾</span>
+                </button>
+                <div class="tool-nav-dropdown">
+                    <button type="button" class="tool-nav-dropdown-btn" id="tabRojo" onclick="switchTab('rojo')">🔴 Falta Doc</button>
+                    <button type="button" class="tool-nav-dropdown-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs Recibidos <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+                </div>
+            </div>
             <button type="button" class="tool-nav-btn" id="tabLLMRequests" onclick="switchTab('llmrequests')">🤖 Solicitudes <span id="badgeLLMPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
             <button type="button" class="tool-nav-btn" id="tabAnalytics" onclick="switchTab('analytics')">📊 Analytics</button>
         </div>
@@ -1626,28 +1735,56 @@
             
             // Tool nav button active states (inactive → clear inline styles so CSS takes over)
             const toolColors = {
-                tabEnvios:      { active: '#4f46e5', tab: 'envios'       },
-                tabLeads:       { active: '#059669', tab: 'leads'        },
-                tabCorreos:     { active: '#3b82f6', tab: 'correos'      },
-                tabAmarillo:    { active: '#d97706', tab: 'amarillo'     },
-                tabRojo:        { active: '#dc2626', tab: 'rojo'         },
-                tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos' },
-                tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests'  },
-                tabAnalytics:   { active: '#0891b2', tab: 'analytics'    },
+                tabEnvios:      { active: '#4f46e5', tab: 'envios',       isDropdown: true  },
+                tabLeads:       { active: '#059669', tab: 'leads',        isDropdown: false },
+                tabCorreos:     { active: '#3b82f6', tab: 'correos',      isDropdown: true  },
+                tabAmarillo:    { active: '#d97706', tab: 'amarillo',     isDropdown: false },
+                tabRojo:        { active: '#dc2626', tab: 'rojo',         isDropdown: true  },
+                tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos', isDropdown: true  },
+                tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests',  isDropdown: false },
+                tabAnalytics:   { active: '#0891b2', tab: 'analytics',    isDropdown: false },
             };
             for (const [id, cfg] of Object.entries(toolColors)) {
                 const el = document.getElementById(id);
                 if (!el) continue;
                 el.classList.toggle('active-tab', tab === cfg.tab);
                 if (tab === cfg.tab) {
-                    el.style.background  = cfg.active;
-                    el.style.border      = `1px solid ${cfg.active}`;
-                    el.style.color       = 'white';
+                    if (cfg.isDropdown) {
+                        el.style.background  = cfg.active + '18';
+                        el.style.borderLeft  = `3px solid ${cfg.active}`;
+                        el.style.color       = cfg.active;
+                        el.style.border      = '';
+                    } else {
+                        el.style.background  = cfg.active;
+                        el.style.border      = `1px solid ${cfg.active}`;
+                        el.style.color       = 'white';
+                    }
                 } else {
                     el.style.background  = '';
                     el.style.border      = '';
+                    el.style.borderLeft  = '';
                     el.style.color       = '';
                 }
+            }
+
+            // Update group button active states
+            const grupoComEl = document.getElementById('tabGrupoComunicaciones');
+            if (grupoComEl) {
+                const comActive = (tab === 'envios' || tab === 'correos');
+                const comColor  = '#16a34a'; // verde estado_verde
+                grupoComEl.classList.toggle('active-group', comActive);
+                grupoComEl.style.color            = comActive ? comColor : '';
+                grupoComEl.style.borderBottomColor = comActive ? comColor : '';
+                grupoComEl.style.fontWeight        = comActive ? '700' : '';
+            }
+            const grupoDocEl = document.getElementById('tabGrupoDocumentos');
+            if (grupoDocEl) {
+                const docActive = (tab === 'rojo' || tab === 'docrecibidos');
+                const docColor  = tab === 'rojo' ? '#dc2626' : '#b45309';
+                grupoDocEl.classList.toggle('active-group', docActive);
+                grupoDocEl.style.color            = docActive ? docColor : '';
+                grupoDocEl.style.borderBottomColor = docActive ? docColor : '';
+                grupoDocEl.style.fontWeight        = docActive ? '700' : '';
             }
 
             const amarilloState = document.getElementById('amarilloState');
