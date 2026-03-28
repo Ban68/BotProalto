@@ -105,11 +105,13 @@ def get_solicitud(request):
 
         elif tipo == "denegado":
             cur.execute("""
-                SELECT nombre_completo, telefono, empresa
+                SELECT nombre_completo, telefono, empresa, fecha_de_solicitud
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) IN ('DENEGADO', 'CANCELADO POR LA EMPRESA')
                   AND telefono IS NOT NULL
                   AND telefono != ''
+                  AND fecha_de_solicitud >= CURRENT_DATE - INTERVAL '30 days'
+                ORDER BY fecha_de_solicitud DESC
             """)
             records = cur.fetchall()
             cur.close()
@@ -120,7 +122,8 @@ def get_solicitud(request):
                     clientes.append({
                         "nombre_completo": r[0] or "",
                         "telefono": r[1] or "",
-                        "empresa": r[2] or ""
+                        "empresa": r[2] or "",
+                        "fecha_de_solicitud": str(r[3]) if r[3] else ""
                     })
                 return jsonify({"found": True, "clientes": clientes}), 200
             else:

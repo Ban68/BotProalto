@@ -1562,7 +1562,7 @@
                         <button class="date-chip" data-days="90" onclick="applyDateChip(this, 90)">90 días</button>
                         <button class="date-chip" data-days="0" onclick="toggleCustomRange(this)">Personalizado ▾</button>
                     </div>
-                    <button onclick="runAIAudit()" id="btnRunAudit" style="padding: 5px 13px; background: #7c3aed; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer; white-space: nowrap;">🤖 Auditoría AI</button>
+                    <button onclick="openAuditModal()" id="btnRunAudit" style="padding: 5px 13px; background: #7c3aed; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer; white-space: nowrap;">🤖 Auditoría AI</button>
                 </div>
             </div>
             <div id="customDateRange" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
@@ -1736,6 +1736,70 @@
             <div class="modal-footer">
                 <button class="btn btn-outline-danger" onclick="closeNewChatModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="confirmNewChat()">Iniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Configuration Modal -->
+    <div id="auditConfigModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <h3 style="margin-bottom: 16px;">Configurar Auditoría AI</h3>
+            <div class="modal-form" style="gap: 12px;">
+                <!-- Audit Type -->
+                <label style="font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:-6px;">Tipo de Auditoría</label>
+                <select id="auditType" onchange="onAuditTypeChange()" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif;">
+                    <option value="general">General (Todas las conversaciones)</option>
+                    <option value="bot_only">Solo Bot (Sin intervención humana)</option>
+                    <option value="advisor_only">Con Intervención de Asesor</option>
+                    <option value="specific_advisor">Por Asesor Específico</option>
+                </select>
+
+                <!-- Advisor picker (hidden by default) -->
+                <div id="auditAdvisorPicker" class="hidden">
+                    <label style="font-size:0.8rem; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Asesor</label>
+                    <select id="auditAdvisorName" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif;">
+                        <option value="">Cargando asesores...</option>
+                    </select>
+                </div>
+
+                <!-- Depth -->
+                <label style="font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:-6px;">Profundidad del Análisis</label>
+                <div style="display:flex; gap:6px;">
+                    <button class="date-chip" data-depth="quick" onclick="selectAuditDepth(this,'quick')" style="color:#374151; border-color:#d1d5db;">Rápida</button>
+                    <button class="date-chip active" data-depth="standard" onclick="selectAuditDepth(this,'standard')" style="color:#374151; border-color:#d1d5db;">Estándar</button>
+                    <button class="date-chip" data-depth="deep" onclick="selectAuditDepth(this,'deep')" style="color:#374151; border-color:#d1d5db;">Profunda</button>
+                </div>
+                <div id="depthHint" style="font-size:0.72rem; color:var(--text-muted); margin-top:-6px;">
+                    Analiza 6 dimensiones por conversación. ~10 seg por muestra.
+                </div>
+
+                <!-- Sample size + Min messages row -->
+                <div style="display:flex; gap:16px;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Tamaño de Muestra</label>
+                        <input type="number" id="auditSampleSize" value="10" min="1" max="50" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif; box-sizing:border-box;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:0.8rem; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Mín. mensajes</label>
+                        <input type="number" id="auditMinMessages" value="3" min="1" max="50" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif; box-sizing:border-box;">
+                    </div>
+                </div>
+
+                <!-- Date range -->
+                <label style="font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:-6px;">Rango de Fechas</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="date" id="auditDateFrom" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; font-family:'Outfit',sans-serif;">
+                    <span style="color:var(--text-muted);">→</span>
+                    <input type="date" id="auditDateTo" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; font-family:'Outfit',sans-serif;">
+                </div>
+
+                <!-- Focus categories -->
+                <label style="font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:-6px;">Enfocar en categorías <span style="font-weight:400; color:var(--text-muted);">(opcional)</span></label>
+                <div id="auditCategoryChips" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-danger" onclick="closeAuditModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="executeConfiguredAudit()">Ejecutar Auditoría</button>
             </div>
         </div>
     </div>
@@ -4665,8 +4729,111 @@
         }
 
         // ── AI Audit ──────────────────────────────────────────────
-        async function runAIAudit() {
+        let selectedAuditDepth = 'standard';
+        let selectedFocusCategories = [];
+        const AUDIT_DEPTH_DEFAULTS = {
+            quick:    { sample: 5,  hint: 'Análisis rápido de 6 dimensiones. ~5 seg por muestra.' },
+            standard: { sample: 10, hint: 'Analiza 6 dimensiones por conversación. ~10 seg por muestra.' },
+            deep:     { sample: 8,  hint: 'Análisis exhaustivo de 11 dimensiones con puntuación. ~20 seg por muestra.' },
+        };
+        const AUDIT_CATEGORIES = [
+            { key: 'status_check', label: 'Consulta Estado' },
+            { key: 'email_capture', label: 'Captura Email' },
+            { key: 'document_upload', label: 'Documentos' },
+            { key: 'account_capture', label: 'Captura Cuenta' },
+            { key: 'credit_request', label: 'Solicitud Crédito' },
+            { key: 'support', label: 'Soporte' },
+            { key: 'balance_check', label: 'Consulta Saldo' },
+        ];
+
+        function openAuditModal() {
             const { from, to } = getAnalyticsDates();
+            document.getElementById('auditDateFrom').value = from;
+            document.getElementById('auditDateTo').value = to;
+            document.getElementById('auditType').value = 'general';
+            document.getElementById('auditAdvisorPicker').classList.add('hidden');
+            selectedAuditDepth = 'standard';
+            selectedFocusCategories = [];
+            document.getElementById('auditSampleSize').value = 10;
+            document.getElementById('auditMinMessages').value = 3;
+            // Reset depth chips
+            document.querySelectorAll('#auditConfigModal .date-chip[data-depth]').forEach(c => {
+                c.classList.toggle('active', c.dataset.depth === 'standard');
+            });
+            document.getElementById('depthHint').textContent = AUDIT_DEPTH_DEFAULTS.standard.hint;
+            renderAuditCategoryChips();
+            fetchAuditAdvisors(from, to);
+            document.getElementById('auditConfigModal').classList.remove('hidden');
+        }
+
+        function closeAuditModal() {
+            document.getElementById('auditConfigModal').classList.add('hidden');
+        }
+
+        function onAuditTypeChange() {
+            const type = document.getElementById('auditType').value;
+            const picker = document.getElementById('auditAdvisorPicker');
+            if (type === 'specific_advisor') {
+                picker.classList.remove('hidden');
+            } else {
+                picker.classList.add('hidden');
+            }
+        }
+
+        function selectAuditDepth(btn, depth) {
+            btn.parentElement.querySelectorAll('.date-chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            selectedAuditDepth = depth;
+            document.getElementById('auditSampleSize').value = AUDIT_DEPTH_DEFAULTS[depth].sample;
+            document.getElementById('depthHint').textContent = AUDIT_DEPTH_DEFAULTS[depth].hint;
+        }
+
+        function renderAuditCategoryChips() {
+            const container = document.getElementById('auditCategoryChips');
+            container.innerHTML = AUDIT_CATEGORIES.map(cat =>
+                `<button class="date-chip" data-cat="${cat.key}" onclick="toggleAuditCategory(this,'${cat.key}')"
+                 style="font-size:0.72rem; padding:3px 9px; color:#374151; border-color:#d1d5db;">${cat.label}</button>`
+            ).join('');
+        }
+
+        function toggleAuditCategory(btn, cat) {
+            btn.classList.toggle('active');
+            if (selectedFocusCategories.includes(cat)) {
+                selectedFocusCategories = selectedFocusCategories.filter(c => c !== cat);
+            } else {
+                selectedFocusCategories.push(cat);
+            }
+        }
+
+        async function fetchAuditAdvisors(from, to) {
+            try {
+                const res = await fetch(`/admin/api/analytics/advisors?from=${from}&to=${to}`, { credentials: 'same-origin' });
+                const data = await res.json();
+                const select = document.getElementById('auditAdvisorName');
+                select.innerHTML = '<option value="">-- Seleccionar Asesor --</option>';
+                for (const name of (data.advisors || [])) {
+                    select.innerHTML += `<option value="${name}">${name}</option>`;
+                }
+            } catch (e) {
+                console.error('Error fetching advisors:', e);
+            }
+        }
+
+        async function executeConfiguredAudit() {
+            const auditType = document.getElementById('auditType').value;
+            const advisorName = document.getElementById('auditAdvisorName').value;
+            const sampleSize = parseInt(document.getElementById('auditSampleSize').value) || 10;
+            const minMessages = parseInt(document.getElementById('auditMinMessages').value) || 3;
+            const dateFrom = document.getElementById('auditDateFrom').value;
+            const dateTo = document.getElementById('auditDateTo').value;
+
+            if (auditType === 'specific_advisor' && !advisorName) {
+                alert('Selecciona un asesor para este tipo de auditoría.');
+                return;
+            }
+
+            closeAuditModal();
+
             const btn = document.getElementById('btnRunAudit');
             btn.disabled = true;
             btn.textContent = '⏳ Ejecutando...';
@@ -4676,7 +4843,16 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ sample_size: 10, from, to }),
+                    body: JSON.stringify({
+                        sample_size: sampleSize,
+                        from: dateFrom,
+                        to: dateTo,
+                        audit_type: auditType,
+                        advisor_name: auditType === 'specific_advisor' ? advisorName : null,
+                        depth: selectedAuditDepth,
+                        min_messages: minMessages,
+                        focus_categories: selectedFocusCategories.length > 0 ? selectedFocusCategories : null,
+                    }),
                 });
                 const data = await res.json();
                 if (data.audit_id) {
@@ -4728,6 +4904,9 @@
                 return;
             }
 
+            const typeLabels = { general: 'General', bot_only: 'Solo Bot', advisor_only: 'Con Asesor', specific_advisor: 'Por Asesor' };
+            const depthLabels = { quick: 'Rápida', standard: 'Estándar', deep: 'Profunda' };
+
             let html = '';
             for (const a of audits) {
                 const date = new Date(a.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -4737,14 +4916,23 @@
                     ? '<span style="background:#f59e0b; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">En proceso...</span>'
                     : '<span style="background:#ef4444; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">Error</span>';
 
+                const cfg = a.config || {};
+                const typeLabel = cfg.audit_type === 'specific_advisor' && cfg.advisor_name
+                    ? `Asesor: ${cfg.advisor_name}`
+                    : (typeLabels[cfg.audit_type] || 'General');
+                const depthLabel = depthLabels[cfg.depth] || '';
+                const typeBadge = `<span style="background:#ede9fe; color:#7c3aed; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:600;">${typeLabel}</span>`;
+                const depthBadge = depthLabel ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:600;">${depthLabel}</span>` : '';
+
                 html += `
                     <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; background: #f8fafc; cursor: pointer; transition: background 0.15s;"
                          onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'"
                          onclick="loadAuditDetail('${a.id}', this)">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                 <strong style="font-size:0.85rem;">${date}</strong>
-                                <span style="color:var(--text-muted); margin-left:10px; font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conversaciones</span>
+                                ${typeBadge}${depthBadge}
+                                <span style="color:var(--text-muted); font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conv.</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 ${statusBadge}
@@ -4826,10 +5014,54 @@
                 if (s.categoria) {
                     const cats = Object.entries(s.categoria).sort((a, b) => b[1] - a[1]);
                     const catTotal = cats.reduce((sum, [, v]) => sum + v, 0);
-                    html += `<div style="display:flex; flex-wrap:wrap; gap:5px;">`;
+                    html += `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">`;
                     for (const [k, v] of cats) {
                         const pct = catTotal > 0 ? Math.round((v / catTotal) * 100) : 0;
                         html += `<span style="background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:600;">${k}: ${v} (${pct}%)</span>`;
+                    }
+                    html += `</div>`;
+                }
+
+                // Deep metrics (only present in deep audits)
+                const dm = report.deep_metrics;
+                if (dm) {
+                    html += `<div style="background:#f0fdf4; border-radius:8px; padding:12px; border-left:3px solid #16a34a; margin-bottom:10px;">`;
+                    html += `<div style="font-size:0.8rem; font-weight:700; color:#16a34a; margin-bottom:10px;">📊 Métricas Profundas</div>`;
+                    html += `<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;">`;
+                    // Score
+                    const score = dm.avg_puntuacion;
+                    const scoreColor = score >= 7 ? '#22c55e' : score >= 4 ? '#f59e0b' : '#ef4444';
+                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${scoreColor};"><div class="bi-stat-pill-label">Puntuación</div><div class="bi-stat-pill-value" style="color:${scoreColor};">${score != null ? score + '/10' : 'N/A'}</div></div>`;
+                    // Protocol compliance
+                    const proto = dm.cumplimiento_protocolo || {};
+                    const protoTotal = (proto.si || 0) + (proto.no || 0);
+                    const protoPct = protoTotal > 0 ? Math.round(((proto.si || 0) / protoTotal) * 100) : 0;
+                    const protoColor = protoPct >= 80 ? '#22c55e' : protoPct >= 50 ? '#f59e0b' : '#ef4444';
+                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${protoColor};"><div class="bi-stat-pill-label">Protocolo</div><div class="bi-stat-pill-value" style="color:${protoColor};">${protoPct}%</div></div>`;
+                    // Complexity distribution
+                    const comp = dm.complejidad || {};
+                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Complejidad</div><div style="font-size:0.72rem; color:#374151; line-height:1.4;">Baja: ${comp.baja || 0}<br>Media: ${comp.media || 0}<br>Alta: ${comp.alta || 0}</div></div>`;
+                    // Resolution time
+                    const tiempo = dm.tiempo_resolucion || {};
+                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Velocidad</div><div style="font-size:0.72rem; color:#374151; line-height:1.4;">Rápido: ${tiempo.rapido || 0}<br>Normal: ${tiempo.normal || 0}<br>Lento: ${tiempo.lento || 0}</div></div>`;
+                    html += `</div>`;
+
+                    // Detailed analyses
+                    const analyses = (report.individual_results || []).filter(r => r.detalle_analisis);
+                    if (analyses.length > 0) {
+                        html += `<div style="font-size:0.78rem; font-weight:600; color:#374151; margin-bottom:6px;">Análisis Detallados</div>`;
+                        for (const r of analyses) {
+                            const scoreBadge = typeof r.puntuacion === 'number'
+                                ? `<span style="background:${r.puntuacion >= 7 ? '#dcfce7' : r.puntuacion >= 4 ? '#fef3c7' : '#fee2e2'}; color:${r.puntuacion >= 7 ? '#16a34a' : r.puntuacion >= 4 ? '#d97706' : '#dc2626'}; padding:1px 7px; border-radius:999px; font-size:0.7rem; font-weight:700;">${r.puntuacion}/10</span>`
+                                : '';
+                            html += `<div style="background:white; border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <strong>${r.client_name || 'Cliente'}</strong>
+                                    ${scoreBadge}
+                                </div>
+                                <div style="color:#64748b;">${r.detalle_analisis}</div>
+                            </div>`;
+                        }
                     }
                     html += `</div>`;
                 }

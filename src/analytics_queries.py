@@ -3,6 +3,7 @@ Analytics query layer for ProAlto WhatsApp Bot.
 All metrics are computed on-the-fly from existing Supabase tables.
 """
 import random
+import re
 import statistics
 import threading
 import uuid
@@ -13,6 +14,18 @@ from src.conversation_log import supabase_client
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
+def _is_advisor_message(text: str) -> bool:
+    """Check if an outbound message was sent by a human advisor."""
+    return bool(text and '*' in text and ':*' in text)
+
+
+def _extract_advisor_name(text: str) -> str | None:
+    """Extract advisor name from '👨‍💼 *Name:*\\n...' pattern."""
+    if not text:
+        return None
+    match = re.search(r'\*([^*:]+):\*', text)
+    return match.group(1).strip() if match else None
 
 def _default_date_range(date_from: str = None, date_to: str = None) -> tuple:
     """Returns (date_from, date_to) defaulting to last 30 days."""
@@ -307,35 +320,63 @@ def get_response_time_metrics(date_from: str = None, date_to: str = None) -> dic
 
 # ── Conversation Sampling ────────────────────────────────────────────
 
-def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_to: str = None) -> list:
-    """Return a random sample of conversations with full message history."""
+def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_to: str = None,
+                            audit_type: str = "general", advisor_name: str = None,
+                            min_messages: int = 2) -> list:
+    """Return a filtered random sample of conversations with full message history."""
     dt_from, dt_to = _default_date_range(date_from, date_to)
 
     try:
-        # Get distinct phones active in range
+        # Fetch all messages in range (with text for advisor detection)
         msgs = _paginated_fetch(
-            'bot_messages', 'phone',
+            'bot_messages', 'phone, direction, text, msg_type, created_at',
             {}, gte_field='created_at', gte_val=dt_from,
-            lte_field='created_at', lte_val=dt_to
+            lte_field='created_at', lte_val=dt_to,
+            order_field='created_at'
         )
-        all_phones = list({m['phone'] for m in msgs})
 
-        if not all_phones:
+        if not msgs:
             return []
 
-        selected = random.sample(all_phones, min(sample_size, len(all_phones)))
+        # Group messages by phone and analyze advisor presence
+        phone_msgs = defaultdict(list)
+        phone_has_advisor = defaultdict(bool)
+        phone_advisor_names = defaultdict(set)
+
+        for m in msgs:
+            phone = m['phone']
+            phone_msgs[phone].append(m)
+            if m.get('direction') == 'outbound':
+                txt = m.get('text') or ''
+                if _is_advisor_message(txt):
+                    phone_has_advisor[phone] = True
+                    name = _extract_advisor_name(txt)
+                    if name:
+                        phone_advisor_names[phone].add(name)
+
+        # Filter by audit_type
+        candidate_phones = list(phone_msgs.keys())
+
+        if audit_type == "bot_only":
+            candidate_phones = [p for p in candidate_phones if not phone_has_advisor[p]]
+        elif audit_type == "advisor_only":
+            candidate_phones = [p for p in candidate_phones if phone_has_advisor[p]]
+        elif audit_type == "specific_advisor":
+            if advisor_name:
+                candidate_phones = [p for p in candidate_phones if advisor_name in phone_advisor_names[p]]
+            else:
+                candidate_phones = [p for p in candidate_phones if phone_has_advisor[p]]
+
+        # Filter by min_messages
+        candidate_phones = [p for p in candidate_phones if len(phone_msgs[p]) >= min_messages]
+
+        if not candidate_phones:
+            return []
+
+        selected = random.sample(candidate_phones, min(sample_size, len(candidate_phones)))
 
         conversations = []
         for phone in selected:
-            # Fetch full history for this phone in the date range
-            phone_msgs = _paginated_fetch(
-                'bot_messages', 'direction, text, msg_type, created_at',
-                {'phone': phone},
-                gte_field='created_at', gte_val=dt_from,
-                lte_field='created_at', lte_val=dt_to,
-                order_field='created_at'
-            )
-
             # Get client name
             res = supabase_client.table('bot_conversations') \
                 .select('client_name, status') \
@@ -348,7 +389,9 @@ def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_t
                 'phone': phone,
                 'client_name': client_name,
                 'current_status': status,
-                'message_count': len(phone_msgs),
+                'has_advisor': phone_has_advisor[phone],
+                'advisor_names': list(phone_advisor_names[phone]),
+                'message_count': len(phone_msgs[phone]),
                 'messages': [
                     {
                         'direction': m['direction'],
@@ -356,7 +399,7 @@ def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_t
                         'msg_type': m.get('msg_type', 'text'),
                         'timestamp': m['created_at'],
                     }
-                    for m in phone_msgs
+                    for m in phone_msgs[phone]
                 ],
             })
 
@@ -366,23 +409,69 @@ def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_t
         return []
 
 
+# ── Advisor Discovery ─────────────────────────────────────────────────
+
+def get_available_advisors(date_from: str = None, date_to: str = None) -> list:
+    """Return sorted list of advisor names that sent messages in the date range."""
+    dt_from, dt_to = _default_date_range(date_from, date_to)
+    msgs = _paginated_fetch(
+        'bot_messages', 'text',
+        {'direction': 'outbound'},
+        gte_field='created_at', gte_val=dt_from,
+        lte_field='created_at', lte_val=dt_to,
+    )
+    names = set()
+    for m in msgs:
+        name = _extract_advisor_name(m.get('text', ''))
+        if name:
+            names.add(name)
+    return sorted(names)
+
+
 # ── AI Audit ─────────────────────────────────────────────────────────
 
-_AUDIT_SYSTEM_PROMPT = """Eres un analista experto de conversaciones para ProAlto, una financiera colombiana de créditos de libranza.
-Revisas conversaciones del bot de WhatsApp para identificar oportunidades de mejora.
+_AUDIT_TYPE_CONTEXT = {
+    "general": "Analiza la conversación completa incluyendo tanto las respuestas del bot como las intervenciones de asesores humanos (si las hay).",
+    "bot_only": (
+        "Esta conversación fue manejada EXCLUSIVAMENTE por el bot automatizado, sin intervención humana. "
+        "Evalúa la calidad de las respuestas automatizadas, si el bot entendió correctamente las intenciones "
+        "del cliente, y si logró resolver la necesidad sin ayuda humana."
+    ),
+    "advisor_only": (
+        "En esta conversación intervino un asesor humano. Evalúa: por qué fue necesaria la intervención humana, "
+        "la calidad de la respuesta del asesor, el tiempo y la fluidez de la transición bot→asesor, "
+        "y si la intervención resolvió el problema."
+    ),
+    "specific_advisor": (
+        "Evalúa la calidad de atención del asesor humano que participó: claridad, empatía, resolución, "
+        "y cumplimiento de los estándares de la empresa."
+    ),
+}
 
-Analiza la conversación y responde EXCLUSIVAMENTE con un JSON válido (sin markdown, sin texto adicional):
-
-{
+_STANDARD_JSON_SCHEMA = """{
     "resolucion": "resolved" | "unresolved" | "partial",
     "friccion": ["punto de fricción 1", "punto de fricción 2"],
     "oportunidad_mejora": ["sugerencia 1", "sugerencia 2"],
     "sentimiento": "positive" | "neutral" | "negative",
     "categoria": "status_check" | "email_capture" | "document_upload" | "account_capture" | "credit_request" | "support" | "balance_check" | "other",
     "notable": "hallazgo notable o null"
-}
+}"""
 
-Criterios:
+_DEEP_JSON_SCHEMA = """{
+    "resolucion": "resolved" | "unresolved" | "partial",
+    "friccion": ["punto de fricción 1", "punto de fricción 2"],
+    "oportunidad_mejora": ["sugerencia 1", "sugerencia 2"],
+    "sentimiento": "positive" | "neutral" | "negative",
+    "categoria": "status_check" | "email_capture" | "document_upload" | "account_capture" | "credit_request" | "support" | "balance_check" | "other",
+    "notable": "hallazgo notable o null",
+    "puntuacion": 1-10,
+    "tiempo_resolucion_estimado": "rapido" | "normal" | "lento",
+    "complejidad": "baja" | "media" | "alta",
+    "cumplimiento_protocolo": true | false,
+    "detalle_analisis": "párrafo con análisis detallado de la conversación"
+}"""
+
+_STANDARD_CRITERIA = """Criterios:
 - resolucion: "resolved" si el cliente obtuvo lo que necesitaba, "unresolved" si no, "partial" si parcialmente.
 - friccion: momentos donde el cliente se confundió, frustró, o el bot falló. Lista vacía si no hay.
 - oportunidad_mejora: sugerencias concretas para mejorar el flujo o las respuestas. Lista vacía si todo bien.
@@ -390,13 +479,59 @@ Criterios:
 - categoria: tema principal de la conversación.
 - notable: cualquier hallazgo importante (patrón nuevo, queja recurrente, caso de uso inesperado). null si nada notable."""
 
+_DEEP_CRITERIA = _STANDARD_CRITERIA + """
+- puntuacion: calificación general de 1 (pésimo) a 10 (excelente) de la experiencia del cliente.
+- tiempo_resolucion_estimado: "rapido" si se resolvió en pocos mensajes, "normal" si fue un flujo estándar, "lento" si tomó demasiados intercambios.
+- complejidad: "baja" para consultas simples, "media" para flujos de varios pasos, "alta" para casos excepcionales o múltiples temas.
+- cumplimiento_protocolo: true si se siguieron los flujos esperados del bot/asesor, false si hubo desviaciones.
+- detalle_analisis: párrafo de 2-4 oraciones con un análisis narrativo de la conversación, puntos clave y recomendaciones."""
+
+_DEPTH_CONFIG = {
+    "quick":    {"schema": _STANDARD_JSON_SCHEMA, "criteria": _STANDARD_CRITERIA, "max_tokens": 600},
+    "standard": {"schema": _STANDARD_JSON_SCHEMA, "criteria": _STANDARD_CRITERIA, "max_tokens": 800},
+    "deep":     {"schema": _DEEP_JSON_SCHEMA,     "criteria": _DEEP_CRITERIA,     "max_tokens": 1500},
+}
+
+
+def _build_audit_prompt(audit_type: str = "general", depth: str = "standard",
+                        focus_categories: list = None) -> str:
+    """Build the system prompt for the AI audit based on configuration."""
+    type_ctx = _AUDIT_TYPE_CONTEXT.get(audit_type, _AUDIT_TYPE_CONTEXT["general"])
+    depth_cfg = _DEPTH_CONFIG.get(depth, _DEPTH_CONFIG["standard"])
+
+    prompt = f"""Eres un analista experto de conversaciones para ProAlto, una financiera colombiana de créditos de libranza.
+Revisas conversaciones del bot de WhatsApp para identificar oportunidades de mejora.
+
+{type_ctx}
+
+Analiza la conversación y responde EXCLUSIVAMENTE con un JSON válido (sin markdown, sin texto adicional):
+
+{depth_cfg['schema']}
+
+{depth_cfg['criteria']}"""
+
+    if focus_categories:
+        cats = ", ".join(focus_categories)
+        prompt += f"\n\nENFOQUE ESPECIAL: Presta especial atención a conversaciones de tipo: {cats}. Para estas categorías, sé más detallado en los puntos de fricción y oportunidades de mejora."
+
+    return prompt
+
 
 def _format_transcript(messages: list) -> str:
-    """Format messages as a readable transcript for the LLM."""
+    """Format messages as a readable transcript for the LLM (CLIENTE / BOT / ASESOR)."""
     lines = []
     for m in messages:
-        role = "CLIENTE" if m['direction'] == 'inbound' else "BOT"
         text = m.get('text') or '[archivo]'
+        if m['direction'] == 'inbound':
+            role = "CLIENTE"
+        elif _is_advisor_message(text):
+            name = _extract_advisor_name(text) or "ASESOR"
+            role = f"ASESOR ({name})"
+            idx = text.find(':*')
+            if idx != -1:
+                text = text[idx + 2:].lstrip('\n').strip()
+        else:
+            role = "BOT"
         if len(text) > 500:
             text = text[:500] + '...'
         ts = m.get('timestamp', '')[:16]
@@ -436,10 +571,14 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract JSON from response: {text[:200]}")
 
 
-def _analyze_single_conversation(conversation: dict) -> dict:
+def _analyze_single_conversation(conversation: dict, system_prompt: str = None,
+                                  max_tokens: int = 800) -> dict:
     """Call Claude to analyze a single conversation."""
     import anthropic
     import os
+
+    if system_prompt is None:
+        system_prompt = _build_audit_prompt()
 
     try:
         client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
@@ -457,8 +596,8 @@ def _analyze_single_conversation(conversation: dict) -> dict:
 
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=800,
-            system=_AUDIT_SYSTEM_PROMPT,
+            max_tokens=max_tokens,
+            system=system_prompt,
             messages=[{
                 "role": "user",
                 "content": f"Conversación con {conversation.get('client_name', 'Cliente')} ({conversation['phone']}), {conversation['message_count']} mensajes:\n\n{transcript}"
@@ -479,7 +618,7 @@ def _analyze_single_conversation(conversation: dict) -> dict:
         }
 
 
-def _aggregate_audit_results(individual_results: list) -> dict:
+def _aggregate_audit_results(individual_results: list, depth: str = "standard") -> dict:
     """Aggregate individual conversation analyses into a summary report."""
     total = len(individual_results)
     if total == 0:
@@ -504,7 +643,7 @@ def _aggregate_audit_results(individual_results: list) -> dict:
     friction_counter = Counter(all_friction)
     improvement_counter = Counter(all_improvements)
 
-    return {
+    report = {
         "summary": {
             "total_analyzed": total,
             "resolucion": dict(resolucion),
@@ -517,8 +656,24 @@ def _aggregate_audit_results(individual_results: list) -> dict:
         "individual_results": individual_results,
     }
 
+    # Deep audit: aggregate extra metrics
+    if depth == "deep":
+        scores = [r['puntuacion'] for r in individual_results if isinstance(r.get('puntuacion'), (int, float))]
+        report["deep_metrics"] = {
+            "avg_puntuacion": round(sum(scores) / len(scores), 1) if scores else None,
+            "tiempo_resolucion": dict(Counter(r.get('tiempo_resolucion_estimado', 'unknown') for r in individual_results)),
+            "complejidad": dict(Counter(r.get('complejidad', 'unknown') for r in individual_results)),
+            "cumplimiento_protocolo": {
+                "si": sum(1 for r in individual_results if r.get('cumplimiento_protocolo') is True),
+                "no": sum(1 for r in individual_results if r.get('cumplimiento_protocolo') is False),
+            },
+        }
 
-def run_conversation_audit(audit_id: str, sample_size: int, date_from: str, date_to: str):
+    return report
+
+
+def run_conversation_audit(audit_id: str, sample_size: int, date_from: str, date_to: str,
+                           config: dict = None):
     """
     Background task: sample conversations, analyze with AI, store results.
     """
@@ -528,8 +683,26 @@ def run_conversation_audit(audit_id: str, sample_size: int, date_from: str, date
             'status': 'running'
         }).eq('id', audit_id).execute()
 
+        # Unpack config
+        if not config:
+            config = {}
+        audit_type = config.get('audit_type', 'general')
+        depth = config.get('depth', 'standard')
+        advisor_name_filter = config.get('advisor_name')
+        min_messages = config.get('min_messages', 2)
+        focus_categories = config.get('focus_categories')
+
+        # Build prompt and get max_tokens for this depth
+        system_prompt = _build_audit_prompt(audit_type, depth, focus_categories)
+        max_tokens = _DEPTH_CONFIG.get(depth, _DEPTH_CONFIG["standard"])["max_tokens"]
+
         # Get sample
-        conversations = get_conversation_sample(sample_size, date_from, date_to)
+        conversations = get_conversation_sample(
+            sample_size, date_from, date_to,
+            audit_type=audit_type,
+            advisor_name=advisor_name_filter,
+            min_messages=min_messages,
+        )
 
         if not conversations:
             supabase_client.table('audit_reports').update({
@@ -541,16 +714,16 @@ def run_conversation_audit(audit_id: str, sample_size: int, date_from: str, date
         # Analyze each conversation
         results = []
         for conv in conversations:
-            if conv['message_count'] < 2:
-                continue
-            analysis = _analyze_single_conversation(conv)
+            analysis = _analyze_single_conversation(conv, system_prompt, max_tokens)
             analysis['phone'] = conv['phone']
             analysis['client_name'] = conv.get('client_name', 'Cliente')
             analysis['message_count'] = conv['message_count']
+            analysis['has_advisor'] = conv.get('has_advisor', False)
+            analysis['advisor_names'] = conv.get('advisor_names', [])
             results.append(analysis)
 
         # Aggregate
-        report = _aggregate_audit_results(results)
+        report = _aggregate_audit_results(results, depth)
 
         # Store
         supabase_client.table('audit_reports').update({
@@ -569,22 +742,27 @@ def run_conversation_audit(audit_id: str, sample_size: int, date_from: str, date
             pass
 
 
-def start_audit(sample_size: int = 10, date_from: str = None, date_to: str = None) -> str:
+def start_audit(sample_size: int = 10, date_from: str = None, date_to: str = None,
+                config: dict = None) -> str:
     """Create an audit record and launch the background analysis. Returns audit_id."""
     dt_from, dt_to = _default_date_range(date_from, date_to)
     audit_id = str(uuid.uuid4())
 
-    supabase_client.table('audit_reports').insert({
+    row = {
         'id': audit_id,
         'date_from': dt_from[:10],
         'date_to': dt_to[:10],
         'sample_size': sample_size,
         'status': 'running',
-    }).execute()
+    }
+    if config:
+        row['config'] = config
+
+    supabase_client.table('audit_reports').insert(row).execute()
 
     threading.Thread(
         target=run_conversation_audit,
-        args=(audit_id, sample_size, dt_from[:10], dt_to[:10]),
+        args=(audit_id, sample_size, dt_from[:10], dt_to[:10], config),
         daemon=True
     ).start()
 
@@ -608,7 +786,7 @@ def get_audit_list() -> list:
     """Fetch all audit reports, most recent first."""
     try:
         res = supabase_client.table('audit_reports') \
-            .select('id, created_at, date_from, date_to, sample_size, status') \
+            .select('id, created_at, date_from, date_to, sample_size, status, config') \
             .order('created_at', desc=True) \
             .limit(20) \
             .execute()

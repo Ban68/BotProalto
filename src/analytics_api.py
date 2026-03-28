@@ -11,6 +11,7 @@ from src.analytics_queries import (
     start_audit,
     get_audit_report,
     get_audit_list,
+    get_available_advisors,
 )
 
 analytics_bp = Blueprint('analytics', __name__)
@@ -45,6 +46,14 @@ def response_times():
     return jsonify(data)
 
 
+@analytics_bp.route('/admin/api/analytics/advisors')
+@requires_auth
+def available_advisors():
+    date_from, date_to = _get_dates()
+    advisors = get_available_advisors(date_from, date_to)
+    return jsonify({'advisors': advisors})
+
+
 @analytics_bp.route('/admin/api/analytics/audit', methods=['POST'])
 @requires_auth
 def create_audit():
@@ -52,8 +61,15 @@ def create_audit():
     sample_size = body.get('sample_size', 10)
     date_from = body.get('from')
     date_to = body.get('to')
+    config = {
+        'audit_type': body.get('audit_type', 'general'),
+        'advisor_name': body.get('advisor_name'),
+        'depth': body.get('depth', 'standard'),
+        'min_messages': body.get('min_messages', 3),
+        'focus_categories': body.get('focus_categories'),
+    }
     try:
-        audit_id = start_audit(sample_size, date_from, date_to)
+        audit_id = start_audit(sample_size, date_from, date_to, config)
         return jsonify({'status': 'started', 'audit_id': audit_id})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
