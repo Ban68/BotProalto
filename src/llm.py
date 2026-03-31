@@ -244,4 +244,4 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
 
     except Exception as e:
         print(f"[LLM] ask_llm error: {e}")
-        return "Déjame verificar eso y te confirmo en un momento."
+        return "En este momento no pude procesar tu mensaje. Escribe 'Hola' para ver el menú o escribe 'asesor' si necesitas hablar con alguien."

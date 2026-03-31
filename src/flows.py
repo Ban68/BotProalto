@@ -61,6 +61,24 @@ def _is_greeting(text: str) -> bool:
     return first_word in greetings or norm in phrases
 
 
+def _is_advisor_request(text: str) -> bool:
+    """Check if user is explicitly asking to talk to a human advisor."""
+    norm = text.lower().strip()
+    patterns = [
+        "hablar con un asesor", "hablar con asesor", "contactar asesor",
+        "necesito un asesor", "quiero hablar con alguien", "contactarme con un asesor",
+        "quiero un asesor", "pasame con un asesor", "pásame con un asesor",
+        "comunicarme con un asesor", "hablar con una persona", "persona real",
+        "agente humano", "asesor humano", "hablar con alguien", "necesito asesor",
+        "quiero asesor", "contactar un asesor", "conectarme con un asesor",
+    ]
+    return any(p in norm for p in patterns)
+
+
+# Prefix for LLM-generated messages (visible in chat for admin monitoring)
+_LLM_PREFIX = "🤖 "
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -181,6 +199,18 @@ class FlowHandler:
 
         # 0b. LLM Agent Mode — all messages routed through Claude
         if state == "agent_llm":
+            # Pre-route: greetings exit to menu without calling LLM
+            if _is_greeting(text):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+                return
+            # Pre-route: explicit advisor requests escalate directly
+            if _is_advisor_request(text):
+                set_agent_mode(user_phone, "agent")
+                WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
+                notify_admin_agent_request(user_phone)
+                return
+
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)
 
@@ -193,31 +223,29 @@ class FlowHandler:
             llm_response = ask_llm(user_phone, text, state, client_name, cedula_context=cedula_context)
 
             if "[HABLAR_ASESOR]" in llm_response:
-                # Send the human-sounding transition message the LLM wrote (if any)
                 human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg)
+                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
                 set_agent_mode(user_phone, "agent")
                 notify_admin_agent_request(user_phone)
             elif "[MOSTRAR_MENU]" in llm_response:
                 human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg)
+                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
             elif "[REGISTRAR_SOLICITUD:" in llm_response:
-                # Extract tipo from tag, save request, keep client in agent_llm
                 match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
                 tipo = match.group(1).strip() if match else "general"
                 human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg)
+                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
                 from src.conversation_log import save_llm_request
                 from src.notifications import notify_admin_llm_request
                 save_llm_request(user_phone, client_name, tipo, text)
                 notify_admin_llm_request(user_phone, tipo)
             else:
-                WhatsAppService.send_message(user_phone, llm_response)
+                WhatsAppService.send_message(user_phone, _LLM_PREFIX + llm_response)
             return
 
         # 1. Check Consent Flow
@@ -513,7 +541,14 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             return
 
-        # Route everything else to LLM instead of "No entendí"
+        # Pre-route: explicit advisor requests escalate directly (no LLM needed)
+        if _is_advisor_request(norm_text):
+            set_agent_mode(user_phone, "agent")
+            WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
+            notify_admin_agent_request(user_phone)
+            return
+
+        # Route everything else to LLM
         from src.llm import ask_llm
         client_name = get_client_name(user_phone)
         set_user_state(user_phone, "agent_llm")
@@ -528,13 +563,13 @@ class FlowHandler:
         if "[HABLAR_ASESOR]" in llm_response:
             human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg)
+                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
             set_agent_mode(user_phone, "agent")
             notify_admin_agent_request(user_phone)
         elif "[MOSTRAR_MENU]" in llm_response:
             human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg)
+                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
         elif "[REGISTRAR_SOLICITUD:" in llm_response:
@@ -542,13 +577,13 @@ class FlowHandler:
             tipo = match.group(1).strip() if match else "general"
             human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg)
+                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
             from src.conversation_log import save_llm_request
             from src.notifications import notify_admin_llm_request
             save_llm_request(user_phone, client_name, tipo, text)
             notify_admin_llm_request(user_phone, tipo)
         else:
-            WhatsAppService.send_message(user_phone, llm_response)
+            WhatsAppService.send_message(user_phone, _LLM_PREFIX + llm_response)
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):
