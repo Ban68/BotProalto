@@ -204,6 +204,12 @@ class FlowHandler:
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
                 return
+            # Pre-route: short thank-you / farewell — respond directly, no LLM needed
+            norm_llm = text.lower().strip()
+            if ("gracias" in norm_llm or "thank" in norm_llm) and len(norm_llm.split()) <= 8 and "?" not in text:
+                set_user_state(user_phone, "active")
+                WhatsAppService.send_message(user_phone, "Con gusto, quedo pendiente. Escribe 'Hola' si necesitas algo más.")
+                return
 
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)

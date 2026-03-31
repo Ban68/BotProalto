@@ -234,14 +234,25 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
             state_note += "\n[CÉDULA CONSULTADA: no se encontró solicitud activa con ese número. Dile al cliente que no aparece nada y que confirme si es la cédula correcta.]"
 
         client = _get_client()
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=400,
-            system=_SYSTEM_PROMPT + state_note,
-            messages=history,
-        )
-        return response.content[0].text.strip()
+        last_error = None
+        for attempt in range(2):  # 1 original + 1 retry
+            try:
+                response = client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=400,
+                    system=_SYSTEM_PROMPT + state_note,
+                    messages=history,
+                )
+                return response.content[0].text.strip()
+            except Exception as api_err:
+                last_error = api_err
+                print(f"[LLM] attempt {attempt+1} failed: {api_err}")
+                if attempt == 0:
+                    import time
+                    time.sleep(1)
+
+        raise last_error  # will be caught by outer except
 
     except Exception as e:
-        print(f"[LLM] ask_llm error: {e}")
+        print(f"[LLM] ask_llm error (all attempts failed): {e}")
         return "En este momento no pude procesar tu mensaje. Escribe 'Hola' para ver el menú o escribe 'asesor' si necesitas hablar con alguien."
