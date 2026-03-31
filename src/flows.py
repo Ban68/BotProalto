@@ -545,17 +545,17 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             return
 
-        # Route everything else to LLM (including "hablar con asesor" — the LLM IS the advisor)
+        # Only activate LLM for explicit advisor requests; everything else shows the menu
+        if not _is_advisor_request(norm_text):
+            set_user_state(user_phone, "active")
+            FlowHandler.send_main_menu(user_phone)
+            return
+
         from src.llm import ask_llm
         client_name = get_client_name(user_phone)
         set_user_state(user_phone, "agent_llm")
 
-        cedula_context = None
-        if norm_text.isdigit() and 6 <= len(norm_text) <= 12:
-            result = get_solicitud_status(norm_text)
-            cedula_context = result if result else {}
-
-        llm_response = ask_llm(user_phone, text, "agent_llm", client_name, cedula_context=cedula_context)
+        llm_response = ask_llm(user_phone, text, "agent_llm", client_name)
 
         # LLM failed after retries — stay silent
         if not llm_response:
