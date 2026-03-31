@@ -75,8 +75,9 @@ def _is_advisor_request(text: str) -> bool:
     return any(p in norm for p in patterns)
 
 
-# Prefix for LLM-generated messages (visible in chat for admin monitoring)
-_LLM_PREFIX = "🤖 "
+# msg_type value used to tag LLM-generated outbound messages in the DB
+# The admin panel reads this to show the 🤖 indicator — clients never see it
+_LLM_MSG_TYPE = "llm"
 
 
 class FlowHandler:
@@ -229,13 +230,13 @@ class FlowHandler:
             if "[HABLAR_ASESOR]" in llm_response:
                 human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
                 set_agent_mode(user_phone, "agent")
                 notify_admin_agent_request(user_phone)
             elif "[MOSTRAR_MENU]" in llm_response:
                 human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
             elif "[REGISTRAR_SOLICITUD:" in llm_response:
@@ -243,13 +244,13 @@ class FlowHandler:
                 tipo = match.group(1).strip() if match else "general"
                 human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
                 if human_msg:
-                    WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
                 from src.conversation_log import save_llm_request
                 from src.notifications import notify_admin_llm_request
                 save_llm_request(user_phone, client_name, tipo, text)
                 notify_admin_llm_request(user_phone, tipo)
             else:
-                WhatsAppService.send_message(user_phone, _LLM_PREFIX + llm_response)
+                WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
             return
 
         # 1. Check Consent Flow
@@ -565,13 +566,13 @@ class FlowHandler:
         if "[HABLAR_ASESOR]" in llm_response:
             human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
             set_agent_mode(user_phone, "agent")
             notify_admin_agent_request(user_phone)
         elif "[MOSTRAR_MENU]" in llm_response:
             human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
         elif "[REGISTRAR_SOLICITUD:" in llm_response:
@@ -579,13 +580,13 @@ class FlowHandler:
             tipo = match.group(1).strip() if match else "general"
             human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
             if human_msg:
-                WhatsAppService.send_message(user_phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
             from src.conversation_log import save_llm_request
             from src.notifications import notify_admin_llm_request
             save_llm_request(user_phone, client_name, tipo, text)
             notify_admin_llm_request(user_phone, tipo)
         else:
-            WhatsAppService.send_message(user_phone, _LLM_PREFIX + llm_response)
+            WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):

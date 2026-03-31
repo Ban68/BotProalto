@@ -195,7 +195,7 @@ def api_llm_retrigger(phone):
     try:
         from src.conversation_log import get_recent_messages_for_llm, get_client_name
         from src.llm import ask_llm
-        from src.flows import _LLM_PREFIX, FlowHandler
+        from src.flows import _LLM_MSG_TYPE, FlowHandler
         import re
 
         # Find the last inbound (user) message
@@ -224,13 +224,13 @@ def api_llm_retrigger(phone):
         if "[HABLAR_ASESOR]" in llm_response:
             human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
             set_agent_mode(phone, "agent")
             notify_admin_agent_request(phone)
         elif "[MOSTRAR_MENU]" in llm_response:
             human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
             if human_msg:
-                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
             set_agent_mode(phone, "active")
             FlowHandler.send_main_menu(phone)
         elif "[REGISTRAR_SOLICITUD:" in llm_response:
@@ -238,11 +238,11 @@ def api_llm_retrigger(phone):
             tipo = match.group(1).strip() if match else "general"
             human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
             if human_msg:
-                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+                WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
             save_llm_request(phone, client_name, tipo, last_user_msg)
             notify_admin_llm_request(phone, tipo)
         else:
-            WhatsAppService.send_message(phone, _LLM_PREFIX + llm_response)
+            WhatsAppService.send_message(phone, llm_response, msg_type=_LLM_MSG_TYPE)
 
         return jsonify({"status": "sent"})
 

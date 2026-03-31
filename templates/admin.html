@@ -637,6 +637,19 @@
             background: var(--agent-bubble);
         }
 
+        .msg-outbound.msg-llm {
+            background: #ede9fe;
+            border-left: 3px solid #7c3aed;
+        }
+
+        .msg-llm-badge {
+            font-size: 0.68rem;
+            color: #7c3aed;
+            font-weight: 600;
+            margin-bottom: 3px;
+            display: block;
+        }
+
         .msg-meta {
             font-size: 0.7rem;
             color: var(--text-muted);
@@ -3837,13 +3850,16 @@
                 data.messages.forEach(m => {
                     const isOut = m.direction === 'outbound';
                     const isAgentMsg = isOut && (m.text.includes('Asesor ProAlto') || m.text.includes('👨‍💼'));
+                    const isLlmMsg = isOut && m.type === 'llm';
 
                     let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
                     if (isAgentMsg) classes += ' msg-agent';
+                    if (isLlmMsg) classes += ' msg-llm';
 
                     let text = (m.text || "").replace(/\n/g, '<br>');
-                    
-                    let content = `<div>${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>`;
+
+                    const llmBadge = isLlmMsg ? `<span class="msg-llm-badge">🤖 Agente IA</span>` : '';
+                    let content = `<div>${llmBadge}${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>`;
 
                     if (m.type === 'image') {
                         content = `

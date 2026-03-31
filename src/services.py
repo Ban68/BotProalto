@@ -6,9 +6,10 @@ from src.conversation_log import log_message
 
 class WhatsAppService:
     @staticmethod
-    def send_message(to_number, message_body):
+    def send_message(to_number, message_body, msg_type="text"):
         """
         Send a text message to a WhatsApp user specifically for Cloud API.
+        msg_type: log type — use "llm" for LLM-generated responses (admin-only marker).
         """
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
@@ -33,7 +34,7 @@ class WhatsAppService:
                 wamid = res_json["messages"][0].get("id")
 
             # Log outbound message with its ID
-            log_message(to_number, "outbound", message_body, "text", wamid=wamid)
+            log_message(to_number, "outbound", message_body, msg_type, wamid=wamid)
             return res_json
         except requests.exceptions.RequestException as e:
             print(f"Error sending message: {e}")
