@@ -46,6 +46,21 @@ except Exception as e:
     print(f"Error loading status mapping: {e}")
     STATUS_MESSAGES = {}
 
+
+def _is_greeting(text: str) -> bool:
+    """Check if text looks like a greeting (used in multiple states to allow menu escape)."""
+    norm = text.lower().strip()
+    first_word = norm.split()[0] if norm else ""
+    for ch in ",.:!?¿¡":
+        first_word = first_word.replace(ch, "")
+    greetings = {"hola", "menu", "menú", "inicio", "start", "buenas", "holis", "holi",
+                 "saludos", "hi", "hello", "buen", "buenos", "ola", "hol", "hla",
+                 "hl", "holaa", "holaaaa", "holaaa", "alo", "hey"}
+    phrases = {"buenos dias", "buenos días", "buenas tardes", "buenas noches",
+               "buen dia", "buen día", "que tal", "q tal"}
+    return first_word in greetings or norm in phrases
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -103,13 +118,19 @@ class FlowHandler:
                         
                         log_message(user_phone, "inbound", final_path, msg_type, wamid=msg_id)
 
-                        # Track documents received after estado_rojo or estado_amarillo bulk send
+                        # Track documents received in any state (not just docs-expected states)
+                        if public_url:
+                            client_name = get_client_name(user_phone)
+                            log_received_document(user_phone, client_name, filename, mime_type, final_path)
+
+                        # Send confirmation in document-expected states; remind email if waiting for it
                         if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
-                            # Only log if we have a persistent Supabase URL; local paths are ephemeral on Render
-                            if public_url:
-                                client_name = get_client_name(user_phone)
-                                log_received_document(user_phone, client_name, filename, mime_type, final_path)
                             _schedule_doc_confirmation(user_phone)
+                        elif current_state == "waiting_for_email":
+                            WhatsAppService.send_message(
+                                user_phone,
+                                "Recibimos tu documento, gracias. Pero aún necesitamos tu correo electrónico para enviarte el contrato. Por favor escríbelo aquí:"
+                            )
 
                         # Optionally cleanup local file to save disk space if uploaded successfully
                         if public_url:
@@ -313,6 +334,10 @@ class FlowHandler:
 
         # 2a. Check if waiting for Email
         if state == "waiting_for_email":
+            if _is_greeting(text):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+                return
             email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
             email = email_match.group(0) if email_match else None
             if email:
@@ -346,6 +371,10 @@ class FlowHandler:
 
         # 2b. Check if waiting for docs after estado_rojo
         if state == "waiting_for_docs_rojo":
+            if _is_greeting(text):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+                return
             if text.lower().strip() in ["asesor", "asesor humano", "ayuda", "help"]:
                 set_agent_mode(user_phone, "agent")
                 WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
@@ -463,22 +492,63 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
 
-        # 3. Main Menu Logic 
+        # 3. Main Menu Logic
         norm_text = text.lower().strip()
-        greetings = ["hola", "menu", "inicio", "start", "buenas", "holis", "holi", "saludos", "hi", "hello", "buen", "buenos"]
-        
-        first_word = norm_text.split()[0] if norm_text else ""
-        for char in [",", ".", "!", "?", "¿", "¡"]:
-            first_word = first_word.replace(char, "")
-            
-        exact_phrases = ["buenos dias", "buenos días", "buenas tardes", "buenas noches", "buen dia", "buen día", "que tal", "q tal"]
-        is_greeting = first_word in greetings or norm_text in exact_phrases
-        
-        if is_greeting:
+
+        if _is_greeting(norm_text):
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
+            return
+
+        # Detect post-action confirmations ("ya llené el formulario", etc.)
+        post_action_keywords = ["ya llene", "ya llené", "ya envie", "ya envié", "ya lo hice",
+                                "ya lo envie", "ya lo envié", "ya lo llene", "ya lo llené",
+                                "listo formulario", "ya diligencié", "ya diligiencie",
+                                "formulario listo", "ya lo rellene", "ya lo rellené"]
+        if any(kw in norm_text for kw in post_action_keywords):
+            WhatsAppService.send_message(
+                user_phone,
+                "Perfecto, gracias por avisarnos. Nuestro equipo lo revisará y te contactaremos pronto con novedades."
+            )
+            set_user_state(user_phone, "active")
+            return
+
+        # Route everything else to LLM instead of "No entendí"
+        from src.llm import ask_llm
+        client_name = get_client_name(user_phone)
+        set_user_state(user_phone, "agent_llm")
+
+        cedula_context = None
+        if norm_text.isdigit() and 6 <= len(norm_text) <= 12:
+            result = get_solicitud_status(norm_text)
+            cedula_context = result if result else {}
+
+        llm_response = ask_llm(user_phone, text, "agent_llm", client_name, cedula_context=cedula_context)
+
+        if "[HABLAR_ASESOR]" in llm_response:
+            human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+            if human_msg:
+                WhatsAppService.send_message(user_phone, human_msg)
+            set_agent_mode(user_phone, "agent")
+            notify_admin_agent_request(user_phone)
+        elif "[MOSTRAR_MENU]" in llm_response:
+            human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
+            if human_msg:
+                WhatsAppService.send_message(user_phone, human_msg)
+            set_user_state(user_phone, "active")
+            FlowHandler.send_main_menu(user_phone)
+        elif "[REGISTRAR_SOLICITUD:" in llm_response:
+            match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
+            tipo = match.group(1).strip() if match else "general"
+            human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
+            if human_msg:
+                WhatsAppService.send_message(user_phone, human_msg)
+            from src.conversation_log import save_llm_request
+            from src.notifications import notify_admin_llm_request
+            save_llm_request(user_phone, client_name, tipo, text)
+            notify_admin_llm_request(user_phone, tipo)
         else:
-            WhatsAppService.send_message(user_phone, "No entendí tu mensaje. Escribe *Hola* para ver el menú principal.")
+            WhatsAppService.send_message(user_phone, llm_response)
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):
@@ -602,18 +672,13 @@ class FlowHandler:
     def send_main_menu(user_phone):
         menu_text = "Hola, ¿en qué podemos ayudarte hoy?"
         buttons = [
-            {"id": "menu_cliente", "title": "Soy Cliente"},
             {"id": "menu_solicitud", "title": "Estado Solicitud"},
+            {"id": "menu_saldo", "title": "Consultar Saldo"},
             {"id": "menu_credito", "title": "Solicitar Crédito"}
         ]
         WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
 
     @staticmethod
     def send_client_menu(user_phone):
-        menu_text = "¿Qué deseas hacer hoy?"
-        buttons = [
-            {"id": "menu_saldo", "title": "Consultar Saldo"},
-            {"id": "menu_support", "title": "Hablar con Asesor"},
-            {"id": "menu_main", "title": "Volver al Inicio"}
-        ]
-        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
+        """Backward compat: redirects to merged main menu."""
+        FlowHandler.send_main_menu(user_phone)

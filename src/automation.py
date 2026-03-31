@@ -86,6 +86,13 @@ def get_pending_approved_notifications():
         s = stats.get(user["phone"], {})
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
+
+    # Filter out users who already received 3+ templates (prevent fatigue)
+    over_limit = [u for u in eligible_users if u["send_count"] >= 3]
+    for u in over_limit:
+        u["excluded_reasons"] = ["Límite de 3 envíos alcanzado"]
+    excluded_users.extend(over_limit)
+    eligible_users = [u for u in eligible_users if u["send_count"] < 3]
     eligible_users.sort(key=lambda u: u["send_count"])
 
     # Also enrich excluded with stats for context in the UI
@@ -353,6 +360,13 @@ def get_pending_falta_documento_notifications():
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
 
+    # Filter out users who already received 3+ templates (prevent fatigue)
+    over_limit = [u for u in eligible_users if u["send_count"] >= 3]
+    for u in over_limit:
+        u["excluded_reasons"] = ["Límite de 3 envíos alcanzado"]
+    excluded_users.extend(over_limit)
+    eligible_users = [u for u in eligible_users if u["send_count"] < 3]
+
     # Also enrich excluded with stats for context in the UI
     if excluded_users:
         excl_phones = [u["phone"] for u in excluded_users]
@@ -477,6 +491,13 @@ def get_pending_listo_docusign_notifications():
         s = stats.get(user["phone"], {})
         user["send_count"] = s.get("count", 0)
         user["last_sent"] = s.get("last_sent", None)
+
+    # Filter out users who already received 3+ templates (prevent fatigue)
+    over_limit = [u for u in eligible_users if u["send_count"] >= 3]
+    for u in over_limit:
+        u["excluded_reasons"] = ["Límite de 3 envíos alcanzado"]
+    excluded_users.extend(over_limit)
+    eligible_users = [u for u in eligible_users if u["send_count"] < 3]
 
     # Also enrich excluded with stats for context in the UI
     if excluded_users:

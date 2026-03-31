@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 
 # ──────────────────────────────────────────────────
@@ -13,6 +14,19 @@ CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "").rstrip("/")
 API_TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "")
 
 
+def _post_with_retry(url, json_payload, headers, timeout=5, retries=1):
+    """POST with automatic retry on timeout (handles Cloud Run cold starts)."""
+    for attempt in range(retries + 1):
+        try:
+            return requests.post(url, json=json_payload, headers=headers, timeout=timeout)
+        except requests.exceptions.Timeout:
+            if attempt < retries:
+                time.sleep(1)
+                timeout = min(timeout + 5, 15)
+            else:
+                raise
+
+
 def get_solicitud_status(cedula):
     """
     Queries the Cloud Run API bridge to get the latest
@@ -24,14 +38,13 @@ def get_solicitud_status(cedula):
         return None
 
     try:
-        response = requests.post(
+        response = _post_with_retry(
             CLOUD_RUN_URL,
-            json={"cedula": cedula},
+            json_payload={"cedula": cedula},
             headers={
                 "Authorization": f"Bearer {API_TOKEN_SECRET}",
                 "Content-Type": "application/json"
             },
-            timeout=5
         )
 
         if response.status_code == 200:
@@ -315,14 +328,13 @@ def get_saldo(cedula):
         return None
 
     try:
-        response = requests.post(
+        response = _post_with_retry(
             CLOUD_RUN_URL,
-            json={"cedula": cedula, "tipo": "saldo"},
+            json_payload={"cedula": cedula, "tipo": "saldo"},
             headers={
                 "Authorization": f"Bearer {API_TOKEN_SECRET}",
                 "Content-Type": "application/json"
             },
-            timeout=5
         )
 
         if response.status_code == 200:
