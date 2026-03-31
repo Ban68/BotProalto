@@ -222,6 +222,10 @@ class FlowHandler:
 
             llm_response = ask_llm(user_phone, text, state, client_name, cedula_context=cedula_context)
 
+            # LLM failed after retries — stay silent
+            if not llm_response:
+                return
+
             if "[HABLAR_ASESOR]" in llm_response:
                 human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
                 if human_msg:
@@ -552,6 +556,11 @@ class FlowHandler:
             cedula_context = result if result else {}
 
         llm_response = ask_llm(user_phone, text, "agent_llm", client_name, cedula_context=cedula_context)
+
+        # LLM failed after retries — stay silent
+        if not llm_response:
+            set_user_state(user_phone, "active")
+            return
 
         if "[HABLAR_ASESOR]" in llm_response:
             human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
