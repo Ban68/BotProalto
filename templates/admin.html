@@ -958,6 +958,8 @@
                     LLM</button>
                 <button id="btnHumanTakeover" class="btn btn-primary hidden" onclick="humanTakeover()">👤 Tomar
                     Control</button>
+                <button id="btnLLMRetrigger" class="btn btn-llm-agent hidden" onclick="llmRetrigger()" title="Reprocesa el último mensaje del cliente por el LLM y envía la respuesta">🔄 Forzar
+                    respuesta LLM</button>
 
                 <div class="dropdown" id="dropdownDelete">
                     <button class="btn btn-outline-danger">Eliminar ▼</button>
@@ -3909,6 +3911,7 @@
             const btnBotHumano = document.getElementById('btnBotHumano');
             const btnLLMAgent = document.getElementById('btnLLMAgent');
             const btnHumanTakeover = document.getElementById('btnHumanTakeover');
+            const btnLLMRetrigger = document.getElementById('btnLLMRetrigger');
             const btnRestore = document.getElementById('btnRestore');
             const dropdown = document.getElementById('dropdownDelete');
             const ind = document.getElementById('currentStatusIndicator');
@@ -3922,6 +3925,7 @@
                 btnBotHumano.disabled = true;
                 btnLLMAgent.disabled = true;
                 btnHumanTakeover.disabled = true;
+                btnLLMRetrigger.disabled = true;
                 btnClose.disabled = true;
                 dropdown.classList.add('hidden'); // Better to hide it to avoid accidents
                 
@@ -3956,9 +3960,10 @@
                 dropdown.classList.remove('hidden');
 
                 if (status === 'agent_llm') {
-                    // In LLM mode: hide LLM button, show human takeover button
+                    // In LLM mode: hide LLM button, show human takeover + retrigger buttons
                     btnLLMAgent.classList.add('hidden');
                     btnHumanTakeover.classList.remove('hidden');
+                    btnLLMRetrigger.classList.remove('hidden');
                     ind.className = 'conv-status status-llm';
                     ind.style = '';
                     ind.innerText = '🤖 AGENTE LLM ACTIVO';
@@ -3966,9 +3971,10 @@
                     btnSend.disabled = false;
                     document.getElementById('msgInput').placeholder = 'El Agente LLM está respondiendo. Puedes escribir para intervenir manualmente.';
                 } else {
-                    // In agent or agent_silent mode: show LLM button, hide takeover
+                    // In agent or agent_silent mode: show LLM button, hide takeover + retrigger
                     btnLLMAgent.classList.remove('hidden');
                     btnHumanTakeover.classList.add('hidden');
+                    btnLLMRetrigger.classList.add('hidden');
 
                     if (status === 'agent_silent') {
                         ind.className = 'conv-status status-silent';
@@ -3989,6 +3995,7 @@
                 btnBotHumano.classList.remove('hidden');
                 btnLLMAgent.classList.remove('hidden');
                 btnHumanTakeover.classList.add('hidden');
+                btnLLMRetrigger.classList.add('hidden');
                 dropdown.classList.remove('hidden');
                 ind.className = 'conv-status status-bot';
                 ind.style = '';
@@ -4150,6 +4157,31 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        async function llmRetrigger() {
+            if (!currentActivePhone) return;
+            const btn = document.getElementById('btnLLMRetrigger');
+            const original = btn.innerHTML;
+            btn.innerHTML = '⌛ Procesando...';
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/admin/api/llm-retrigger/${currentActivePhone}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    await fetchHistory(currentActivePhone);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo generar respuesta'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión');
+            } finally {
+                btn.innerHTML = original;
+                btn.disabled = false;
             }
         }
 

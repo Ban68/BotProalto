@@ -188,6 +188,69 @@ def api_human_takeover(phone):
     return jsonify({"status": "human_takeover"})
 
 
+@admin_bp.route('/admin/api/llm-retrigger/<phone>', methods=['POST'])
+@requires_auth
+def api_llm_retrigger(phone):
+    """Re-process the last client message through the LLM and send the response."""
+    try:
+        from src.conversation_log import get_recent_messages_for_llm, get_client_name
+        from src.llm import ask_llm
+        from src.flows import _LLM_PREFIX, FlowHandler
+        import re
+
+        # Find the last inbound (user) message
+        history = get_recent_messages_for_llm(phone, limit=10)
+        last_user_msg = None
+        for msg in reversed(history):
+            if msg.get("role") == "user":
+                last_user_msg = msg["content"]
+                break
+
+        if not last_user_msg:
+            return jsonify({"error": "No hay mensajes del cliente para reprocesar"}), 404
+
+        set_agent_mode(phone, "agent_llm")
+        client_name = get_client_name(phone)
+        llm_response = ask_llm(phone, last_user_msg, "agent_llm", client_name)
+
+        if not llm_response:
+            return jsonify({"error": "El LLM no pudo generar una respuesta"}), 500
+
+        # Handle tags the same way as flows.py
+        from src.conversation_log import set_user_state, save_llm_request
+        from src.notifications import notify_admin_agent_request, notify_admin_llm_request
+        from src.flows import set_agent_mode as flows_set_agent_mode
+
+        if "[HABLAR_ASESOR]" in llm_response:
+            human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+            if human_msg:
+                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+            set_agent_mode(phone, "agent")
+            notify_admin_agent_request(phone)
+        elif "[MOSTRAR_MENU]" in llm_response:
+            human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
+            if human_msg:
+                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+            set_agent_mode(phone, "active")
+            FlowHandler.send_main_menu(phone)
+        elif "[REGISTRAR_SOLICITUD:" in llm_response:
+            match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
+            tipo = match.group(1).strip() if match else "general"
+            human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
+            if human_msg:
+                WhatsAppService.send_message(phone, _LLM_PREFIX + human_msg)
+            save_llm_request(phone, client_name, tipo, last_user_msg)
+            notify_admin_llm_request(phone, tipo)
+        else:
+            WhatsAppService.send_message(phone, _LLM_PREFIX + llm_response)
+
+        return jsonify({"status": "sent"})
+
+    except Exception as e:
+        print(f"[admin] llm_retrigger error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/force-agent/<phone>', methods=['POST'])
 @requires_auth
 def api_force_agent(phone):
