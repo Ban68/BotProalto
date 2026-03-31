@@ -204,12 +204,6 @@ class FlowHandler:
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
                 return
-            # Pre-route: explicit advisor requests escalate directly
-            if _is_advisor_request(text):
-                set_agent_mode(user_phone, "agent")
-                WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
-                notify_admin_agent_request(user_phone)
-                return
 
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)
@@ -541,14 +535,7 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             return
 
-        # Pre-route: explicit advisor requests escalate directly (no LLM needed)
-        if _is_advisor_request(norm_text):
-            set_agent_mode(user_phone, "agent")
-            WhatsAppService.send_message(user_phone, "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n_Si deseas volver al menú del bot, escribe *salir*._")
-            notify_admin_agent_request(user_phone)
-            return
-
-        # Route everything else to LLM
+        # Route everything else to LLM (including "hablar con asesor" — the LLM IS the advisor)
         from src.llm import ask_llm
         client_name = get_client_name(user_phone)
         set_user_state(user_phone, "agent_llm")
