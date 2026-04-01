@@ -337,16 +337,9 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Has salido del modo asesor. Escribe 'Hola' para ver el menú principal.")
             return
 
-        # 0b. LLM Agent Mode — all messages routed through Claude
+        # 0b. LLM Agent Mode — disabled, redirect to human agent
         if state == "agent_llm":
-            # Run LLM processing in background thread so the webhook returns 200
-            # immediately. Cloud Run API calls + LLM call can take 20-40s total,
-            # which exceeds WhatsApp's ~15s webhook timeout.
-            threading.Thread(
-                target=_handle_llm_agent,
-                args=(user_phone, text),
-                daemon=True,
-            ).start()
+            set_agent_mode(user_phone, "agent")
             return
 
         # 1. Check Consent Flow
@@ -642,19 +635,15 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             return
 
-        # Only activate LLM for explicit advisor requests; everything else shows the menu
+        # Only activate human agent for explicit advisor requests; everything else shows the menu
         if not _is_advisor_request(norm_text):
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
             return
 
-        set_user_state(user_phone, "agent_llm")
-        # Run LLM in background so webhook returns 200 immediately
-        threading.Thread(
-            target=_handle_llm_agent,
-            args=(user_phone, text),
-            daemon=True,
-        ).start()
+        set_agent_mode(user_phone, "agent")
+        WhatsAppService.send_message(user_phone, "Claro, en un momento un asesor te atiende.")
+        notify_admin_agent_request(user_phone)
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):
@@ -727,14 +716,13 @@ class FlowHandler:
 
         elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
             is_lead = (state == "lead_notified")
-            set_user_state(user_phone, "agent_llm")
-            
+            set_agent_mode(user_phone, "agent")
+
             try:
-                # Notify admin of support request
                 notify_admin_agent_request(user_phone)
             except Exception as e:
                 print(f"Error notifying admin: {e}")
-            
+
             if is_lead:
                 msg = (
                     "¡Claro que sí! 🚀 Me alegra tu interés en ProAlto. \n\n"
@@ -742,10 +730,10 @@ class FlowHandler:
                 )
             else:
                 msg = (
-                    "Claro, estoy aquí para ayudarte. Qué necesitas?"
+                    "Claro, en un momento un asesor te atiende."
                 )
 
-            WhatsAppService.send_message(user_phone, msg, msg_type=_LLM_MSG_TYPE)
+            WhatsAppService.send_message(user_phone, msg)
 
         elif btn_id == "Ahora no, gracias":
             set_user_state(user_phone, "active")
