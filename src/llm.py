@@ -13,9 +13,9 @@ _CONTEXT_FILES = [
     'productos.md',
     'estados_solicitud.md',
     'faq.md',
-    'capacidades_bot.md',
     'compliance.md',
-    'ejemplos_conversacion.md',
+    # capacidades_bot.md and ejemplos_conversacion.md removed to reduce prompt
+    # size (~5,300 tokens saved). Key rules already in the system prompt below.
 ]
 
 def _load_context() -> str:
@@ -292,6 +292,12 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
                     messages=history,
                 )
                 return response.content[0].text.strip()
+            except anthropic.RateLimitError as rate_err:
+                last_error = rate_err
+                wait = 15 * (attempt + 1)  # 15s, 30s, 45s — give rate limit time to reset
+                print(f"[LLM] attempt {attempt+1} rate limited, waiting {wait}s...")
+                if attempt < 2:
+                    time.sleep(wait)
             except Exception as api_err:
                 last_error = api_err
                 print(f"[LLM] attempt {attempt+1} failed: {api_err}")
