@@ -717,13 +717,18 @@ class FlowHandler:
     def send_main_menu(user_phone):
         menu_text = "Hola, ¿en qué podemos ayudarte hoy?"
         buttons = [
+            {"id": "menu_cliente", "title": "Soy Cliente"},
             {"id": "menu_solicitud", "title": "Estado Solicitud"},
-            {"id": "menu_saldo", "title": "Consultar Saldo"},
             {"id": "menu_credito", "title": "Solicitar Crédito"}
         ]
         WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
 
     @staticmethod
     def send_client_menu(user_phone):
-        """Backward compat: redirects to merged main menu."""
-        FlowHandler.send_main_menu(user_phone)
+        menu_text = "¿Qué deseas hacer hoy?"
+        buttons = [
+            {"id": "menu_saldo", "title": "Consultar Saldo"},
+            {"id": "menu_support", "title": "Hablar con Asesor"},
+            {"id": "menu_main", "title": "Volver al Inicio"}
+        ]
+        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
