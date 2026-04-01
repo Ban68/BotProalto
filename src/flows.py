@@ -719,7 +719,8 @@ class FlowHandler:
         buttons = [
             {"id": "menu_solicitud", "title": "Estado Solicitud"},
             {"id": "menu_saldo", "title": "Consultar Saldo"},
-            {"id": "menu_credito", "title": "Solicitar Crédito"}
+            {"id": "menu_credito", "title": "Solicitar Crédito"},
+            {"id": "menu_support", "title": "Hablar con Asesor"}
         ]
         WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
 
