@@ -88,6 +88,30 @@ def _is_advisor_request(text: str) -> bool:
 _LLM_MSG_TYPE = "llm"
 
 
+def _process_llm_signals(llm_response: str) -> tuple:
+    """
+    Strip ALL signal tags from the LLM response and return (clean_text, signals).
+    Signals is a dict with keys: hablar_asesor, mostrar_menu, registrar_solicitud.
+    This prevents tags from leaking to WhatsApp when the LLM uses multiple tags.
+    """
+    signals = {}
+
+    if "[HABLAR_ASESOR]" in llm_response:
+        signals["hablar_asesor"] = True
+        llm_response = llm_response.replace("[HABLAR_ASESOR]", "")
+
+    if "[MOSTRAR_MENU]" in llm_response:
+        signals["mostrar_menu"] = True
+        llm_response = llm_response.replace("[MOSTRAR_MENU]", "")
+
+    match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
+    if match:
+        signals["registrar_solicitud"] = match.group(1).strip()
+        llm_response = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response)
+
+    return llm_response.strip(), signals
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -219,8 +243,17 @@ class FlowHandler:
             if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
                 cedula_num = text.strip()
                 result = get_solicitud_status(cedula_num)
-                cedula_context = result if result else {}
-                saldo_context = get_saldo(cedula_num)
+                # result: {data}=found, {}=not found, None=API error
+                if result is None:
+                    cedula_context = {"_error": True}
+                else:
+                    cedula_context = result if result else {}
+                saldo_result = get_saldo(cedula_num)
+                # saldo_result: [data]=found, []=not found, None=API error
+                if saldo_result is None:
+                    saldo_context = "error"
+                else:
+                    saldo_context = saldo_result
 
             llm_response = ask_llm(user_phone, text, state, client_name,
                                    cedula_context=cedula_context,
@@ -230,29 +263,30 @@ class FlowHandler:
             if not llm_response:
                 return
 
-            if "[HABLAR_ASESOR]" in llm_response:
-                human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+            # Strip ALL signal tags and process each action
+            human_msg, signals = _process_llm_signals(llm_response)
+
+            if signals:
+                # Send cleaned message (tags stripped)
                 if human_msg:
                     WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-                set_agent_mode(user_phone, "agent")
-                notify_admin_agent_request(user_phone)
-            elif "[MOSTRAR_MENU]" in llm_response:
-                human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
-                if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-                set_user_state(user_phone, "active")
-                FlowHandler.send_main_menu(user_phone)
-            elif "[REGISTRAR_SOLICITUD:" in llm_response:
-                match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
-                tipo = match.group(1).strip() if match else "general"
-                human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
-                if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-                from src.conversation_log import save_llm_request
-                from src.notifications import notify_admin_llm_request
-                save_llm_request(user_phone, client_name, tipo, text)
-                notify_admin_llm_request(user_phone, tipo)
+
+                # Side-effect: save request for admin follow-up
+                if "registrar_solicitud" in signals:
+                    from src.conversation_log import save_llm_request
+                    from src.notifications import notify_admin_llm_request
+                    save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
+                    notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
+
+                # State transitions (priority: hablar_asesor > mostrar_menu)
+                if signals.get("hablar_asesor"):
+                    set_agent_mode(user_phone, "agent")
+                    notify_admin_agent_request(user_phone)
+                elif signals.get("mostrar_menu"):
+                    set_user_state(user_phone, "active")
+                    FlowHandler.send_main_menu(user_phone)
             else:
+                # No signals — send original response as-is
                 WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
             return
 
@@ -566,28 +600,25 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             return
 
-        if "[HABLAR_ASESOR]" in llm_response:
-            human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+        # Strip ALL signal tags and process each action
+        human_msg, signals = _process_llm_signals(llm_response)
+
+        if signals:
             if human_msg:
                 WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            set_agent_mode(user_phone, "agent")
-            notify_admin_agent_request(user_phone)
-        elif "[MOSTRAR_MENU]" in llm_response:
-            human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
-            if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            set_user_state(user_phone, "active")
-            FlowHandler.send_main_menu(user_phone)
-        elif "[REGISTRAR_SOLICITUD:" in llm_response:
-            match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
-            tipo = match.group(1).strip() if match else "general"
-            human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
-            if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            from src.conversation_log import save_llm_request
-            from src.notifications import notify_admin_llm_request
-            save_llm_request(user_phone, client_name, tipo, text)
-            notify_admin_llm_request(user_phone, tipo)
+
+            if "registrar_solicitud" in signals:
+                from src.conversation_log import save_llm_request
+                from src.notifications import notify_admin_llm_request
+                save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
+                notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
+
+            if signals.get("hablar_asesor"):
+                set_agent_mode(user_phone, "agent")
+                notify_admin_agent_request(user_phone)
+            elif signals.get("mostrar_menu"):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
         else:
             WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
 

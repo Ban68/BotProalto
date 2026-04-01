@@ -211,7 +211,27 @@ def api_llm_retrigger(phone):
 
         set_agent_mode(phone, "agent_llm")
         client_name = get_client_name(phone)
-        llm_response = ask_llm(phone, last_user_msg, "agent_llm", client_name)
+
+        # Detect cedula in last message and fetch context (same as flows.py)
+        cedula_context = None
+        saldo_context = None
+        text = last_user_msg.strip()
+        if text.isdigit() and 6 <= len(text) <= 12:
+            from src.database import get_solicitud_status, get_saldo
+            result = get_solicitud_status(text)
+            if result is None:
+                cedula_context = {"_error": True}
+            else:
+                cedula_context = result if result else {}
+            saldo_result = get_saldo(text)
+            if saldo_result is None:
+                saldo_context = "error"
+            else:
+                saldo_context = saldo_result
+
+        llm_response = ask_llm(phone, last_user_msg, "agent_llm", client_name,
+                               cedula_context=cedula_context,
+                               saldo_context=saldo_context)
 
         if not llm_response:
             return jsonify({"error": "El LLM no pudo generar una respuesta"}), 500
@@ -221,26 +241,24 @@ def api_llm_retrigger(phone):
         from src.notifications import notify_admin_agent_request, notify_admin_llm_request
         from src.flows import set_agent_mode as flows_set_agent_mode
 
-        if "[HABLAR_ASESOR]" in llm_response:
-            human_msg = llm_response.replace("[HABLAR_ASESOR]", "").strip()
+        # Strip ALL signal tags and process each action
+        from src.flows import _process_llm_signals
+        human_msg, signals = _process_llm_signals(llm_response)
+
+        if signals:
             if human_msg:
                 WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            set_agent_mode(phone, "agent")
-            notify_admin_agent_request(phone)
-        elif "[MOSTRAR_MENU]" in llm_response:
-            human_msg = llm_response.replace("[MOSTRAR_MENU]", "").strip()
-            if human_msg:
-                WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            set_agent_mode(phone, "active")
-            FlowHandler.send_main_menu(phone)
-        elif "[REGISTRAR_SOLICITUD:" in llm_response:
-            match = re.search(r'\[REGISTRAR_SOLICITUD:([^\]]+)\]', llm_response)
-            tipo = match.group(1).strip() if match else "general"
-            human_msg = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response).strip()
-            if human_msg:
-                WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
-            save_llm_request(phone, client_name, tipo, last_user_msg)
-            notify_admin_llm_request(phone, tipo)
+
+            if "registrar_solicitud" in signals:
+                save_llm_request(phone, client_name, signals["registrar_solicitud"], last_user_msg)
+                notify_admin_llm_request(phone, signals["registrar_solicitud"])
+
+            if signals.get("hablar_asesor"):
+                set_agent_mode(phone, "agent")
+                notify_admin_agent_request(phone)
+            elif signals.get("mostrar_menu"):
+                set_agent_mode(phone, "active")
+                FlowHandler.send_main_menu(phone)
         else:
             WhatsAppService.send_message(phone, llm_response, msg_type=_LLM_MSG_TYPE)
 

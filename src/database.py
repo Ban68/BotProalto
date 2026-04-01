@@ -31,7 +31,7 @@ def get_solicitud_status(cedula):
     """
     Queries the Cloud Run API bridge to get the latest
     solicitud status for the given cedula.
-    Returns a dict with the result or None if not found / error.
+    Returns: dict with data (found), {} (not found), None (API error).
     """
     if not CLOUD_RUN_URL:
         print("❌ CLOUD_RUN_URL not configured")
@@ -64,7 +64,7 @@ def get_solicitud_status(cedula):
                     "tipo_empleador": data.get("tipo_empleador", "EMPRESA"),
                 }
             else:
-                return None
+                return {}  # Successfully queried, but no solicitud found
         elif response.status_code == 401:
             print("❌ Cloud Run API: Unauthorized (check API_TOKEN_SECRET)")
             return None

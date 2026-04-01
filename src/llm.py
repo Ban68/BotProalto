@@ -67,10 +67,13 @@ A continuación tienes toda la información de ProAlto que necesitas:
 - Usa frases humanas: "Déjame verificar eso", "Dame un momento que consulto", "Voy a revisar con el área y te confirmo".
 - NUNCA digas "no tengo esa información" ni "no puedo ayudarte con eso".
 
-**Anti-callejón-sin-salida:**
-- NUNCA digas "déjame verificar" o "voy a consultar" sin incluir una señal interna al final: [REGISTRAR_SOLICITUD:general] para que el equipo gestione, o [MOSTRAR_MENU] para que el cliente use el bot.
-- Si no tienes la información y no puedes buscarla: "Voy a dejar eso registrado para que el equipo lo revise y te confirme.[REGISTRAR_SOLICITUD:general]"
-- Regla: cada respuesta tuya debe avanzar la conversación — si no da una respuesta NI activa un tag, reescríbela.
+**Anti-callejón-sin-salida — REGLA CRÍTICA:**
+- PROHIBIDO responder solo con "déjame verificar", "voy a revisar", "un momento", "déjame consultar" o cualquier variante SIN incluir una señal interna al final.
+- Ejemplo PROHIBIDO: "Perfecto, déjame revisar eso para ti." ← esto deja al cliente en el limbo sin acción.
+- Ejemplo CORRECTO: "Déjame revisar eso con el equipo, quedó registrado y te confirmo.[REGISTRAR_SOLICITUD:general]"
+- Ejemplo CORRECTO: "Puedes consultar tu saldo desde el menú, te lo muestro.[MOSTRAR_MENU]"
+- Si el sistema te dice que hubo un error técnico al consultar, NO digas "no aparece nada". Di la verdad: "Tuve un inconveniente técnico consultando, lo registro para que lo revisen.[REGISTRAR_SOLICITUD:general]"
+- REGLA: TODA respuesta tuya debe hacer exactamente UNA de estas tres cosas: (1) dar información concreta al cliente, (2) pedir un dato que necesitas, o (3) incluir un tag de acción. Si tu respuesta no hace ninguna de las tres, está MAL — reescríbela.
 
 **Montos y tasas:**
 - SÍ puedes dar una referencia de monto: normalmente prestamos hasta el doble del salario sin codeudor. Si el cliente te dice su salario, puedes hacer el cálculo como referencia.
@@ -227,7 +230,10 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
         state_note = "\n" + _build_client_context_note(user_phone, state, client_name)
 
         # Inject cedula lookup result when available
-        if cedula_context:
+        if cedula_context and isinstance(cedula_context, dict) and cedula_context.get("_error"):
+            # API error — don't say "not found", tell LLM the system failed
+            state_note += "\n[ERROR DE CONSULTA: el sistema no pudo consultar la cédula por un problema técnico. Dile al cliente que tuviste un inconveniente consultando y que lo vas a registrar para seguimiento. Usa [REGISTRAR_SOLICITUD:general].]"
+        elif cedula_context:
             estado_interno = cedula_context.get("estado_interno", "")
             estado_legible = _STATUS_MAPPING.get(estado_interno.upper(), estado_interno)
             try:
@@ -251,7 +257,9 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
             state_note += "\n[CÉDULA CONSULTADA: no se encontró solicitud activa con ese número. Dile al cliente que no aparece nada y que confirme si es la cédula correcta.]"
 
         # Inject saldo (active loans) data when available
-        if saldo_context is not None:
+        if saldo_context == "error":
+            state_note += "\n[ERROR DE SALDO: el sistema no pudo consultar el saldo por un problema técnico. Si el cliente preguntó por su saldo, dile que tuviste un inconveniente técnico y regístralo: [REGISTRAR_SOLICITUD:general].]"
+        elif saldo_context is not None:
             if saldo_context:  # non-empty list of loans
                 saldo_lines = "\n\n[DATOS DE SALDO — el cliente tiene préstamos activos]:"
                 for p in saldo_context:
