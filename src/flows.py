@@ -555,9 +555,7 @@ class FlowHandler:
             return
 
         # Only activate LLM for explicit advisor requests; everything else shows the menu
-        is_advisor = _is_advisor_request(norm_text)
-        print(f"[DEBUG] User {user_phone}: is_advisor_request('{text[:40]}...') = {is_advisor}")
-        if not is_advisor:
+        if not _is_advisor_request(norm_text):
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
             return
@@ -669,7 +667,7 @@ class FlowHandler:
 
         elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
             is_lead = (state == "lead_notified")
-            set_user_state(user_phone, "agent")
+            set_user_state(user_phone, "agent_llm")
             
             try:
                 # Notify admin of support request
@@ -684,11 +682,10 @@ class FlowHandler:
                 )
             else:
                 msg = (
-                    "Dame un momento mientras reviso tu información y ya mismo te escribo.\n\n"
-                    "_Si deseas volver al menú del bot, escribe *salir*._"
+                    "Claro, estoy aquí para ayudarte. ¿Qué necesitas?"
                 )
-                
-            WhatsAppService.send_message(user_phone, msg)
+
+            WhatsAppService.send_message(user_phone, msg, msg_type=_LLM_MSG_TYPE)
 
         elif btn_id == "Ahora no, gracias":
             set_user_state(user_phone, "active")
