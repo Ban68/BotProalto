@@ -288,7 +288,10 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
                 response = client.messages.create(
                     model="claude-haiku-4-5-20251001",
                     max_tokens=400,
-                    system=_SYSTEM_PROMPT + state_note,
+                    system=[
+                        {"type": "text", "text": _SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}},
+                        {"type": "text", "text": state_note},
+                    ],
                     messages=history,
                 )
                 return response.content[0].text.strip()
