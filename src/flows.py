@@ -88,11 +88,21 @@ def _is_advisor_request(text: str) -> bool:
 _LLM_MSG_TYPE = "llm"
 
 
+_DEAD_END_PHRASES = [
+    "déjame verificar", "dejame verificar", "déjame revisar", "dejame revisar",
+    "déjame consultar", "dejame consultar", "dame un momento", "dame un momentico",
+    "voy a revisar", "voy a consultar", "voy a verificar",
+    "un momentico", "un momento que", "espérame un momento", "esperame un momento",
+    "deja y reviso", "deja y consulto",
+]
+
+
 def _process_llm_signals(llm_response: str) -> tuple:
     """
     Strip ALL signal tags from the LLM response and return (clean_text, signals).
     Signals is a dict with keys: hablar_asesor, mostrar_menu, registrar_solicitud.
     This prevents tags from leaking to WhatsApp when the LLM uses multiple tags.
+    Also patches dead-end responses (no tag + vague promise) with a safety net.
     """
     signals = {}
 
@@ -109,7 +119,17 @@ def _process_llm_signals(llm_response: str) -> tuple:
         signals["registrar_solicitud"] = match.group(1).strip()
         llm_response = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response)
 
-    return llm_response.strip(), signals
+    clean = llm_response.strip()
+
+    # Safety net: if no signals and response is a dead-end promise, force registration
+    if not signals:
+        lower = clean.lower()
+        if any(phrase in lower for phrase in _DEAD_END_PHRASES):
+            signals["registrar_solicitud"] = "general"
+            clean = clean.rstrip(".") + ", quedó registrado y te confirmo en breve."
+            print(f"[LLM] Dead-end safety net triggered: '{llm_response[:60]}...'")
+
+    return clean, signals
 
 
 class FlowHandler:
@@ -246,14 +266,24 @@ class FlowHandler:
                 # result: {data}=found, {}=not found, None=API error
                 if result is None:
                     cedula_context = {"_error": True}
+                    print(f"[LLM] Cedula {cedula_num}: solicitud API ERROR")
+                elif result:
+                    cedula_context = result
+                    print(f"[LLM] Cedula {cedula_num}: solicitud FOUND")
                 else:
-                    cedula_context = result if result else {}
+                    cedula_context = {}
+                    print(f"[LLM] Cedula {cedula_num}: solicitud NOT FOUND")
                 saldo_result = get_saldo(cedula_num)
                 # saldo_result: [data]=found, []=not found, None=API error
                 if saldo_result is None:
                     saldo_context = "error"
-                else:
+                    print(f"[LLM] Cedula {cedula_num}: saldo API ERROR")
+                elif saldo_result:
                     saldo_context = saldo_result
+                    print(f"[LLM] Cedula {cedula_num}: saldo FOUND ({len(saldo_result)} loans)")
+                else:
+                    saldo_context = []
+                    print(f"[LLM] Cedula {cedula_num}: saldo NOT FOUND")
 
             llm_response = ask_llm(user_phone, text, state, client_name,
                                    cedula_context=cedula_context,

@@ -14,7 +14,7 @@ CLOUD_RUN_URL = os.getenv("CLOUD_RUN_URL", "").rstrip("/")
 API_TOKEN_SECRET = os.getenv("API_TOKEN_SECRET", "")
 
 
-def _post_with_retry(url, json_payload, headers, timeout=5, retries=1):
+def _post_with_retry(url, json_payload, headers, timeout=10, retries=2):
     """POST with automatic retry on timeout (handles Cloud Run cold starts)."""
     for attempt in range(retries + 1):
         try:
@@ -22,7 +22,7 @@ def _post_with_retry(url, json_payload, headers, timeout=5, retries=1):
         except requests.exceptions.Timeout:
             if attempt < retries:
                 time.sleep(1)
-                timeout = min(timeout + 5, 15)
+                timeout = min(timeout + 5, 20)
             else:
                 raise
 
