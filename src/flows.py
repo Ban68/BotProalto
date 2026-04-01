@@ -64,13 +64,21 @@ def _is_greeting(text: str) -> bool:
 def _is_advisor_request(text: str) -> bool:
     """Check if user is explicitly asking to talk to a human advisor."""
     norm = text.lower().strip()
+    # Remove punctuation for better matching
+    for char in ".,!?¿¡;:":
+        norm = norm.replace(char, "")
+
     patterns = [
-        "hablar con un asesor", "hablar con asesor", "contactar asesor",
-        "necesito un asesor", "quiero hablar con alguien", "contactarme con un asesor",
-        "quiero un asesor", "pasame con un asesor", "pásame con un asesor",
-        "comunicarme con un asesor", "hablar con una persona", "persona real",
-        "agente humano", "asesor humano", "hablar con alguien", "necesito asesor",
-        "quiero asesor", "contactar un asesor", "conectarme con un asesor",
+        "hablar con un asesor", "hablar con asesor", "hablar asesor",
+        "contactar asesor", "contactar con asesor", "contactarme con un asesor",
+        "contactarme con asesor", "necesito un asesor", "necesito asesor",
+        "quiero hablar con alguien", "quiero un asesor", "quiero asesor",
+        "pasame con un asesor", "pásame con un asesor",
+        "comunicarme con un asesor", "comunicarme con asesor",
+        "conectarme con un asesor", "conectarme con asesor",
+        "hablar con una persona", "persona real", "agente humano", "asesor humano",
+        "hablar con alguien", "contactar un asesor", "conectar asesor",
+        "quiero hablar con asesor", "necesito hablar con asesor",
     ]
     return any(p in norm for p in patterns)
 
