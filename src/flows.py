@@ -225,11 +225,16 @@ class FlowHandler:
 
             # If message looks like a cedula, look it up and pass result to LLM
             cedula_context = None
+            saldo_context = None
             if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
-                result = get_solicitud_status(text.strip())
+                cedula_num = text.strip()
+                result = get_solicitud_status(cedula_num)
                 cedula_context = result if result else {}
+                saldo_context = get_saldo(cedula_num)
 
-            llm_response = ask_llm(user_phone, text, state, client_name, cedula_context=cedula_context)
+            llm_response = ask_llm(user_phone, text, state, client_name,
+                                   cedula_context=cedula_context,
+                                   saldo_context=saldo_context)
 
             # LLM failed after retries — stay silent
             if not llm_response:

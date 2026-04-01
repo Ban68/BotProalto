@@ -61,10 +61,10 @@ El contrato se firma electrónicamente a través de DocuSign. Te enviaremos el e
 El monto de la cuota mensual queda establecido en el contrato. Si ya tienes un crédito activo, puedes consultar tu saldo en el bot seleccionando "Consultar Saldo".
 
 **¿Puedo pagar antes de tiempo?**
-Sí, existen opciones de prepago. Para más información sobre cómo hacerlo, comunícate con un asesor.
+Sí, existen opciones de prepago. Escríbenos por acá y te ayudamos con el proceso.
 
 **¿Qué hago si ya pagué el crédito pero sigo viendo descuentos?**
-Comunícate urgentemente con un asesor para que revisemos el caso.
+Escríbenos urgentemente por acá para que revisemos el caso.
 
 ---
 
@@ -74,7 +74,7 @@ Comunícate urgentemente con un asesor para que revisemos el caso.
 Al número de cuenta bancaria que nos proporciones. Puede ser cuenta corriente o de ahorros en cualquier banco colombiano, o billeteras digitales como Nequi o Daviplata.
 
 **¿Puedo cambiar la cuenta de desembolso?**
-Sí, pero debes comunicarte con un asesor para hacerlo. El bot solo captura la cuenta inicial.
+Sí, pero escríbenos por acá para gestionarlo. El bot solo captura la cuenta inicial.
 
 ---
 
@@ -97,7 +97,7 @@ Tienes derecho a conocer, actualizar, rectificar y suprimir tus datos, así como
 ## Sobre el desembolso (preguntas frecuentes reales)
 
 **"Me dijeron que el desembolso era ayer y no me ha llegado"**
-El desembolso puede tardar hasta un día hábil adicional si tu banco es diferente al banco de ProAlto (ej. Caja Social, Bancolombia, Nequi, Daviplata). Generalmente se refleja en horas de la tarde del mismo día o al siguiente. Si llevas más de 2 días hábiles esperando, comunícate con un asesor.
+El desembolso puede tardar hasta un día hábil adicional si tu banco es diferente al banco de ProAlto (ej. Caja Social, Bancolombia, Nequi, Daviplata). Generalmente se refleja en horas de la tarde del mismo día o al siguiente. Si llevas más de 2 días hábiles esperando, escríbenos por acá para que revisemos.
 
 **"Me llegó menos dinero del que me aprobaron"**
 Esto ocurre cuando se realizó una *compra de cartera*: ProAlto pagó directamente el saldo que tenías con otra financiera (ej. Almi, Fincomercio, etc.) y solo desembolsó la diferencia. Es un proceso normal — puedes pedir el recibo de la compra de cartera a un asesor.
@@ -116,19 +116,19 @@ Los desembolsos a billeteras digitales y bancos externos pueden tardar hasta 24 
 Cada persona debe gestionar su propio crédito desde su número personal de WhatsApp, ya que el proceso requiere el consentimiento y la identidad del titular. Tu compañero puede escribirnos desde su WhatsApp y lo atendemos con gusto.
 
 **"¿Cómo pago o abono al crédito?"**
-El crédito de libranza se descuenta automáticamente de tu nómina o pensión cada mes — no necesitas hacer ningún pago manual. Si quieres hacer un abono extraordinario para pagar antes, debes comunicarte con un asesor.
+El crédito de libranza se descuenta automáticamente de tu nómina o pensión cada mes — no necesitas hacer ningún pago manual. Si quieres hacer un abono extraordinario para pagar antes, escríbenos por acá y te indicamos el proceso.
 
 **"¿Puedo firmar el contrato de forma presencial?"**
-El contrato se firma de manera digital a través de DocuSign — enviaremos el enlace a tu correo. Solo necesitas un celular o computador. Si tienes inconvenientes con la firma digital, comunícate con un asesor.
+El contrato se firma de manera digital a través de DocuSign — enviaremos el enlace a tu correo. Solo necesitas un celular o computador. Si tienes inconvenientes con la firma digital, escríbenos por acá y lo solucionamos.
 
 **"¿Puedo solicitar un paz y salvo / certificado de saldo?"**
-Sí. Un asesor puede gestionar ese certificado para ti. Comunícate por el chat y lo tramitamos.
+Sí. Escríbenos por el chat y lo tramitamos.
 
 **"¿Cuándo me dan respuesta?"**
 El proceso generalmente toma entre 2 y 5 días hábiles una vez tengamos todos los documentos completos. Puedes consultar el estado en cualquier momento en el bot seleccionando "Estado Solicitud".
 
 **"Ya envié los documentos pero el estado sigue igual"**
-Los documentos pueden tardar 1-2 días hábiles en ser procesados por el equipo de validación. Si llevas más tiempo, comunícate con un asesor para confirmar que los recibimos correctamente.
+Los documentos pueden tardar 1-2 días hábiles en ser procesados por el equipo de validación. Si llevas más tiempo, escríbenos por acá para confirmar que los recibimos correctamente.
 
 **"¿Hasta qué hora atienden?"**
 Nuestros asesores atienden de lunes a viernes de 7:30 a.m. a 5:30 p.m. (hora Colombia). El bot está disponible las 24 horas para consultas de saldo y estado.
