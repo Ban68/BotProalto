@@ -132,6 +132,75 @@ def _process_llm_signals(llm_response: str) -> tuple:
     return clean, signals
 
 
+def _handle_llm_agent(user_phone: str, text: str):
+    """
+    Background worker for LLM agent mode.
+    Runs Cloud Run API lookups + LLM call outside the webhook request
+    so WhatsApp doesn't timeout waiting for a response.
+    """
+    try:
+        from src.llm import ask_llm
+        client_name = get_client_name(user_phone)
+
+        # If message looks like a cedula, look it up and pass result to LLM
+        cedula_context = None
+        saldo_context = None
+        if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
+            cedula_num = text.strip()
+            result = get_solicitud_status(cedula_num)
+            if result is None:
+                cedula_context = {"_error": True}
+                print(f"[LLM] Cedula {cedula_num}: solicitud API ERROR")
+            elif result:
+                cedula_context = result
+                print(f"[LLM] Cedula {cedula_num}: solicitud FOUND")
+            else:
+                cedula_context = {}
+                print(f"[LLM] Cedula {cedula_num}: solicitud NOT FOUND")
+            saldo_result = get_saldo(cedula_num)
+            if saldo_result is None:
+                saldo_context = "error"
+                print(f"[LLM] Cedula {cedula_num}: saldo API ERROR")
+            elif saldo_result:
+                saldo_context = saldo_result
+                print(f"[LLM] Cedula {cedula_num}: saldo FOUND ({len(saldo_result)} loans)")
+            else:
+                saldo_context = []
+                print(f"[LLM] Cedula {cedula_num}: saldo NOT FOUND")
+
+        llm_response = ask_llm(user_phone, text, "agent_llm", client_name,
+                               cedula_context=cedula_context,
+                               saldo_context=saldo_context)
+
+        if not llm_response:
+            print(f"[LLM] No response for {user_phone}, staying silent")
+            return
+
+        human_msg, signals = _process_llm_signals(llm_response)
+
+        if signals:
+            if human_msg:
+                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
+
+            if "registrar_solicitud" in signals:
+                from src.conversation_log import save_llm_request
+                from src.notifications import notify_admin_llm_request
+                save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
+                notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
+
+            if signals.get("hablar_asesor"):
+                set_agent_mode(user_phone, "agent")
+                notify_admin_agent_request(user_phone)
+            elif signals.get("mostrar_menu"):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+        else:
+            WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
+
+    except Exception as e:
+        print(f"[LLM] Background handler error for {user_phone}: {e}")
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -252,72 +321,14 @@ class FlowHandler:
 
         # 0b. LLM Agent Mode — all messages routed through Claude
         if state == "agent_llm":
-            # No pre-routing — once in agent_llm, the LLM handles everything
-            # (greetings, farewells, follow-ups). It decides when to [MOSTRAR_MENU] or close.
-            from src.llm import ask_llm
-            client_name = get_client_name(user_phone)
-
-            # If message looks like a cedula, look it up and pass result to LLM
-            cedula_context = None
-            saldo_context = None
-            if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
-                cedula_num = text.strip()
-                result = get_solicitud_status(cedula_num)
-                # result: {data}=found, {}=not found, None=API error
-                if result is None:
-                    cedula_context = {"_error": True}
-                    print(f"[LLM] Cedula {cedula_num}: solicitud API ERROR")
-                elif result:
-                    cedula_context = result
-                    print(f"[LLM] Cedula {cedula_num}: solicitud FOUND")
-                else:
-                    cedula_context = {}
-                    print(f"[LLM] Cedula {cedula_num}: solicitud NOT FOUND")
-                saldo_result = get_saldo(cedula_num)
-                # saldo_result: [data]=found, []=not found, None=API error
-                if saldo_result is None:
-                    saldo_context = "error"
-                    print(f"[LLM] Cedula {cedula_num}: saldo API ERROR")
-                elif saldo_result:
-                    saldo_context = saldo_result
-                    print(f"[LLM] Cedula {cedula_num}: saldo FOUND ({len(saldo_result)} loans)")
-                else:
-                    saldo_context = []
-                    print(f"[LLM] Cedula {cedula_num}: saldo NOT FOUND")
-
-            llm_response = ask_llm(user_phone, text, state, client_name,
-                                   cedula_context=cedula_context,
-                                   saldo_context=saldo_context)
-
-            # LLM failed after retries — stay silent
-            if not llm_response:
-                return
-
-            # Strip ALL signal tags and process each action
-            human_msg, signals = _process_llm_signals(llm_response)
-
-            if signals:
-                # Send cleaned message (tags stripped)
-                if human_msg:
-                    WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-
-                # Side-effect: save request for admin follow-up
-                if "registrar_solicitud" in signals:
-                    from src.conversation_log import save_llm_request
-                    from src.notifications import notify_admin_llm_request
-                    save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
-                    notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
-
-                # State transitions (priority: hablar_asesor > mostrar_menu)
-                if signals.get("hablar_asesor"):
-                    set_agent_mode(user_phone, "agent")
-                    notify_admin_agent_request(user_phone)
-                elif signals.get("mostrar_menu"):
-                    set_user_state(user_phone, "active")
-                    FlowHandler.send_main_menu(user_phone)
-            else:
-                # No signals — send original response as-is
-                WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
+            # Run LLM processing in background thread so the webhook returns 200
+            # immediately. Cloud Run API calls + LLM call can take 20-40s total,
+            # which exceeds WhatsApp's ~15s webhook timeout.
+            threading.Thread(
+                target=_handle_llm_agent,
+                args=(user_phone, text),
+                daemon=True,
+            ).start()
             return
 
         # 1. Check Consent Flow
@@ -619,38 +630,13 @@ class FlowHandler:
             FlowHandler.send_main_menu(user_phone)
             return
 
-        from src.llm import ask_llm
-        client_name = get_client_name(user_phone)
         set_user_state(user_phone, "agent_llm")
-
-        llm_response = ask_llm(user_phone, text, "agent_llm", client_name)
-
-        # LLM failed after retries — stay silent
-        if not llm_response:
-            set_user_state(user_phone, "active")
-            return
-
-        # Strip ALL signal tags and process each action
-        human_msg, signals = _process_llm_signals(llm_response)
-
-        if signals:
-            if human_msg:
-                WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
-
-            if "registrar_solicitud" in signals:
-                from src.conversation_log import save_llm_request
-                from src.notifications import notify_admin_llm_request
-                save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
-                notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
-
-            if signals.get("hablar_asesor"):
-                set_agent_mode(user_phone, "agent")
-                notify_admin_agent_request(user_phone)
-            elif signals.get("mostrar_menu"):
-                set_user_state(user_phone, "active")
-                FlowHandler.send_main_menu(user_phone)
-        else:
-            WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
+        # Run LLM in background so webhook returns 200 immediately
+        threading.Thread(
+            target=_handle_llm_agent,
+            args=(user_phone, text),
+            daemon=True,
+        ).start()
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):
