@@ -208,19 +208,8 @@ class FlowHandler:
 
         # 0b. LLM Agent Mode — all messages routed through Claude
         if state == "agent_llm":
-            # Pre-route: standalone greetings exit to menu without calling LLM
-            # Only trigger for short messages (≤3 words) so "Buenos días. Necesito saber mi saldo" goes to LLM
-            if _is_greeting(text) and len(text.strip().split()) <= 3:
-                set_user_state(user_phone, "active")
-                FlowHandler.send_main_menu(user_phone)
-                return
-            # Pre-route: short thank-you / farewell — respond directly, no LLM needed
-            norm_llm = text.lower().strip()
-            if ("gracias" in norm_llm or "thank" in norm_llm) and len(norm_llm.split()) <= 8 and "?" not in text:
-                set_user_state(user_phone, "active")
-                WhatsAppService.send_message(user_phone, "Con gusto, quedo pendiente. Escribe 'Hola' si necesitas algo más.")
-                return
-
+            # No pre-routing — once in agent_llm, the LLM handles everything
+            # (greetings, farewells, follow-ups). It decides when to [MOSTRAR_MENU] or close.
             from src.llm import ask_llm
             client_name = get_client_name(user_phone)
 
