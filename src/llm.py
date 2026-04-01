@@ -14,8 +14,8 @@ _CONTEXT_FILES = [
     'estados_solicitud.md',
     'faq.md',
     'compliance.md',
-    # capacidades_bot.md and ejemplos_conversacion.md removed to reduce prompt
-    # size (~5,300 tokens saved). Key rules already in the system prompt below.
+    'capacidades_bot.md',
+    'ejemplos_conversacion.md',
 ]
 
 def _load_context() -> str:
