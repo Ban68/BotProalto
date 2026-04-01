@@ -208,8 +208,9 @@ class FlowHandler:
 
         # 0b. LLM Agent Mode — all messages routed through Claude
         if state == "agent_llm":
-            # Pre-route: greetings exit to menu without calling LLM
-            if _is_greeting(text):
+            # Pre-route: standalone greetings exit to menu without calling LLM
+            # Only trigger for short messages (≤3 words) so "Buenos días. Necesito saber mi saldo" goes to LLM
+            if _is_greeting(text) and len(text.strip().split()) <= 3:
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
                 return
@@ -375,7 +376,7 @@ class FlowHandler:
             # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to type email
             if not result or clean_status not in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN", "FALTA ALGÚN DOCUMENTO"]:
                 set_user_state(user_phone, "active")
-                WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
+                WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
 
         # 2a. Check if waiting for Email
@@ -454,7 +455,7 @@ class FlowHandler:
                 set_user_state(user_phone, "waiting_for_banco")
                 WhatsAppService.send_message(
                     user_phone,
-                    "Número registrado ✅\n\n¿En qué *banco* está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
+                    "Número registrado ✅\n\nEn qué *banco* está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
                 )
             else:
                 WhatsAppService.send_message(
@@ -535,7 +536,7 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "⚠️ *Error del Sistema*\n\nNo pudimos conectar con el servidor de base de datos. Por favor intenta de nuevo en unos minutos.")
 
             set_user_state(user_phone, "active")
-            WhatsAppService.send_message(user_phone, "¿Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
             return
 
         # 3. Main Menu Logic
@@ -687,7 +688,7 @@ class FlowHandler:
                 )
             else:
                 msg = (
-                    "Claro, estoy aquí para ayudarte. ¿Qué necesitas?"
+                    "Claro, estoy aquí para ayudarte. Qué necesitas?"
                 )
 
             WhatsAppService.send_message(user_phone, msg, msg_type=_LLM_MSG_TYPE)
@@ -720,7 +721,7 @@ class FlowHandler:
 
     @staticmethod
     def send_main_menu(user_phone):
-        menu_text = "Hola, ¿en qué podemos ayudarte hoy?"
+        menu_text = "Hola, en qué podemos ayudarte hoy?"
         buttons = [
             {"id": "menu_cliente", "title": "Soy Cliente"},
             {"id": "menu_solicitud", "title": "Estado Solicitud"},
@@ -730,7 +731,7 @@ class FlowHandler:
 
     @staticmethod
     def send_client_menu(user_phone):
-        menu_text = "¿Qué deseas hacer hoy?"
+        menu_text = "Qué deseas hacer hoy?"
         buttons = [
             {"id": "menu_saldo", "title": "Consultar Saldo"},
             {"id": "menu_support", "title": "Hablar con Asesor"},
