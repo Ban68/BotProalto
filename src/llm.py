@@ -167,7 +167,7 @@ def _get_client() -> anthropic.Anthropic:
         api_key = os.environ.get('ANTHROPIC_API_KEY')
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY no está configurada en las variables de entorno.")
-        _anthropic_client = anthropic.Anthropic(api_key=api_key)
+        _anthropic_client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
     return _anthropic_client
 
 

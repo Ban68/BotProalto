@@ -138,8 +138,12 @@ def _handle_llm_agent(user_phone: str, text: str):
     Runs Cloud Run API lookups + LLM call outside the webhook request
     so WhatsApp doesn't timeout waiting for a response.
     """
+    import time as _time
+    t0 = _time.time()
+    print(f"[LLM-BG] START for {user_phone}: '{text[:40]}...'")
     try:
         from src.llm import ask_llm
+        from concurrent.futures import ThreadPoolExecutor
         client_name = get_client_name(user_phone)
 
         # If message looks like a cedula, look it up and pass result to LLM
@@ -147,33 +151,45 @@ def _handle_llm_agent(user_phone: str, text: str):
         saldo_context = None
         if text.strip().isdigit() and 6 <= len(text.strip()) <= 12:
             cedula_num = text.strip()
-            result = get_solicitud_status(cedula_num)
+            # Run both Cloud Run API calls in parallel to save time
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                fut_solicitud = pool.submit(get_solicitud_status, cedula_num)
+                fut_saldo = pool.submit(get_saldo, cedula_num)
+                result = fut_solicitud.result(timeout=50)
+                saldo_result = fut_saldo.result(timeout=50)
+            t1 = _time.time()
+            print(f"[LLM-BG] Cloud Run calls done in {t1-t0:.1f}s")
+
             if result is None:
                 cedula_context = {"_error": True}
-                print(f"[LLM] Cedula {cedula_num}: solicitud API ERROR")
+                print(f"[LLM-BG] Cedula {cedula_num}: solicitud API ERROR")
             elif result:
                 cedula_context = result
-                print(f"[LLM] Cedula {cedula_num}: solicitud FOUND")
+                print(f"[LLM-BG] Cedula {cedula_num}: solicitud FOUND")
             else:
                 cedula_context = {}
-                print(f"[LLM] Cedula {cedula_num}: solicitud NOT FOUND")
-            saldo_result = get_saldo(cedula_num)
+                print(f"[LLM-BG] Cedula {cedula_num}: solicitud NOT FOUND")
+
             if saldo_result is None:
                 saldo_context = "error"
-                print(f"[LLM] Cedula {cedula_num}: saldo API ERROR")
+                print(f"[LLM-BG] Cedula {cedula_num}: saldo API ERROR")
             elif saldo_result:
                 saldo_context = saldo_result
-                print(f"[LLM] Cedula {cedula_num}: saldo FOUND ({len(saldo_result)} loans)")
+                print(f"[LLM-BG] Cedula {cedula_num}: saldo FOUND ({len(saldo_result)} loans)")
             else:
                 saldo_context = []
-                print(f"[LLM] Cedula {cedula_num}: saldo NOT FOUND")
+                print(f"[LLM-BG] Cedula {cedula_num}: saldo NOT FOUND")
 
+        t_llm_start = _time.time()
+        print(f"[LLM-BG] Calling LLM for {user_phone}...")
         llm_response = ask_llm(user_phone, text, "agent_llm", client_name,
                                cedula_context=cedula_context,
                                saldo_context=saldo_context)
+        t_llm_end = _time.time()
+        print(f"[LLM-BG] LLM responded in {t_llm_end-t_llm_start:.1f}s")
 
         if not llm_response:
-            print(f"[LLM] No response for {user_phone}, staying silent")
+            print(f"[LLM-BG] No response for {user_phone}, staying silent")
             return
 
         human_msg, signals = _process_llm_signals(llm_response)
@@ -197,8 +213,10 @@ def _handle_llm_agent(user_phone: str, text: str):
         else:
             WhatsAppService.send_message(user_phone, llm_response, msg_type=_LLM_MSG_TYPE)
 
+        print(f"[LLM-BG] DONE for {user_phone} in {_time.time()-t0:.1f}s total")
+
     except Exception as e:
-        print(f"[LLM] Background handler error for {user_phone}: {e}")
+        print(f"[LLM-BG] ERROR for {user_phone} after {_time.time()-t0:.1f}s: {e}")
 
 
 class FlowHandler:
