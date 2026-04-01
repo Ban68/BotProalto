@@ -555,7 +555,9 @@ class FlowHandler:
             return
 
         # Only activate LLM for explicit advisor requests; everything else shows the menu
-        if not _is_advisor_request(norm_text):
+        is_advisor = _is_advisor_request(norm_text)
+        print(f"[DEBUG] User {user_phone}: is_advisor_request('{text[:40]}...') = {is_advisor}")
+        if not is_advisor:
             set_user_state(user_phone, "active")
             FlowHandler.send_main_menu(user_phone)
             return
