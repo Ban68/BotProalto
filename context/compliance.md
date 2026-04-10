@@ -47,7 +47,7 @@ El consentimiento queda registrado en la base de datos junto con la fecha y hora
 |------|-------------------|-------------|
 | Número de cédula | Identificar al cliente en el sistema | Consultas de solicitud y saldo |
 | Nombre | Personalizar la conversación | Mensajes del bot |
-| Correo electrónico | Enviar contrato DocuSign | Notificación de contrato |
+| Correo electrónico | Enviar contrato de firma electrónica | Notificación de contrato |
 | Cuenta bancaria | Realizar el desembolso | Proceso interno de pagos |
 | Documentos (fotos/PDFs) | Verificar requisitos del crédito | Revisión por el equipo |
 | Número de teléfono (WhatsApp) | Canal de comunicación | Mensajes del bot |

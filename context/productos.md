@@ -9,7 +9,7 @@ Un préstamo personal cuyo pago se descuenta automáticamente de la nómina o me
 - **Monto:** hasta el doble del salario mensual del solicitante, sin codeudor (sujeto a evaluación de capacidad de endeudamiento). En ciertos convenios puede haber aprobaciones más conservadoras según política interna.
 - **Tasa de interés:** depende del estudio realizado, la empresa empleadora y las políticas vigentes al momento de la solicitud. NO dar cifras específicas — derivar al formulario o al asesor.
 - **Plazos:** variables según el caso y el acuerdo con la empresa empleadora. Frecuencia de pago: mensual, quincenal o catorcenal.
-- **Desembolso:** directo a la cuenta bancaria del cliente — puede tardar 1 a 3 días hábiles después de firmado el contrato.
+- **Desembolso:** directo a la cuenta bancaria del cliente. ProAlto realiza el desembolso en máximo 24 horas después de la firma. El tiempo de reflejo depende del banco: mismo banco < 24h, otro banco o billetera digital hasta 48h.
 - **Pago:** descuento automático de nómina o pensión — el cliente no necesita hacer ningún pago manual.
 - **IMPORTANTE:** aprobación no significa desembolso inmediato. Entre la aprobación y el desembolso puede haber pasos operativos pendientes con la empresa pagadora.
 

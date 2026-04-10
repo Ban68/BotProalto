@@ -59,7 +59,7 @@ Al iniciar la conversación, el cliente ve tres opciones:
 **Cuándo se activa:** Cuando la solicitud tiene estado APROBADO y no hay email registrado. También se activa cuando el cliente recibe la notificación de "estado_verde" (aprobado).
 
 **Pasos:**
-1. Bot explica: se necesita el correo electrónico para enviar el contrato de firma electrónica (DocuSign)
+1. Bot explica: se necesita el correo electrónico para enviar el contrato de firma electrónica
 2. Cliente escribe su email
 3. Bot valida el formato
 4. Email queda guardado para que el equipo le envíe el contrato

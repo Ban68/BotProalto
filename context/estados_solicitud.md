@@ -49,7 +49,7 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 ### `APROBADO POR EL CLIENTE`
 **Significado interno:** El crédito fue aprobado y el cliente lo aceptó. Sigue firma de contrato.
 **Mensaje al cliente:** "✅ ¡SOLICITUD APROBADA!"
-**Qué sigue:** El cliente debe confirmar su correo electrónico para recibir el contrato por DocuSign.
+**Qué sigue:** El cliente debe confirmar su correo electrónico para recibir el contrato de firma electrónica.
 **Acción del bot:** Solicita el email si no lo tiene registrado.
 
 ### `LISTO PARA HACERLE DOCUMENTACIÓN`
@@ -57,11 +57,12 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 **Mensaje al cliente:** "✅ ¡SOLICITUD APROBADA!"
 **Qué sigue:** Igual que el estado anterior.
 
-### `LISTO EN PANDADOC` (antes `LISTO EN DOCUSIGN`)
-**Significado interno:** El contrato ya está en la plataforma PandaDoc esperando firma. Después de firmar, se procede al desembolso.
+### `LISTO EN PANDADOC`
+**Significado interno:** El contrato ya está en la plataforma de firma electrónica esperando firma del cliente. Después de firmar, se procede al desembolso.
 **Mensaje al cliente:** "En legalización de contratos para proceder a desembolso"
-**Qué debe hacer el cliente:** Revisar su correo electrónico y firmar el contrato en PandaDoc.
+**Qué debe hacer el cliente:** Revisar su correo electrónico y firmar el contrato digitalmente.
 **Acción del bot:** Si no tiene cuenta bancaria registrada, el bot la solicita.
+**Nota:** El estado puede aparecer como "LISTO EN DOCUSIGN" en registros anteriores — es equivalente. Al cliente siempre referirse como "firma electrónica", no mencionar nombres de plataforma.
 
 ---
 
@@ -100,6 +101,6 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 NULL → PENDIENTE POR ENVIAR A VB → ENVIADO A VB EMPRESA
 → (si faltan docs: FALTA ALGÚN DOCUMENTO)
 → APROBADO POR EL CLIENTE
-→ LISTO EN DOCUSIGN
+→ LISTO EN PANDADOC (firma electrónica)
 → Desembolso realizado
 ```

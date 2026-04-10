@@ -8,6 +8,15 @@ import json
 import re
 import threading
 
+# ── LLM thread deduplication ─────────────────────────────────────────────────
+# Prevents multiple simultaneous LLM responses when the client sends rapid
+# messages (e.g., 3 messages in 2 seconds → 3 threads → 3 bot replies).
+# Only one LLM thread per phone can run at a time; subsequent messages are
+# queued and only the latest is processed after the current one finishes.
+_llm_active: dict[str, bool] = {}
+_llm_pending: dict[str, str] = {}  # stores latest pending message per phone
+_llm_lock = threading.Lock()
+
 # ── Document confirmation debounce ───────────────────────────────────────────
 # Waits DOC_CONFIRM_DELAY seconds after the last document before sending the
 # final confirmation, so the client has time to attach all their files.
@@ -119,17 +128,42 @@ def _process_llm_signals(llm_response: str) -> tuple:
         signals["registrar_solicitud"] = match.group(1).strip()
         llm_response = re.sub(r'\[REGISTRAR_SOLICITUD:[^\]]+\]', '', llm_response)
 
-    clean = llm_response.strip()
+    # Strip ANY remaining bracket tags the LLM may have hallucinated
+    # (e.g. [CONSULTAR_CEDULA:xxx], [CÉDULA_CONSULTADA:xxx], [DATOS POR CÉDULA], etc.)
+    # This prevents internal tags and PII from leaking to client messages.
+    llm_response = re.sub(r'\[[A-ZÁÉÍÓÚÑ_ ]+(?::[^\]]*)?\]', '', llm_response)
+
+    # Clean up artifacts: leftover pipes, double spaces, leading/trailing whitespace
+    clean = re.sub(r'\s*\|\s*', ' ', llm_response).strip()
+    clean = re.sub(r'  +', ' ', clean)
 
     # Safety net: if no signals and response is a dead-end promise, force registration
     if not signals:
         lower = clean.lower()
         if any(phrase in lower for phrase in _DEAD_END_PHRASES):
             signals["registrar_solicitud"] = "general"
-            clean = clean.rstrip(".") + ", quedó registrado y te confirmo en breve."
+            clean = clean.rstrip(".") + ", tomé nota y lo revisamos."
             print(f"[LLM] Dead-end safety net triggered: '{llm_response[:60]}...'")
 
     return clean, signals
+
+
+def _launch_llm_agent(user_phone: str, text: str):
+    """
+    Safe launcher for LLM agent. Deduplicates rapid messages from the same
+    phone so only one LLM call runs at a time. If a call is already in
+    progress, the new message replaces the pending queue (only latest matters).
+    """
+    with _llm_lock:
+        if _llm_active.get(user_phone):
+            # Thread already running — queue the latest message, skip thread launch
+            _llm_pending[user_phone] = text
+            print(f"[LLM-BG] DEDUP: {user_phone} already active, queued: '{text[:40]}...'")
+            return
+        _llm_active[user_phone] = True
+
+    t = threading.Thread(target=_handle_llm_agent, args=[user_phone, text], daemon=True)
+    t.start()
 
 
 def _handle_llm_agent(user_phone: str, text: str):
@@ -217,6 +251,19 @@ def _handle_llm_agent(user_phone: str, text: str):
 
     except Exception as e:
         print(f"[LLM-BG] ERROR for {user_phone} after {_time.time()-t0:.1f}s: {e}")
+    finally:
+        # Release lock and check for pending messages
+        with _llm_lock:
+            pending_text = _llm_pending.pop(user_phone, None)
+            if pending_text:
+                # Process the queued message (only the latest one)
+                print(f"[LLM-BG] Processing pending message for {user_phone}: '{pending_text[:40]}...'")
+                # Keep _llm_active[user_phone] = True, recurse
+            else:
+                _llm_active.pop(user_phone, None)
+
+        if pending_text:
+            _handle_llm_agent(user_phone, pending_text)
 
 
 class FlowHandler:
@@ -337,9 +384,9 @@ class FlowHandler:
                 WhatsAppService.send_message(user_phone, "Has salido del modo asesor. Escribe 'Hola' para ver el menú principal.")
             return
 
-        # 0b. LLM Agent Mode — disabled, redirect to human agent
+        # 0b. LLM Agent Mode — handle with LLM agent (manual activation only via admin panel)
         if state == "agent_llm":
-            set_agent_mode(user_phone, "agent")
+            _launch_llm_agent(user_phone, text)
             return
 
         # 1. Check Consent Flow
