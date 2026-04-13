@@ -24,7 +24,7 @@ def get_pending_approved_notifications():
     Excluded users include an 'excluded_reasons' list explaining why they were filtered out.
     """
     if TEST_MODE:
-        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "monto": 1000000, "plazo": 12, "send_count": 0, "last_sent": None}], "excluded": []}
+        return {"eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "monto": 1000000, "plazo": 12, "cuota": 95000, "send_count": 0, "last_sent": None}], "excluded": []}
 
     aprobados = get_aprobados_por_el_cliente()
     if not aprobados:
@@ -53,6 +53,7 @@ def get_pending_approved_notifications():
             "name": nombre,
             "monto": user.get("valor_preestudiado", 0),
             "plazo": user.get("plazo", 0),
+            "cuota": user.get("cuota", 0),
             "empresa": user.get("empresa", ""),
         })
         phones_to_check.append(phone_str)
@@ -130,25 +131,36 @@ def execute_bulk_approved_notifications(users_list):
         
         plazo_val = user.get("plazo", 0)
         plazo_format = f"{plazo_val} cuotas"
-        
+
+        cuota_val = user.get("cuota", 0)
+        if isinstance(cuota_val, (int, float)):
+            cuota_format = f"${cuota_val:,.0f}".replace(",", ".")
+        else:
+            cuota_format = str(cuota_val)
+
         components = [
             {
                 "type": "body",
                 "parameters": [
                     {
-                        "type": "text", 
+                        "type": "text",
                         "text": nombre,
                         "parameter_name": "nombre"
                     },
                     {
-                        "type": "text", 
+                        "type": "text",
                         "text": monto_format,
                         "parameter_name": "monto"
                     },
                     {
-                        "type": "text", 
+                        "type": "text",
                         "text": plazo_format,
                         "parameter_name": "plazo"
+                    },
+                    {
+                        "type": "text",
+                        "text": cuota_format,
+                        "parameter_name": "cuota"
                     }
                 ]
             }

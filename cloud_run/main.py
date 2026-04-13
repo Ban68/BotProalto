@@ -54,7 +54,7 @@ def get_solicitud(request):
         elif tipo == "aprobados":
             cur.execute("""
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
-                       estado_interno, nombre_completo, plazo, telefono, empresa
+                       estado_interno, nombre_completo, plazo, telefono, empresa, cuota
                 FROM v_solicitudes_whatsapp
                 WHERE UPPER(estado_interno) = 'APROBADO POR EL CLIENTE'
             """)
@@ -72,7 +72,8 @@ def get_solicitud(request):
                         "nombre_completo": r[4] or "",
                         "plazo": r[5] if r[5] else 0,
                         "telefono": r[6] if len(r) > 6 and r[6] else "",
-                        "empresa": r[7] or ""
+                        "empresa": r[7] or "",
+                        "cuota": float(r[8]) if r[8] else 0
                     })
                 return jsonify({"found": True, "aprobados": aprobados}), 200
             else:
