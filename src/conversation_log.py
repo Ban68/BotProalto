@@ -764,7 +764,7 @@ def get_notified_phones_denegado_batch(phones: list) -> set:
 
 
 def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
-    """Saves a captured account number (step 1) to captured_cuentas. banco is NULL until step 2."""
+    """Saves a captured account number (cuenta propia) to captured_cuentas. banco is NULL until step 2."""
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot save cuenta.")
         return False
@@ -773,11 +773,59 @@ def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
             "phone": phone,
             "numero_cuenta": numero_cuenta,
             "name": name,
+            "es_tercero": False,
             "created_at": datetime.now().isoformat()
         }).execute()
         return True
     except Exception as e:
         print(f"❌ Error saving captured cuenta: {e}")
+        return False
+
+
+def save_partial_tercero_cuenta(phone: str, name: str, nombre_tercero: str, cedula_url: str) -> bool:
+    """Creates a partial captured_cuentas row for a tercero account.
+    numero_cuenta and banco are NULL and will be filled in subsequent steps."""
+    if not supabase_client:
+        print("⚠️ Supabase client not initialized. Cannot save tercero cuenta.")
+        return False
+    try:
+        supabase_client.table('captured_cuentas').insert({
+            "phone": phone,
+            "name": name,
+            "es_tercero": True,
+            "nombre_tercero": nombre_tercero,
+            "cedula_tercero_url": cedula_url,
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error saving partial tercero cuenta: {e}")
+        return False
+
+
+def update_tercero_cuenta_numero(phone: str, numero_cuenta: str) -> bool:
+    """Updates the most recent tercero captured_cuentas row for phone with the account number."""
+    if not supabase_client:
+        print("⚠️ Supabase client not initialized. Cannot update tercero numero.")
+        return False
+    try:
+        res = supabase_client.table('captured_cuentas')\
+            .select("id")\
+            .eq("phone", phone)\
+            .eq("es_tercero", True)\
+            .is_("numero_cuenta", "null")\
+            .order("created_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if res.data:
+            row_id = res.data[0]["id"]
+            supabase_client.table('captured_cuentas')\
+                .update({"numero_cuenta": numero_cuenta})\
+                .eq("id", row_id)\
+                .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error updating tercero numero: {e}")
         return False
 
 

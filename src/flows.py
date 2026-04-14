@@ -328,8 +328,20 @@ class FlowHandler:
                             client_name = get_client_name(user_phone)
                             log_received_document(user_phone, client_name, filename, mime_type, final_path)
 
+                        # Cédula del tercero — capture and advance flow
+                        if current_state.startswith("waiting_for_cedula_tercero"):
+                            nombre_tercero = current_state.split("|", 1)[1] if "|" in current_state else ""
+                            client_name = get_client_name(user_phone)
+                            from src.conversation_log import save_partial_tercero_cuenta
+                            save_partial_tercero_cuenta(user_phone, client_name, nombre_tercero, final_path)
+                            set_user_state(user_phone, "waiting_for_numero_cuenta_tercero")
+                            WhatsAppService.send_message(
+                                user_phone,
+                                "Cédula recibida ✅\n\nAhora escríbenos el número de cuenta del titular (solo dígitos, sin espacios ni guiones)."
+                            )
+
                         # Send confirmation in document-expected states; remind email if waiting for it
-                        if current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
+                        elif current_state in ("waiting_for_docs_rojo", "waiting_for_cuenta_amarillo"):
                             _schedule_doc_confirmation(user_phone)
                         elif current_state == "waiting_for_email":
                             WhatsAppService.send_message(
@@ -567,7 +579,41 @@ class FlowHandler:
                 )
             return
 
-        # 2c. Step 1: waiting for account number (digits only)
+        # 2c. Tercero flow — step 1: waiting for titular's name
+        if state == "waiting_for_nombre_tercero":
+            nombre = text.strip()
+            if len(nombre) >= 3:
+                set_user_state(user_phone, f"waiting_for_cedula_tercero|{nombre}")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Anotado. Ahora envíanos una foto de la cédula del titular."
+                )
+            else:
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor escribe el nombre completo del titular de la cuenta."
+                )
+            return
+
+        # 2c. Tercero flow — step 3: waiting for account number after cedula received
+        if state == "waiting_for_numero_cuenta_tercero":
+            digits = "".join(filter(str.isdigit, text))
+            if len(digits) >= 5:
+                from src.conversation_log import update_tercero_cuenta_numero
+                update_tercero_cuenta_numero(user_phone, digits)
+                set_user_state(user_phone, "waiting_for_banco")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Número registrado ✅\n\nEn qué banco está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
+                )
+            else:
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor envíanos solo el número de cuenta (mínimo 5 dígitos, sin letras ni espacios)."
+                )
+            return
+
+        # 2c. Cuenta propia — waiting for account number (digits only)
         if state in ("waiting_for_numero_cuenta", "waiting_for_cuenta_amarillo"):
             digits = "".join(filter(str.isdigit, text))
             if len(digits) >= 5:
@@ -577,12 +623,12 @@ class FlowHandler:
                 set_user_state(user_phone, "waiting_for_banco")
                 WhatsAppService.send_message(
                     user_phone,
-                    "Número registrado ✅\n\nEn qué *banco* está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
+                    "Número registrado ✅\n\nEn qué banco está la cuenta? (Ej: Bancolombia, Davivienda, Nequi...)"
                 )
             else:
                 WhatsAppService.send_message(
                     user_phone,
-                    "Por favor envíanos solo el *número de cuenta* (mínimo 5 dígitos, sin letras ni espacios)."
+                    "Por favor envíanos solo el número de cuenta (mínimo 5 dígitos, sin letras ni espacios)."
                 )
             return
 
@@ -722,11 +768,23 @@ class FlowHandler:
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
 
             
-        elif btn_id in ["enviar_numero_cuenta", "Enviar número de cuenta"]:
+        elif btn_id in ["enviar_numero_cuenta", "Enviar número de cuenta", "Enviar Cuenta propia"]:
             set_user_state(user_phone, "waiting_for_numero_cuenta")
             WhatsAppService.send_message(
                 user_phone,
-                "Por favor escríbenos tu *número de cuenta* (solo dígitos, sin espacios ni guiones). 🏦"
+                "Por favor escríbenos tu número de cuenta (solo dígitos, sin espacios ni guiones)."
+            )
+
+        elif btn_id == "Enviar| Cuenta de tercero":
+            set_user_state(user_phone, "waiting_for_nombre_tercero")
+            WhatsAppService.send_message(
+                user_phone,
+                "Entendido. Para registrar la cuenta del tercero necesitamos:\n\n"
+                "1. Nombre completo del titular\n"
+                "2. Foto de su cédula\n"
+                "3. Número de cuenta\n"
+                "4. Banco\n\n"
+                "Empecemos: escribe el nombre completo del titular de la cuenta."
             )
 
         elif "consultar" in btn_id.lower():

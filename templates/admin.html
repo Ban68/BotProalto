@@ -1283,12 +1283,13 @@
                             <th style="padding: 10px; text-align: left;">Nombre</th>
                             <th style="padding: 10px; text-align: left;">Teléfono</th>
                             <th style="padding: 10px; text-align: left;">Empresa</th>
+                            <th style="padding: 10px; text-align: left;">Titular</th>
                             <th style="padding: 10px; text-align: left;">Número de Cuenta</th>
                             <th style="padding: 10px; text-align: left;">Banco</th>
                         </tr>
                     </thead>
                     <tbody id="cuentasTableBody">
-                        <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
+                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2799,7 +2800,7 @@
 
         async function fetchCapturedCuentas() {
             const tbody = document.getElementById('cuentasTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando...</td></tr>';
 
             try {
                 const res = await fetch('/admin/api/captured-cuentas');
@@ -2810,33 +2811,46 @@
                     document.getElementById('cuentasCount').innerText = `(${capturedCuentasData.length})`;
 
                     if (capturedCuentasData.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Aún no se han recibido números de cuenta.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Aún no se han recibido números de cuenta.</td></tr>';
                     } else {
-                        tbody.innerHTML = capturedCuentasData.map(item => `
+                        tbody.innerHTML = capturedCuentasData.map(item => {
+                            let titularCell;
+                            if (item.es_tercero) {
+                                const cedLink = item.cedula_tercero_url
+                                    ? ` <a href="${item.cedula_tercero_url}" target="_blank" style="font-size:0.8rem; color:#d97706;">Ver cédula</a>`
+                                    : '';
+                                titularCell = `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px; font-size:0.8rem; font-weight:bold;">Tercero</span><br><span style="font-size:0.85rem;">${item.nombre_tercero || ''}${cedLink}</span>`;
+                            } else {
+                                titularCell = '<span style="color:#6b7280; font-size:0.85rem;">Propia</span>';
+                            }
+                            return `
                             <tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${formatTime(item.created_at)}</td>
                                 <td style="padding: 10px;">${item.name || ''}</td>
                                 <td style="padding: 10px;">${item.phone}</td>
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${item.empresa || '<span style="color:#aaa;">—</span>'}</td>
-                                <td style="padding: 10px; font-weight: bold;">${item.numero_cuenta || ''}</td>
+                                <td style="padding: 10px;">${titularCell}</td>
+                                <td style="padding: 10px; font-weight: bold;">${item.numero_cuenta || '<span style="color:#aaa;">Pendiente</span>'}</td>
                                 <td style="padding: 10px;">${item.banco || '<span style="color:#aaa;">Pendiente</span>'}</td>
-                            </tr>`).join('');
+                            </tr>`;
+                        }).join('');
                     }
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error: ${data.message || 'Desconocido'}</td></tr>`;
                 }
             } catch (e) {
                 console.error(e);
-                tbody.innerHTML = '<tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--danger);">Error de conexión.</td></tr>';
             }
         }
 
         function copyCuentasToClipboard() {
             if (capturedCuentasData.length === 0) { alert('No hay cuentas para copiar.'); return; }
-            const header = 'Fecha\tNombre\tTeléfono\tEmpresa\tNúmero de Cuenta\tBanco';
-            const rows = capturedCuentasData.map(item =>
-                `${formatTime(item.created_at)}\t${item.name || ''}\t${item.phone}\t${item.empresa || ''}\t${item.numero_cuenta || ''}\t${item.banco || ''}`
-            );
+            const header = 'Fecha\tNombre\tTeléfono\tEmpresa\tTitular\tNúmero de Cuenta\tBanco';
+            const rows = capturedCuentasData.map(item => {
+                const titular = item.es_tercero ? `Tercero: ${item.nombre_tercero || ''}` : 'Propia';
+                return `${formatTime(item.created_at)}\t${item.name || ''}\t${item.phone}\t${item.empresa || ''}\t${titular}\t${item.numero_cuenta || ''}\t${item.banco || ''}`;
+            });
             navigator.clipboard.writeText([header, ...rows].join('\n'))
                 .then(() => alert(`✅ ${capturedCuentasData.length} registros copiados. Pega directamente en Excel o Google Sheets.`))
                 .catch(() => alert('Error al copiar. Intenta exportar como CSV.'));
@@ -2844,14 +2858,16 @@
 
         function exportCuentasCSV() {
             if (capturedCuentasData.length === 0) { alert('No hay cuentas para exportar.'); return; }
-            const header = 'Fecha,Nombre,Teléfono,Empresa,Número de Cuenta,Banco';
+            const header = 'Fecha,Nombre,Teléfono,Empresa,Titular,Número de Cuenta,Banco,Cédula Titular';
             const rows = capturedCuentasData.map(item => {
                 const fecha = formatTime(item.created_at);
                 const nombre = (item.name || '').replace(/,/g, ' ');
                 const empresa = (item.empresa || '').replace(/,/g, ' ');
+                const titular = item.es_tercero ? `Tercero: ${(item.nombre_tercero || '').replace(/,/g, ' ')}` : 'Propia';
                 const numero = (item.numero_cuenta || '').replace(/,/g, ' ');
                 const banco = (item.banco || '').replace(/,/g, ' ');
-                return `${fecha},${nombre},${item.phone},${empresa},${numero},${banco}`;
+                const cedula = item.cedula_tercero_url || '';
+                return `${fecha},${nombre},${item.phone},${empresa},${titular},${numero},${banco},${cedula}`;
             });
             const csv = [header, ...rows].join('\n');
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
