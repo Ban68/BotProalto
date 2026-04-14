@@ -4950,210 +4950,311 @@
             }
         }
 
+        const _auditData = {};
+        const _auditFilters = {};
+
+        function toggleAuditDetail(auditId, cardEl) {
+            const detailDiv = cardEl.querySelector('.audit-detail');
+            const arrow = cardEl.querySelector('.audit-arrow-icon');
+            if (detailDiv.style.display === 'block') {
+                detailDiv.style.display = 'none';
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+                cardEl.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+            } else if (_auditData[auditId] !== undefined) {
+                detailDiv.style.display = 'block';
+                cardEl.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            } else {
+                loadAuditDetail(auditId, cardEl);
+            }
+        }
+
+        function toggleAuditSection(btnEl, bodyId) {
+            const body = document.getElementById(bodyId);
+            if (!body) return;
+            const isHidden = body.style.display === 'none';
+            body.style.display = isHidden ? '' : 'none';
+            if (btnEl) btnEl.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+        }
+
+        function clearAuditFilter(auditId) {
+            _auditFilters[auditId] = {};
+            _renderAuditConvs(auditId);
+            _updateAuditPills(auditId);
+            _updateAuditFilterLabel(auditId);
+        }
+
+        function filterAuditConvs(auditId, type, value) {
+            const cur = _auditFilters[auditId] || {};
+            if (cur.type === type && cur.value === value) {
+                _auditFilters[auditId] = {};
+            } else {
+                _auditFilters[auditId] = { type, value };
+            }
+            _renderAuditConvs(auditId);
+            _updateAuditPills(auditId);
+            _updateAuditFilterLabel(auditId);
+        }
+
+        function _updateAuditPills(auditId) {
+            const filter = _auditFilters[auditId] || {};
+            document.querySelectorAll(`[data-audit-pill="${auditId}"]`).forEach(el => {
+                const active = el.dataset.filterType === filter.type && el.dataset.filterValue === filter.value;
+                el.style.transform = active ? 'translateY(-2px) scale(1.04)' : '';
+                el.style.boxShadow = active ? '0 4px 12px rgba(0,0,0,0.2)' : '';
+                el.style.outline = active ? '2px solid currentColor' : '';
+                el.style.outlineOffset = active ? '2px' : '';
+            });
+        }
+
+        function _updateAuditFilterLabel(auditId) {
+            const label = document.getElementById(`audit-filter-label-${auditId}`);
+            if (!label) return;
+            const filter = _auditFilters[auditId] || {};
+            if (filter.type && filter.value) {
+                const names = { resolved:'Resueltas', unresolved:'No resueltas', partial:'Parciales',
+                                positive:'Positivo', neutral:'Neutral', negative:'Negativo' };
+                const vl = names[filter.value] || filter.value;
+                label.innerHTML = `<span style="font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;">
+                    Filtro activo: <strong>${vl}</strong>
+                    <button onclick="clearAuditFilter('${auditId}')" style="background:none;border:none;color:#0369a1;cursor:pointer;font-size:0.82rem;padding:0;font-weight:700;" title="Quitar filtro">✕</button>
+                </span>`;
+                label.style.display = 'block';
+            } else {
+                label.style.display = 'none';
+            }
+        }
+
+        function _renderAuditConvs(auditId) {
+            const container = document.getElementById(`audit-convs-${auditId}`);
+            if (!container) return;
+            const allData = _auditData[auditId] || [];
+            const filter = _auditFilters[auditId] || {};
+            const results = (filter.type && filter.value)
+                ? allData.filter(r => r[filter.type] === filter.value)
+                : allData;
+            const resLabel = { resolved:'Resuelta', unresolved:'No resuelta', partial:'Parcial', error:'Error' };
+            const resColor = { resolved:'#22c55e', unresolved:'#ef4444', partial:'#f59e0b', error:'#94a3b8' };
+            const sentIcon  = { positive:'😊', neutral:'😐', negative:'😞' };
+            if (!results.length) {
+                container.innerHTML = `<div style="padding:14px; text-align:center; color:#94a3b8; font-size:0.8rem;">Sin conversaciones para este filtro.</div>`;
+                return;
+            }
+            container.innerHTML = results.map(r => {
+                const rc = resColor[r.resolucion] || '#94a3b8';
+                const rl = resLabel[r.resolucion] || r.resolucion;
+                const si = sentIcon[r.sentimiento] || '😐';
+                const advisorTag = r.has_advisor && r.advisor_names && r.advisor_names.length
+                    ? `<span style="background:#ede9fe;color:#7c3aed;padding:1px 6px;border-radius:999px;font-size:0.68rem;font-weight:600;">Asesor: ${r.advisor_names[0]}</span>` : '';
+                const scoreTag = typeof r.puntuacion === 'number'
+                    ? `<span style="background:${r.puntuacion>=7?'#dcfce7':r.puntuacion>=4?'#fef3c7':'#fee2e2'};color:${r.puntuacion>=7?'#16a34a':r.puntuacion>=4?'#d97706':'#dc2626'};padding:1px 6px;border-radius:999px;font-size:0.68rem;font-weight:700;">${r.puntuacion}/10</span>` : '';
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:0.78rem;gap:8px;transition:background 0.1s;" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background=''">
+                    <div style="min-width:0;flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">
+                        <span style="font-weight:600;">${r.client_name||'Cliente'}</span>
+                        <span style="color:#94a3b8;">${r.message_count} msgs</span>
+                        <span style="background:${rc}22;color:${rc};padding:1px 6px;border-radius:999px;font-size:0.68rem;font-weight:600;">${rl}</span>
+                        <span>${si}</span>${scoreTag}${advisorTag}
+                    </div>
+                    <button onclick="goToChat('${r.phone}')" style="flex-shrink:0;padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button>
+                </div>`;
+            }).join('');
+        }
+
         function renderAuditList(audits) {
             const container = document.getElementById('auditReportsList');
             if (!audits || audits.length === 0) {
                 container.innerHTML = '<p style="color: var(--text-muted);">No hay auditorías aún. Haz clic en "Auditoría AI" para generar una.</p>';
                 return;
             }
-
             const typeLabels = { general: 'General', bot_only: 'Solo Bot', advisor_only: 'Con Asesor', specific_advisor: 'Por Asesor' };
             const depthLabels = { quick: 'Rápida', standard: 'Estándar', deep: 'Profunda' };
-
             let html = '';
             for (const a of audits) {
                 const date = new Date(a.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const statusBadge = a.status === 'completed'
-                    ? '<span style="background:#22c55e; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">Completado</span>'
+                    ? '<span style="background:#22c55e;color:white;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;">Completado</span>'
                     : a.status === 'running'
-                    ? '<span style="background:#f59e0b; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">En proceso...</span>'
-                    : '<span style="background:#ef4444; color:white; padding:2px 9px; border-radius:999px; font-size:0.7rem; font-weight:600;">Error</span>';
-
+                    ? '<span style="background:#f59e0b;color:white;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;">En proceso...</span>'
+                    : '<span style="background:#ef4444;color:white;padding:2px 9px;border-radius:999px;font-size:0.7rem;font-weight:600;">Error</span>';
                 const cfg = a.config || {};
                 const typeLabel = cfg.audit_type === 'specific_advisor' && cfg.advisor_name
-                    ? `Asesor: ${cfg.advisor_name}`
-                    : (typeLabels[cfg.audit_type] || 'General');
+                    ? `Asesor: ${cfg.advisor_name}` : (typeLabels[cfg.audit_type] || 'General');
                 const depthLabel = depthLabels[cfg.depth] || '';
-                const typeBadge = `<span style="background:#ede9fe; color:#7c3aed; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:600;">${typeLabel}</span>`;
-                const depthBadge = depthLabel ? `<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:600;">${depthLabel}</span>` : '';
-
+                const typeBadge = `<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:999px;font-size:0.68rem;font-weight:600;">${typeLabel}</span>`;
+                const depthBadge = depthLabel ? `<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:999px;font-size:0.68rem;font-weight:600;">${depthLabel}</span>` : '';
                 html += `
-                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; background: #f8fafc; cursor: pointer; transition: background 0.15s;"
-                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'"
-                         onclick="loadAuditDetail('${a.id}', this)">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div id="audit-card-${a.id}" style="border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:white;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:box-shadow 0.2s;">
+                        <div style="padding:12px 14px;cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;transition:background 0.15s;"
+                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''"
+                             onclick="toggleAuditDetail('${a.id}', this.parentElement)">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                 <strong style="font-size:0.85rem;">${date}</strong>
                                 ${typeBadge}${depthBadge}
-                                <span style="color:var(--text-muted); font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conv.</span>
+                                <span style="color:var(--text-muted);font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conv.</span>
                             </div>
-                            <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
                                 ${statusBadge}
-                                <span style="color:#94a3b8; font-size:0.8rem;">▾</span>
+                                <span class="audit-arrow-icon" style="color:#94a3b8;font-size:0.85rem;transition:transform 0.25s;display:inline-block;">▾</span>
                             </div>
                         </div>
-                        <div class="audit-detail" style="display: none; margin-top: 14px;"></div>
+                        <div class="audit-detail" style="display:none;border-top:1px solid var(--border);" onclick="event.stopPropagation()"></div>
                     </div>`;
             }
             container.innerHTML = html;
         }
 
-        async function loadAuditDetail(auditId, el) {
-            const detailDiv = el.querySelector('.audit-detail');
-            if (detailDiv.style.display === 'block') {
-                detailDiv.style.display = 'none';
-                return;
-            }
-
-            detailDiv.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Cargando...</p>';
+        async function loadAuditDetail(auditId, cardEl) {
+            const detailDiv = cardEl.querySelector('.audit-detail');
+            const arrow = cardEl.querySelector('.audit-arrow-icon');
+            detailDiv.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:0.85rem;">Cargando...</div>';
             detailDiv.style.display = 'block';
-
+            cardEl.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
             try {
                 const res = await fetch(`/admin/api/analytics/audit/${auditId}`, { credentials: 'same-origin' });
                 const data = await res.json();
-
                 if (data.status === 'running') {
-                    detailDiv.innerHTML = '<p style="color:#f59e0b; font-size:0.85rem;">Auditoría en proceso, intenta de nuevo en unos segundos...</p>';
+                    detailDiv.innerHTML = '<div style="padding:16px;text-align:center;color:#f59e0b;font-size:0.85rem;">Auditoría en proceso, intenta de nuevo en unos segundos...</div>';
                     return;
                 }
                 if (data.status === 'failed') {
-                    detailDiv.innerHTML = `<p style="color:#ef4444; font-size:0.85rem;">Error: ${data.error || 'desconocido'}</p>`;
+                    detailDiv.innerHTML = `<div style="padding:16px;color:#ef4444;font-size:0.85rem;">Error: ${data.error || 'desconocido'}</div>`;
+                    return;
+                }
+                const report = data.report;
+                if (!report || !report.summary) {
+                    detailDiv.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:0.85rem;">Sin datos.</div>';
                     return;
                 }
 
-                const report = data.report;
-                if (!report || !report.summary) {
-                    detailDiv.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Sin datos.</p>';
-                    return;
-                }
+                _auditData[auditId] = report.individual_results || [];
+                _auditFilters[auditId] = {};
 
                 const s = report.summary;
                 const resCounts = s.resolucion || {};
                 const sent = s.sentimiento || {};
+                const dm = report.deep_metrics;
 
-                let html = `<div style="display: grid; grid-template-columns: repeat(3,1fr) 1px repeat(3,1fr); gap: 8px; margin-bottom: 14px; align-items: stretch;">`;
-                html += `<div class="bi-stat-pill" style="border-left:3px solid #22c55e;"><div class="bi-stat-pill-label">Resueltas</div><div class="bi-stat-pill-value" style="color:#22c55e;">${resCounts.resolved || 0}</div></div>`;
-                html += `<div class="bi-stat-pill" style="border-left:3px solid #f59e0b;"><div class="bi-stat-pill-label">Parciales</div><div class="bi-stat-pill-value" style="color:#f59e0b;">${resCounts.partial || 0}</div></div>`;
-                html += `<div class="bi-stat-pill" style="border-left:3px solid #ef4444;"><div class="bi-stat-pill-label">No Resueltas</div><div class="bi-stat-pill-value" style="color:#ef4444;">${resCounts.unresolved || 0}</div></div>`;
-                html += `<div style="background:var(--border); width:1px; align-self:stretch;"></div>`;
-                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😊 Positivo</div><div class="bi-stat-pill-value" style="color:#22c55e;">${sent.positive || 0}</div></div>`;
-                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😐 Neutral</div><div class="bi-stat-pill-value" style="color:#64748b;">${sent.neutral || 0}</div></div>`;
-                html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">😞 Negativo</div><div class="bi-stat-pill-value" style="color:#ef4444;">${sent.negative || 0}</div></div>`;
+                // Collapsible section builder
+                const sId = (n) => `audit-sec-${auditId}-${n}`;
+                const collapsible = (id, title, color, bg, content) => `
+                    <div style="border-radius:8px;border:1px solid ${color}33;overflow:hidden;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:${bg};cursor:pointer;user-select:none;transition:filter 0.15s;"
+                             onmouseover="this.style.filter='brightness(0.96)'" onmouseout="this.style.filter=''"
+                             onclick="toggleAuditSection(this.querySelector('.sec-arrow'),'${id}-body')">
+                            <span style="font-size:0.8rem;font-weight:700;color:${color};">${title}</span>
+                            <span class="sec-arrow" style="color:${color};font-size:0.75rem;transition:transform 0.2s;display:inline-block;">▾</span>
+                        </div>
+                        <div id="${id}-body" style="padding:10px 12px;background:white;">${content}</div>
+                    </div>`;
+
+                // Filterable stat pill
+                const makePill = (label, value, count, color, ftype) =>
+                    `<div class="bi-stat-pill" data-audit-pill="${auditId}" data-filter-type="${ftype}" data-filter-value="${value}"
+                          style="border-left:3px solid ${color};cursor:pointer;transition:transform 0.15s,box-shadow 0.15s,outline 0.1s;"
+                          onclick="filterAuditConvs('${auditId}','${ftype}','${value}')" title="Filtrar: ${label}">
+                        <div class="bi-stat-pill-label">${label}</div>
+                        <div class="bi-stat-pill-value" style="color:${color};">${count}</div>
+                    </div>`;
+
+                let html = `<div style="padding:14px;">`;
+
+                // Stat pills (filterable)
+                html += `<div style="display:grid;grid-template-columns:repeat(3,1fr) 2px repeat(3,1fr);gap:8px;margin-bottom:14px;align-items:stretch;">`;
+                html += makePill('Resueltas',    'resolved',   resCounts.resolved   || 0, '#22c55e', 'resolucion');
+                html += makePill('Parciales',    'partial',    resCounts.partial    || 0, '#f59e0b', 'resolucion');
+                html += makePill('No Resueltas', 'unresolved', resCounts.unresolved || 0, '#ef4444', 'resolucion');
+                html += `<div style="background:var(--border);width:2px;align-self:stretch;border-radius:1px;"></div>`;
+                html += makePill('😊 Positivo', 'positive', sent.positive || 0, '#22c55e', 'sentimiento');
+                html += makePill('😐 Neutral',  'neutral',  sent.neutral  || 0, '#64748b', 'sentimiento');
+                html += makePill('😞 Negativo', 'negative', sent.negative || 0, '#ef4444', 'sentimiento');
                 html += `</div>`;
 
-                const auditSection = (title, color, items) => {
-                    if (!items || !items.length) return '';
-                    return `<div style="background:#f8fafc; border-radius:8px; padding:12px; margin-bottom:10px;">
-                        <div style="font-size:0.8rem; font-weight:700; color:${color}; margin-bottom:8px;">${title}</div>
-                        ${items.slice(0, 5).map(f => `
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:5px; font-size:0.8rem;">
-                                <span style="color:#374151;">${f.text}</span>
-                                <span style="background:${color}22; color:${color}; padding:1px 7px; border-radius:999px; font-weight:700; font-size:0.7rem; white-space:nowrap;">${f.count}x</span>
-                            </div>
-                        `).join('')}
-                    </div>`;
-                };
-
-                html += auditSection('⚠️ Puntos de Fricción', '#dc2626', report.top_friction_points);
-                html += auditSection('💡 Oportunidades de Mejora', '#059669', report.top_improvements);
-
-                if (report.notable_findings && report.notable_findings.length > 0) {
-                    html += `<div style="background:#faf5ff; border-radius:8px; padding:12px; border-left:3px solid #7c3aed; margin-bottom:10px;">
-                        <div style="font-size:0.8rem; font-weight:700; color:#7c3aed; margin-bottom:8px;">✨ Hallazgos Notables</div>
-                        ${report.notable_findings.map(n => `<div style="font-size:0.8rem; color:#374151; margin-bottom:4px;">· ${n}</div>`).join('')}
-                    </div>`;
-                }
-
-                if (s.categoria) {
-                    const cats = Object.entries(s.categoria).sort((a, b) => b[1] - a[1]);
-                    const catTotal = cats.reduce((sum, [, v]) => sum + v, 0);
-                    html += `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">`;
-                    for (const [k, v] of cats) {
-                        const pct = catTotal > 0 ? Math.round((v / catTotal) * 100) : 0;
-                        html += `<span style="background:#e0f2fe; color:#0369a1; padding:3px 10px; border-radius:999px; font-size:0.72rem; font-weight:600;">${k}: ${v} (${pct}%)</span>`;
-                    }
-                    html += `</div>`;
-                }
-
-                // Deep metrics (only present in deep audits)
-                const dm = report.deep_metrics;
-                if (dm) {
-                    html += `<div style="background:#f0fdf4; border-radius:8px; padding:12px; border-left:3px solid #16a34a; margin-bottom:10px;">`;
-                    html += `<div style="font-size:0.8rem; font-weight:700; color:#16a34a; margin-bottom:10px;">📊 Métricas Profundas</div>`;
-                    html += `<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;">`;
-                    // Score
-                    const score = dm.avg_puntuacion;
-                    const scoreColor = score >= 7 ? '#22c55e' : score >= 4 ? '#f59e0b' : '#ef4444';
-                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${scoreColor};"><div class="bi-stat-pill-label">Puntuación</div><div class="bi-stat-pill-value" style="color:${scoreColor};">${score != null ? score + '/10' : 'N/A'}</div></div>`;
-                    // Protocol compliance
+                // Deep metrics row
+                if (dm && dm.avg_puntuacion != null) {
+                    const sc = dm.avg_puntuacion;
+                    const sc_c = sc >= 7 ? '#22c55e' : sc >= 4 ? '#f59e0b' : '#ef4444';
                     const proto = dm.cumplimiento_protocolo || {};
-                    const protoTotal = (proto.si || 0) + (proto.no || 0);
-                    const protoPct = protoTotal > 0 ? Math.round(((proto.si || 0) / protoTotal) * 100) : 0;
-                    const protoColor = protoPct >= 80 ? '#22c55e' : protoPct >= 50 ? '#f59e0b' : '#ef4444';
-                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${protoColor};"><div class="bi-stat-pill-label">Protocolo</div><div class="bi-stat-pill-value" style="color:${protoColor};">${protoPct}%</div></div>`;
-                    // Complexity distribution
+                    const pTotal = (proto.si||0) + (proto.no||0);
+                    const pPct = pTotal > 0 ? Math.round(((proto.si||0)/pTotal)*100) : 0;
+                    const p_c = pPct >= 80 ? '#22c55e' : pPct >= 50 ? '#f59e0b' : '#ef4444';
                     const comp = dm.complejidad || {};
-                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Complejidad</div><div style="font-size:0.72rem; color:#374151; line-height:1.4;">Baja: ${comp.baja || 0}<br>Media: ${comp.media || 0}<br>Alta: ${comp.alta || 0}</div></div>`;
-                    // Resolution time
                     const tiempo = dm.tiempo_resolucion || {};
-                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Velocidad</div><div style="font-size:0.72rem; color:#374151; line-height:1.4;">Rápido: ${tiempo.rapido || 0}<br>Normal: ${tiempo.normal || 0}<br>Lento: ${tiempo.lento || 0}</div></div>`;
+                    html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">`;
+                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${sc_c};"><div class="bi-stat-pill-label">Puntuación prom.</div><div class="bi-stat-pill-value" style="color:${sc_c};">${sc}/10</div></div>`;
+                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${p_c};"><div class="bi-stat-pill-label">Protocolo</div><div class="bi-stat-pill-value" style="color:${p_c};">${pPct}%</div></div>`;
+                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Complejidad</div><div style="font-size:0.72rem;color:#374151;line-height:1.6;">B: ${comp.baja||0} · M: ${comp.media||0} · A: ${comp.alta||0}</div></div>`;
+                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Velocidad</div><div style="font-size:0.72rem;color:#374151;line-height:1.6;">R: ${tiempo.rapido||0} · N: ${tiempo.normal||0} · L: ${tiempo.lento||0}</div></div>`;
                     html += `</div>`;
+                }
 
-                    // Detailed analyses
-                    const analyses = (report.individual_results || []).filter(r => r.detalle_analisis).sort((a, b) => (a.puntuacion ?? 99) - (b.puntuacion ?? 99));
-                    if (analyses.length > 0) {
-                        html += `<div style="font-size:0.78rem; font-weight:600; color:#374151; margin-bottom:6px;">Análisis Detallados</div>`;
-                        for (const r of analyses) {
-                            const scoreBadge = typeof r.puntuacion === 'number'
-                                ? `<span style="background:${r.puntuacion >= 7 ? '#dcfce7' : r.puntuacion >= 4 ? '#fef3c7' : '#fee2e2'}; color:${r.puntuacion >= 7 ? '#16a34a' : r.puntuacion >= 4 ? '#d97706' : '#dc2626'}; padding:1px 7px; border-radius:999px; font-size:0.7rem; font-weight:700;">${r.puntuacion}/10</span>`
-                                : '';
-                            html += `<div style="background:white; border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                        <strong>${r.client_name || 'Cliente'}</strong>
-                                        <button onclick="goToChat('${r.phone}')" style="padding:2px 9px; font-size:0.7rem; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; border-radius:4px; cursor:pointer; white-space:nowrap;">Ver chat →</button>
-                                    </div>
-                                    ${scoreBadge}
-                                </div>
-                                <div style="color:#64748b;">${r.detalle_analisis}</div>
-                            </div>`;
-                        }
+                // Category chips (filterable)
+                if (s.categoria) {
+                    const cats = Object.entries(s.categoria).sort((a,b) => b[1]-a[1]);
+                    const catTotal = cats.reduce((sum,[,v]) => sum+v, 0);
+                    html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;">`;
+                    for (const [k,v] of cats) {
+                        const pct = catTotal > 0 ? Math.round((v/catTotal)*100) : 0;
+                        html += `<span data-audit-pill="${auditId}" data-filter-type="categoria" data-filter-value="${k}"
+                                      onclick="filterAuditConvs('${auditId}','categoria','${k}')"
+                                      style="background:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:999px;font-size:0.72rem;font-weight:600;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+                                      onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'"
+                                      >${k}: ${v} (${pct}%)</span>`;
                     }
                     html += `</div>`;
                 }
 
-                // Conversaciones analizadas (todas las auditorías)
-                const allResults = report.individual_results || [];
-                if (allResults.length > 0) {
-                    const resLabel = { resolved: 'Resuelta', unresolved: 'No resuelta', partial: 'Parcial', error: 'Error' };
-                    const resColor = { resolved: '#22c55e', unresolved: '#ef4444', partial: '#f59e0b', error: '#94a3b8' };
-                    const sentIcon = { positive: '😊', neutral: '😐', negative: '😞' };
-                    html += `<div style="background:#f8fafc; border-radius:8px; padding:12px; margin-bottom:10px;">
-                        <div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:8px;">📋 Conversaciones analizadas (${allResults.length})</div>
-                        ${allResults.map(r => {
-                            const rc = resColor[r.resolucion] || '#94a3b8';
-                            const rl = resLabel[r.resolucion] || r.resolucion;
-                            const si = sentIcon[r.sentimiento] || '😐';
-                            const advisorTag = r.has_advisor && r.advisor_names && r.advisor_names.length
-                                ? `<span style="background:#ede9fe; color:#7c3aed; padding:1px 6px; border-radius:999px; font-size:0.68rem; font-weight:600; margin-left:4px;">Asesor: ${r.advisor_names[0]}</span>`
-                                : '';
-                            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.78rem; gap:8px;">
-                                <div style="min-width:0; flex:1;">
-                                    <span style="font-weight:600;">${r.client_name || 'Cliente'}</span>
-                                    <span style="color:#94a3b8; margin-left:5px;">${r.message_count} msgs</span>
-                                    <span style="background:${rc}22; color:${rc}; padding:1px 6px; border-radius:999px; font-size:0.68rem; font-weight:600; margin-left:4px;">${rl}</span>
-                                    <span style="margin-left:3px;">${si}</span>
-                                    ${advisorTag}
+                // List items helper
+                const listItems = (items, color) => (items||[]).slice(0,5).map(f => `
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:0.8rem;">
+                        <span style="color:#374151;line-height:1.4;">${f.text}</span>
+                        <span style="background:${color}22;color:${color};padding:1px 8px;border-radius:999px;font-weight:700;font-size:0.7rem;white-space:nowrap;flex-shrink:0;">${f.count}x</span>
+                    </div>`).join('');
+
+                if (report.top_friction_points && report.top_friction_points.length)
+                    html += collapsible(sId('friction'), `⚠️ Puntos de Fricción (${report.top_friction_points.length})`, '#dc2626', '#fff5f5', listItems(report.top_friction_points, '#dc2626'));
+                if (report.top_improvements && report.top_improvements.length)
+                    html += collapsible(sId('improve'), `💡 Oportunidades de Mejora (${report.top_improvements.length})`, '#059669', '#f0fdf4', listItems(report.top_improvements, '#059669'));
+                if (report.notable_findings && report.notable_findings.length)
+                    html += collapsible(sId('notable'), `✨ Hallazgos Notables (${report.notable_findings.length})`, '#7c3aed', '#faf5ff',
+                        report.notable_findings.map(n => `<div style="font-size:0.8rem;color:#374151;padding:5px 0;border-bottom:1px solid #f3e8ff;line-height:1.4;">· ${n}</div>`).join(''));
+
+                // Deep: individual analyses (sorted worst first)
+                if (dm) {
+                    const analyses = (_auditData[auditId]||[]).filter(r => r.detalle_analisis).sort((a,b) => (a.puntuacion??99)-(b.puntuacion??99));
+                    if (analyses.length > 0) {
+                        const analysisContent = analyses.map(r => {
+                            const sb = typeof r.puntuacion === 'number'
+                                ? `<span style="background:${r.puntuacion>=7?'#dcfce7':r.puntuacion>=4?'#fef3c7':'#fee2e2'};color:${r.puntuacion>=7?'#16a34a':r.puntuacion>=4?'#d97706':'#dc2626'};padding:1px 7px;border-radius:999px;font-size:0.7rem;font-weight:700;">${r.puntuacion}/10</span>` : '';
+                            return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:0.78rem;background:#fafafa;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                        <strong>${r.client_name||'Cliente'}</strong>
+                                        <button onclick="goToChat('${r.phone}')" style="padding:2px 9px;font-size:0.7rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button>
+                                    </div>${sb}
                                 </div>
-                                <button onclick="goToChat('${r.phone}')" style="flex-shrink:0; padding:3px 10px; font-size:0.72rem; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; border-radius:4px; cursor:pointer; white-space:nowrap;">Ver chat →</button>
+                                <div style="color:#64748b;line-height:1.5;">${r.detalle_analisis}</div>
                             </div>`;
-                        }).join('')}
-                    </div>`;
+                        }).join('');
+                        html += collapsible(sId('analyses'), `🔍 Análisis Detallados (${analyses.length})`, '#0891b2', '#f0f9ff', analysisContent);
+                    }
                 }
 
+                // Conversations list (filterable, all audit types)
+                if (_auditData[auditId].length > 0) {
+                    const convContent = `<div id="audit-filter-label-${auditId}" style="display:none;margin-bottom:8px;"></div>
+                        <div id="audit-convs-${auditId}" style="border-radius:6px;overflow:hidden;border:1px solid var(--border);"></div>`;
+                    html += collapsible(sId('convs'), `📋 Conversaciones Analizadas (${_auditData[auditId].length})`, '#374151', '#f8fafc', convContent);
+                }
+
+                html += `</div>`;
                 detailDiv.innerHTML = html;
+                if (_auditData[auditId].length > 0) _renderAuditConvs(auditId);
+
             } catch (e) {
-                detailDiv.innerHTML = `<p style="color:#ef4444; font-size:0.85rem;">Error cargando detalle: ${e.message}</p>`;
+                detailDiv.innerHTML = `<div style="padding:16px;color:#ef4444;font-size:0.85rem;">Error: ${e.message}</div>`;
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+                cardEl.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
             }
         }
     </script>
