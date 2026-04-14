@@ -5027,6 +5027,18 @@
             _renderAuditConvs(auditId);
             _updateAuditPills(auditId);
             _updateAuditFilterLabel(auditId);
+            // Ensure conversations section is open and scroll to it
+            const convBodyId = `audit-sec-${auditId}-convs-body`;
+            const convBody = document.getElementById(convBodyId);
+            if (convBody && convBody.style.display === 'none') {
+                convBody.style.display = '';
+                const arrow = convBody.previousElementSibling && convBody.previousElementSibling.querySelector('.sec-arrow');
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+            }
+            const convContainer = document.getElementById(`audit-convs-${auditId}`);
+            if (convContainer) {
+                setTimeout(() => convContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+            }
         }
 
         function _updateAuditPills(auditId) {
@@ -5193,7 +5205,8 @@
                         <div class="bi-stat-pill-value" style="color:${color};">${count}</div>
                     </div>`;
 
-                let html = `<div style="padding:14px;">`;
+                let html = `<div style="padding:14px;">
+                    <div id="audit-filter-label-${auditId}" style="display:none;margin-bottom:10px;"></div>`;
 
                 // Stat pills (filterable)
                 html += `<div style="display:grid;grid-template-columns:repeat(3,1fr) 2px repeat(3,1fr);gap:8px;margin-bottom:14px;align-items:stretch;">`;
@@ -5300,8 +5313,7 @@
 
                 // Conversations list (filterable, all audit types)
                 if (_auditData[auditId].length > 0) {
-                    const convContent = `<div id="audit-filter-label-${auditId}" style="display:none;margin-bottom:8px;"></div>
-                        <div id="audit-convs-${auditId}" style="border-radius:6px;overflow:hidden;border:1px solid var(--border);"></div>`;
+                    const convContent = `<div id="audit-convs-${auditId}" style="border-radius:6px;overflow:hidden;border:1px solid var(--border);"></div>`;
                     html += collapsible(sId('convs'), `📋 Conversaciones Analizadas (${_auditData[auditId].length})`, '#374151', '#f8fafc', convContent);
                 }
 
