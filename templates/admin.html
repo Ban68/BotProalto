@@ -3817,6 +3817,11 @@
             }
         }
 
+        function goToChat(phone) {
+            switchTab('activas');
+            selectConversation(phone);
+        }
+
         async function selectConversation(phone) {
             currentActivePhone = phone;
             document.getElementById('emptyState').style.display = 'none';
@@ -5104,7 +5109,10 @@
                                 : '';
                             html += `<div style="background:white; border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:0.78rem;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                    <strong>${r.client_name || 'Cliente'}</strong>
+                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <strong>${r.client_name || 'Cliente'}</strong>
+                                        <button onclick="goToChat('${r.phone}')" style="padding:2px 9px; font-size:0.7rem; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; border-radius:4px; cursor:pointer; white-space:nowrap;">Ver chat →</button>
+                                    </div>
                                     ${scoreBadge}
                                 </div>
                                 <div style="color:#64748b;">${r.detalle_analisis}</div>
@@ -5112,6 +5120,35 @@
                         }
                     }
                     html += `</div>`;
+                }
+
+                // Conversaciones analizadas (todas las auditorías)
+                const allResults = report.individual_results || [];
+                if (allResults.length > 0) {
+                    const resLabel = { resolved: 'Resuelta', unresolved: 'No resuelta', partial: 'Parcial', error: 'Error' };
+                    const resColor = { resolved: '#22c55e', unresolved: '#ef4444', partial: '#f59e0b', error: '#94a3b8' };
+                    const sentIcon = { positive: '😊', neutral: '😐', negative: '😞' };
+                    html += `<div style="background:#f8fafc; border-radius:8px; padding:12px; margin-bottom:10px;">
+                        <div style="font-size:0.8rem; font-weight:700; color:#374151; margin-bottom:8px;">📋 Conversaciones analizadas (${allResults.length})</div>
+                        ${allResults.map(r => {
+                            const rc = resColor[r.resolucion] || '#94a3b8';
+                            const rl = resLabel[r.resolucion] || r.resolucion;
+                            const si = sentIcon[r.sentimiento] || '😐';
+                            const advisorTag = r.has_advisor && r.advisor_names && r.advisor_names.length
+                                ? `<span style="background:#ede9fe; color:#7c3aed; padding:1px 6px; border-radius:999px; font-size:0.68rem; font-weight:600; margin-left:4px;">Asesor: ${r.advisor_names[0]}</span>`
+                                : '';
+                            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.78rem; gap:8px;">
+                                <div style="min-width:0; flex:1;">
+                                    <span style="font-weight:600;">${r.client_name || 'Cliente'}</span>
+                                    <span style="color:#94a3b8; margin-left:5px;">${r.message_count} msgs</span>
+                                    <span style="background:${rc}22; color:${rc}; padding:1px 6px; border-radius:999px; font-size:0.68rem; font-weight:600; margin-left:4px;">${rl}</span>
+                                    <span style="margin-left:3px;">${si}</span>
+                                    ${advisorTag}
+                                </div>
+                                <button onclick="goToChat('${r.phone}')" style="flex-shrink:0; padding:3px 10px; font-size:0.72rem; background:#eff6ff; border:1px solid #3b82f6; color:#1d4ed8; border-radius:4px; cursor:pointer; white-space:nowrap;">Ver chat →</button>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
                 }
 
                 detailDiv.innerHTML = html;
