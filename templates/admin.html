@@ -5100,7 +5100,7 @@
                     html += `</div>`;
 
                     // Detailed analyses
-                    const analyses = (report.individual_results || []).filter(r => r.detalle_analisis);
+                    const analyses = (report.individual_results || []).filter(r => r.detalle_analisis).sort((a, b) => (a.puntuacion ?? 99) - (b.puntuacion ?? 99));
                     if (analyses.length > 0) {
                         html += `<div style="font-size:0.78rem; font-weight:600; color:#374151; margin-bottom:6px;">Análisis Detallados</div>`;
                         for (const r of analyses) {
