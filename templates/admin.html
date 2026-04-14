@@ -5046,7 +5046,10 @@
             const filter = _auditFilters[auditId] || {};
             if (filter.type && filter.value) {
                 const names = { resolved:'Resueltas', unresolved:'No resueltas', partial:'Parciales',
-                                positive:'Positivo', neutral:'Neutral', negative:'Negativo' };
+                                positive:'Positivo', neutral:'Neutral', negative:'Negativo',
+                                baja:'Complejidad baja', media:'Complejidad media', alta:'Complejidad alta',
+                                rapido:'Velocidad rápida', normal:'Velocidad normal', lento:'Velocidad lenta',
+                                'true':'Protocolo: Sí', 'false':'Protocolo: No' };
                 const vl = names[filter.value] || filter.value;
                 label.innerHTML = `<span style="font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:3px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;">
                     Filtro activo: <strong>${vl}</strong>
@@ -5064,7 +5067,7 @@
             const allData = _auditData[auditId] || [];
             const filter = _auditFilters[auditId] || {};
             const results = (filter.type && filter.value)
-                ? allData.filter(r => r[filter.type] === filter.value)
+                ? allData.filter(r => String(r[filter.type]) === String(filter.value))
                 : allData;
             const resLabel = { resolved:'Resuelta', unresolved:'No resuelta', partial:'Parcial', error:'Error' };
             const resColor = { resolved:'#22c55e', unresolved:'#ef4444', partial:'#f59e0b', error:'#94a3b8' };
@@ -5213,11 +5216,33 @@
                     const p_c = pPct >= 80 ? '#22c55e' : pPct >= 50 ? '#f59e0b' : '#ef4444';
                     const comp = dm.complejidad || {};
                     const tiempo = dm.tiempo_resolucion || {};
+                    const fChip = (aid, ftype, fval, lbl, count, bg, color) =>
+                        `<span data-audit-pill="${aid}" data-filter-type="${ftype}" data-filter-value="${fval}"
+                               onclick="filterAuditConvs('${aid}','${ftype}','${fval}')"
+                               style="background:${bg};color:${color};padding:1px 7px;border-radius:999px;font-size:0.7rem;font-weight:600;cursor:pointer;transition:transform 0.12s,outline 0.1s;"
+                               title="Filtrar: ${lbl}">${lbl} ${count}</span>`;
                     html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">`;
                     html += `<div class="bi-stat-pill" style="border-left:3px solid ${sc_c};"><div class="bi-stat-pill-label">Puntuación prom.</div><div class="bi-stat-pill-value" style="color:${sc_c};">${sc}/10</div></div>`;
-                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${p_c};"><div class="bi-stat-pill-label">Protocolo</div><div class="bi-stat-pill-value" style="color:${p_c};">${pPct}%</div></div>`;
-                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Complejidad</div><div style="font-size:0.72rem;color:#374151;line-height:1.6;">B: ${comp.baja||0} · M: ${comp.media||0} · A: ${comp.alta||0}</div></div>`;
-                    html += `<div class="bi-stat-pill"><div class="bi-stat-pill-label">Velocidad</div><div style="font-size:0.72rem;color:#374151;line-height:1.6;">R: ${tiempo.rapido||0} · N: ${tiempo.normal||0} · L: ${tiempo.lento||0}</div></div>`;
+                    html += `<div class="bi-stat-pill" style="border-left:3px solid ${p_c};">
+                        <div class="bi-stat-pill-label">Protocolo</div>
+                        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                            ${fChip(auditId,'cumplimiento_protocolo','true','Sí',proto.si||0,'#dcfce7','#16a34a')}
+                            ${fChip(auditId,'cumplimiento_protocolo','false','No',proto.no||0,'#fee2e2','#dc2626')}
+                        </div></div>`;
+                    html += `<div class="bi-stat-pill">
+                        <div class="bi-stat-pill-label">Complejidad</div>
+                        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                            ${fChip(auditId,'complejidad','baja','B',comp.baja||0,'#dcfce7','#16a34a')}
+                            ${fChip(auditId,'complejidad','media','M',comp.media||0,'#fef3c7','#d97706')}
+                            ${fChip(auditId,'complejidad','alta','A',comp.alta||0,'#fee2e2','#dc2626')}
+                        </div></div>`;
+                    html += `<div class="bi-stat-pill">
+                        <div class="bi-stat-pill-label">Velocidad</div>
+                        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+                            ${fChip(auditId,'tiempo_resolucion_estimado','rapido','R',tiempo.rapido||0,'#dcfce7','#16a34a')}
+                            ${fChip(auditId,'tiempo_resolucion_estimado','normal','N',tiempo.normal||0,'#f1f5f9','#64748b')}
+                            ${fChip(auditId,'tiempo_resolucion_estimado','lento','L',tiempo.lento||0,'#fee2e2','#dc2626')}
+                        </div></div>`;
                     html += `</div>`;
                 }
 
