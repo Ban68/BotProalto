@@ -373,7 +373,11 @@ def get_conversation_sample(sample_size: int = 10, date_from: str = None, date_t
         if not candidate_phones:
             return []
 
-        selected = random.sample(candidate_phones, min(sample_size, len(candidate_phones)))
+        # sample_size <= 0 means "all conversations"
+        if sample_size <= 0:
+            selected = candidate_phones
+        else:
+            selected = random.sample(candidate_phones, min(sample_size, len(candidate_phones)))
 
         conversations = []
         for phone in selected:

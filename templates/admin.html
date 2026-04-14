@@ -1792,8 +1792,15 @@
                 <!-- Sample size + Min messages row -->
                 <div style="display:flex; gap:16px;">
                     <div style="flex:1;">
-                        <label style="font-size:0.8rem; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Tamaño de Muestra</label>
-                        <input type="number" id="auditSampleSize" value="10" min="1" max="50" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif; box-sizing:border-box;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                            <label style="font-size:0.8rem; font-weight:600; color:#374151;">Tamaño de Muestra</label>
+                            <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size:0.75rem; font-weight:600; color:#f59e0b; user-select:none;">
+                                <input type="checkbox" id="auditSampleAll" onchange="toggleSampleAll(this)" style="accent-color:#f59e0b; width:14px; height:14px; cursor:pointer;">
+                                Todos
+                            </label>
+                        </div>
+                        <input type="number" id="auditSampleSize" value="10" min="1" max="200" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-family:'Outfit',sans-serif; box-sizing:border-box;">
+                        <p id="auditSampleAllNote" style="display:none; font-size:0.72rem; color:#d97706; margin:4px 0 0; line-height:1.3;">Auditara todas las conversaciones del rango. Puede tardar varios minutos.</p>
                     </div>
                     <div style="flex:1;">
                         <label style="font-size:0.8rem; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Mín. mensajes</label>
@@ -4883,10 +4890,25 @@
             }
         }
 
+        function toggleSampleAll(cb) {
+            const input = document.getElementById('auditSampleSize');
+            const note = document.getElementById('auditSampleAllNote');
+            if (cb.checked) {
+                input.disabled = true;
+                input.style.opacity = '0.4';
+                note.style.display = 'block';
+            } else {
+                input.disabled = false;
+                input.style.opacity = '1';
+                note.style.display = 'none';
+            }
+        }
+
         async function executeConfiguredAudit() {
             const auditType = document.getElementById('auditType').value;
             const advisorName = document.getElementById('auditAdvisorName').value;
-            const sampleSize = parseInt(document.getElementById('auditSampleSize').value) || 10;
+            const sampleAll = document.getElementById('auditSampleAll').checked;
+            const sampleSize = sampleAll ? 0 : (parseInt(document.getElementById('auditSampleSize').value) || 10);
             const minMessages = parseInt(document.getElementById('auditMinMessages').value) || 3;
             const dateFrom = document.getElementById('auditDateFrom').value;
             const dateTo = document.getElementById('auditDateTo').value;
@@ -5101,7 +5123,7 @@
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                 <strong style="font-size:0.85rem;">${date}</strong>
                                 ${typeBadge}${depthBadge}
-                                <span style="color:var(--text-muted);font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size} conv.</span>
+                                <span style="color:var(--text-muted);font-size:0.8rem;">${a.date_from} → ${a.date_to} · ${a.sample_size === 0 ? 'Todas las conv.' : a.sample_size + ' conv.'}</span>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 ${statusBadge}
