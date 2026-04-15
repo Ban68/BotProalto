@@ -3001,6 +3001,11 @@
                                <button onclick="unmarkDocsCompletos('${info.phone}', this)" style="background:transparent;color:#9ca3af;border:1px solid #d1d5db;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-left:6px;" title="Desmarcar">✕ Desmarcar</button>`
                             : `<button onclick="markDocsCompletos('${info.phone}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">☑ Marcar docs completos</button>`;
 
+                        const allReviewed = clientDocs.every(d => d.reviewed);
+                        const revisarTodosBtn = allReviewed
+                            ? '<span style="color:#9ca3af;font-size:0.8rem;margin-right:10px;">✓ Todos revisados</span>'
+                            : `<button onclick="markAllDocsReviewed('${info.phone}', this)" style="background:#0891b2;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;margin-right:10px;">Revisar todos</button>`;
+
                         // Client header row
                         const empresaLabel = info.empresa
                             ? `&nbsp;&nbsp;<span style="font-size:0.78rem;color:#6b7280;font-weight:400;">🏢 ${info.empresa}</span>`
@@ -3010,7 +3015,7 @@
                                 👤 ${info.client_name || '---'} &nbsp;·&nbsp; <span style="color:#666;font-weight:400;">${info.phone}</span>
                                 &nbsp;&nbsp; <span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:999px;font-size:0.8rem;">${clientDocs.length} archivo${clientDocs.length > 1 ? 's' : ''}</span>${empresaLabel}
                             </td>
-                            <td colspan="2" style="padding: 10px 12px; text-align: right;">${completosBadge}</td>
+                            <td colspan="2" style="padding: 10px 12px; text-align: right;">${revisarTodosBtn}${completosBadge}</td>
                         </tr>`;
 
                         // Individual doc rows
@@ -3026,7 +3031,7 @@
                                 : '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>';
                             const accionBtn = doc.reviewed
                                 ? '<span style="color:#9ca3af;font-size:0.8rem;">—</span>'
-                                : `<button onclick="markDocReviewed('${doc.id}', this)" style="background:#10b981;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Revisado</button>`;
+                                : `<button onclick="markDocReviewed('${doc.id}', this)" style="background:#10b981;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8rem;">Marcar revisado</button>`;
                             const downloadUrl = doc.storage_url
                                 ? `/admin/api/download-doc?url=${encodeURIComponent(doc.storage_url)}&filename=${encodeURIComponent(doc.filename || 'archivo')}`
                                 : null;
@@ -3071,12 +3076,35 @@
                 } else {
                     alert('Error al marcar como revisado.');
                     btn.disabled = false;
-                    btn.innerText = '✓ Revisado';
+                    btn.innerText = 'Marcar revisado';
                 }
             } catch (e) {
                 alert('Error de conexión.');
                 btn.disabled = false;
-                btn.innerText = '✓ Revisado';
+                btn.innerText = 'Marcar revisado';
+            }
+        }
+
+        async function markAllDocsReviewed(phone, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch('/admin/api/mark-all-docs-reviewed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                if (res.ok) {
+                    await fetchReceivedDocuments();
+                } else {
+                    alert('Error al marcar todos como revisados.');
+                    btn.disabled = false;
+                    btn.innerText = 'Revisar todos';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = 'Revisar todos';
             }
         }
 

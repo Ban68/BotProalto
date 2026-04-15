@@ -564,6 +564,24 @@ def api_mark_document_reviewed():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/mark-all-docs-reviewed', methods=['POST'])
+@requires_auth
+def api_mark_all_docs_reviewed():
+    """Mark all received documents for a phone as reviewed."""
+    body = request.get_json() or {}
+    phone = body.get("phone")
+
+    if not phone:
+        return jsonify({"status": "error", "message": "No phone provided."}), 400
+
+    from src.conversation_log import mark_all_docs_reviewed
+    try:
+        mark_all_docs_reviewed(phone)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/download-doc')
 @requires_auth
 def api_download_doc():

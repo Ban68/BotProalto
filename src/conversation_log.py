@@ -944,6 +944,19 @@ def mark_document_reviewed(doc_id: str):
         print(f"Supabase mark_document_reviewed error: {e}")
 
 
+def mark_all_docs_reviewed(phone: str):
+    """Marks all received documents for a phone as reviewed."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('received_documents')\
+            .update({"reviewed": True})\
+            .eq("phone", phone)\
+            .execute()
+    except Exception as e:
+        print(f"Supabase mark_all_docs_reviewed error: {e}")
+
+
 def save_llm_request(phone: str, client_name: str, tipo: str, detalle: str = ""):
     """Saves a special request captured by the LLM agent to llm_requests table."""
     if not supabase_client:
