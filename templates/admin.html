@@ -2156,16 +2156,30 @@
 
         let capturedEmailsData = [];
 
-        function getProcessedEmails() {
-            try { return new Set(JSON.parse(localStorage.getItem('processedEmails') || '[]')); }
-            catch { return new Set(); }
-        }
-
-        function toggleEmailProcessed(phone) {
-            const processed = getProcessedEmails();
-            if (processed.has(phone)) { processed.delete(phone); } else { processed.add(phone); }
-            localStorage.setItem('processedEmails', JSON.stringify([...processed]));
-            renderEmailsTable(capturedEmailsData);
+        function toggleEmailProcessed(phone, checkbox) {
+            checkbox.disabled = true;
+            fetch(`/admin/api/captured-emails/${encodeURIComponent(phone)}/toggle-processed`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    // Update local data so re-render reflects DB state without a full reload
+                    const item = capturedEmailsData.find(e => e.phone === phone);
+                    if (item) item.processed = data.processed;
+                    renderEmailsTable(capturedEmailsData);
+                } else {
+                    alert('Error al guardar el estado. Intenta de nuevo.');
+                    checkbox.checked = !checkbox.checked; // revert
+                    checkbox.disabled = false;
+                }
+            })
+            .catch(() => {
+                alert('Error de conexión. Intenta de nuevo.');
+                checkbox.checked = !checkbox.checked; // revert
+                checkbox.disabled = false;
+            });
         }
 
         function renderEmailsTable(emails) {
@@ -2175,23 +2189,22 @@
                 document.getElementById('correosCount').innerText = 0;
                 return;
             }
-            const processed = getProcessedEmails();
             // Sort: pendientes primero, luego por fecha más vieja primero
             const sorted = [...emails].sort((a, b) => {
-                const ap = processed.has(a.phone), bp = processed.has(b.phone);
+                const ap = !!a.processed, bp = !!b.processed;
                 if (ap !== bp) return ap ? 1 : -1;
                 return new Date(a.created_at) - new Date(b.created_at);
             });
             let rows = '';
             sorted.forEach(item => {
-                const isDone = processed.has(item.phone);
+                const isDone = !!item.processed;
                 const emailEsc = item.email.replace(/'/g, "\\'");
                 const phoneEsc = item.phone.replace(/'/g, "\\'");
                 const strike = isDone ? 'text-decoration: line-through; color: #9ca3af;' : '';
                 const rowBg = isDone ? 'background: #f9fafb;' : '';
                 rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}">
                     <td style="padding: 10px; text-align: center;">
-                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed('${phoneEsc}')" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
+                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed('${phoneEsc}', this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
                     </td>
                     <td style="padding: 10px; font-size: 0.85rem; ${strike}">${formatTime(item.created_at)}</td>
                     <td style="padding: 10px; ${strike}">${item.name || '---'}</td>
