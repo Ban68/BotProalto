@@ -663,6 +663,29 @@ class FlowHandler:
                 FlowHandler.send_main_menu(user_phone)
             return
 
+        # 2f. renovado_notified — template sent; absorb acks, route advisor requests, else show menu
+        if state == "renovado_notified":
+            set_user_state(user_phone, "active")
+            ack_words = ["ok", "okay", "entendido", "gracias", "de acuerdo", "listo",
+                         "bien", "claro", "comprendo", "entiendo", "perfecto", "👍"]
+            norm = text.lower().strip()
+            is_ack = any(norm == w or norm.startswith(w + " ") or norm.startswith(w + ",") for w in ack_words)
+            if is_ack:
+                return
+            if _is_greeting(norm):
+                FlowHandler.send_main_menu(user_phone)
+                return
+            if _is_advisor_request(norm):
+                set_agent_mode(user_phone, "agent")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Con gusto! En un momento un asesor te contactará para darte información sobre tu renovación."
+                )
+                notify_admin_agent_request(user_phone)
+                return
+            FlowHandler.send_main_menu(user_phone)
+            return
+
         # 2d. Check if waiting for Cedula (Saldo / Balance)
         if state == "waiting_for_cedula_saldo":
             if not text.isdigit():
@@ -758,10 +781,17 @@ class FlowHandler:
 
         elif btn_id in ["menu_credito", "Solicitar crédito"]:
             set_user_state(user_phone, "active")
-            
-            # Optional: A slightly different prefix if it was a quick reply from the template
-            prefix = "¡Excelente elección! " if btn_id == "Solicitar crédito" else ""
-            WhatsAppService.send_message(user_phone, f"{prefix}Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
+
+            if state == "renovado_notified":
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Que buena noticia! Para renovar tu crédito, diligencia el siguiente formulario:\n\n"
+                    "👉 https://forms.gle/zXzrcrzVefuoVsEX6\n\n"
+                    "Si tienes alguna duda durante el proceso, estamos aquí para ayudarte."
+                )
+            else:
+                prefix = "¡Excelente elección! " if btn_id == "Solicitar crédito" else ""
+                WhatsAppService.send_message(user_phone, f"{prefix}Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id == "menu_saldo":
             set_user_state(user_phone, "waiting_for_cedula_saldo")
@@ -820,7 +850,7 @@ class FlowHandler:
             set_user_state(user_phone, "active")
 
         elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
-            is_lead = (state == "lead_notified")
+            is_lead = (state in ("lead_notified", "renovado_notified"))
             set_agent_mode(user_phone, "agent")
 
             try:
@@ -846,6 +876,24 @@ class FlowHandler:
                 user_phone,
                 "Entendido, agradecemos tu tiempo. Estaremos aquí cuando nos necesites."
             )
+
+        elif btn_id == "No lo quiero":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Entendido, lo tenemos en cuenta. Si en algún momento deseas renovar tu crédito, escríbenos y con gusto te ayudamos."
+            )
+
+        elif btn_id == "Necesito más información":
+            set_user_state(user_phone, "agent")
+            WhatsAppService.send_message(
+                user_phone,
+                "Con gusto! En un momento un asesor te contactará para darte toda la información sobre tu renovación."
+            )
+            try:
+                notify_admin_agent_request(user_phone)
+            except Exception as e:
+                print(f"Error notifying admin: {e}")
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)

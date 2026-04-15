@@ -12,6 +12,7 @@ import uuid
 from werkzeug.utils import secure_filename
 from src.conversation_log import (
     get_conversations, get_conversation, get_lead_conversations,
+    get_renovado_conversations,
     set_agent_mode, log_message, delete_conversation,
     get_archived_conversations, restore_conversation,
     mark_message_deleted
@@ -80,6 +81,13 @@ def api_conversations():
 def api_lead_conversations():
     """Get list of lead conversations (from contacto_leads template)."""
     return jsonify(get_lead_conversations())
+
+
+@admin_bp.route('/admin/api/renovado-conversations')
+@requires_auth
+def api_renovado_conversations():
+    """Get list of renovado conversations (from estado_renovar template)."""
+    return jsonify(get_renovado_conversations())
 
 
 @admin_bp.route('/admin/api/conversations/<phone>')
@@ -455,6 +463,23 @@ def api_trigger_bulk_leads():
         return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+@admin_bp.route('/admin/api/trigger-bulk-renovados', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_renovados():
+    """Execute bulk send of contacto_renovados template for renewal candidates."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_renovados_notifications
+    try:
+        results = execute_bulk_renovados_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @admin_bp.route('/admin/api/captured-emails')
 @requires_auth
 def api_captured_emails():

@@ -135,6 +135,16 @@ def _get_lead_phones() -> set:
         return set()
 
 
+def _get_renovado_phones() -> set:
+    """Get all phone numbers that ever received the estado_renovar template."""
+    try:
+        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: estado_renovar]").execute()
+        return {m["phone"] for m in res.data}
+    except Exception as e:
+        print(f"Supabase _get_renovado_phones error: {e}")
+        return set()
+
+
 def _build_conversation_list(convs_data: list) -> list:
     """Shared helper: given a list of bot_conversations rows, enrich with last message & count."""
     phones = [c["phone"] for c in convs_data]
@@ -167,13 +177,18 @@ def _build_conversation_list(convs_data: list) -> list:
 
 
 def get_conversations() -> list:
-    """Get non-lead conversations, sorted by most recent."""
+    """Get non-lead/non-renovado conversations, sorted by most recent."""
     try:
         lead_phones = _get_lead_phones()
-        # Over-fetch to compensate for leads we'll exclude
+        renovado_phones = _get_renovado_phones()
+        excluded_phones = lead_phones | renovado_phones
+        excluded_statuses = {"lead_notified", "renovado_notified"}
+        # Over-fetch to compensate for entries we'll exclude
         convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(100).execute()
-        # Exclude leads and also lead_notified status
-        filtered = [c for c in convs.data if c["phone"] not in lead_phones and c.get("status") != "lead_notified"][:50]
+        filtered = [
+            c for c in convs.data
+            if c["phone"] not in excluded_phones and c.get("status") not in excluded_statuses
+        ][:50]
         return _build_conversation_list(filtered)
     except Exception as e:
         print(f"Supabase get_conversations error: {e}")
@@ -190,6 +205,19 @@ def get_lead_conversations() -> list:
         return _build_conversation_list(convs.data)
     except Exception as e:
         print(f"Supabase get_lead_conversations error: {e}")
+        return []
+
+
+def get_renovado_conversations() -> list:
+    """Get conversations that originated from the estado_renovar template."""
+    try:
+        renovado_phones = list(_get_renovado_phones())
+        if not renovado_phones:
+            return []
+        convs = supabase_client.table('bot_conversations').select("*").in_("phone", renovado_phones).neq("status", "archived").order("updated_at", desc=True).execute()
+        return _build_conversation_list(convs.data)
+    except Exception as e:
+        print(f"Supabase get_renovado_conversations error: {e}")
         return []
 
 

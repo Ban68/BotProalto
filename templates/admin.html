@@ -460,6 +460,11 @@
             color: white;
         }
 
+        .status-renovado {
+            background: #0284c7;
+            color: white;
+        }
+
         .conv-preview {
             font-size: 0.85rem;
             color: var(--text-muted);
@@ -909,6 +914,7 @@
         <div class="chat-filter-bar">
             <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Clientes</button>
             <button type="button" class="chat-filter-btn" id="tabProspectos" onclick="switchTab('prospectos')">🎯 Leads</button>
+            <button type="button" class="chat-filter-btn" id="tabRenovadosChat" onclick="switchTab('renovadoschat')">🔄 Renovados</button>
             <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
         </div>
         <div class="conversation-list" id="convList">
@@ -924,6 +930,7 @@
         <div class="tool-nav">
             <span class="tool-nav-label">Herramientas</span>
             <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
+            <button type="button" class="tool-nav-btn" id="tabRenovados" onclick="switchTab('renovados')">🔄 Renovados</button>
             <!-- Grupo: Comunicaciones -->
             <div class="tool-nav-group">
                 <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones" onclick="toggleNavGroup(this)">
@@ -1137,6 +1144,44 @@
             <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
                 <strong>Fallos:</strong> <span id="leadsFailCount">0</span>
                 <ul id="leadsErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Renovados Campaña State -->
+    <div class="main-chat" id="renovadosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #0284c7; margin-bottom: 20px;">Campaña Renovados: Oferta de Renovación</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Ingresa la lista de clientes con crédito próximo a vencer a los que deseas enviar la plantilla "contacto_renovados".
+            <strong>Formato:</strong> Un cliente por línea, teléfono seguido de coma y nombre (Ej: <em>573001234567, Juan Pérez</em>).
+        </p>
+
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 1rem;">Lista de Destinatarios</h3>
+                <div style="display: flex; gap: 8px;">
+                    <input type="file" id="renovadosFileInput" accept=".csv, .xlsx, .xls" style="display: none;" onchange="handleRenovadosFileUpload(event)">
+                    <button class="btn btn-outline-secondary" style="font-size: 0.85rem; padding: 5px 12px; border: 1px solid #0284c7; color: #0284c7;" onclick="document.getElementById('renovadosFileInput').click()">📂 Cargar Excel/CSV</button>
+                    <button class="btn btn-outline-secondary" style="font-size: 0.85rem; padding: 5px 12px;" onclick="document.getElementById('renovadosInputArea').value = ''">🗑️ Limpiar</button>
+                </div>
+            </div>
+
+            <textarea id="renovadosInputArea" rows="10" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-family: monospace; font-size: 0.9rem; resize: vertical; margin-bottom: 10px;" placeholder="573001234567, Carlos García&#10;573109876543, Maria Lopez"></textarea>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="renovadosStatusText" style="font-size: 0.9rem; color: #666;">Listo para procesar.</span>
+                <button id="btnExecuteRenovados" class="btn" style="background: #0284c7; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkRenovados()">🔄 Enviar a Renovados</button>
+            </div>
+        </div>
+
+        <div id="renovadosResults" style="margin-top: 20px; display: none;">
+            <h3 style="margin-bottom: 10px;">Resultados de la Campaña:</h3>
+            <div style="padding: 15px; border-radius: 5px; background: #f0f9ff; border: 1px solid #bae6fd; color: #075985; margin-bottom: 10px;">
+                <strong>Éxitos:</strong> <span id="renovadosSuccessCount">0</span>
+            </div>
+            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
+                <strong>Fallos:</strong> <span id="renovadosFailCount">0</span>
+                <ul id="renovadosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
             </div>
         </div>
     </div>
@@ -2030,8 +2075,8 @@
             currentActivePhone = null;
             // Close any open nav group dropdowns
             document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
-            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
+            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'renovadoschat' || tab === 'archivadas') ? 'flex' : 'none';
+            if (tab === 'envios' || tab === 'leads' || tab === 'renovados' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
                 document.getElementById('emptyState').style.display = 'none';
             }
             document.getElementById('mainChat').style.display = 'none';
@@ -2048,6 +2093,12 @@
                 leadsState.style.flexDirection = 'column';
             }
 
+            const renovadosState = document.getElementById('renovadosState');
+            if(renovadosState) {
+                renovadosState.style.display = tab === 'renovados' ? 'flex' : 'none';
+                renovadosState.style.flexDirection = 'column';
+            }
+
             const correosState = document.getElementById('correosState');
             if(correosState) {
                 correosState.style.display = tab === 'correos' ? 'flex' : 'none';
@@ -2057,12 +2108,14 @@
             // Update tab styles
             document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
             document.getElementById('tabProspectos').classList.toggle('active-tab', tab === 'prospectos');
+            document.getElementById('tabRenovadosChat').classList.toggle('active-tab', tab === 'renovadoschat');
             document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
             
             // Tool nav button active states (inactive → clear inline styles so CSS takes over)
             const toolColors = {
                 tabEnvios:      { active: '#4f46e5', tab: 'envios',       isDropdown: true  },
                 tabLeads:       { active: '#059669', tab: 'leads',        isDropdown: false },
+                tabRenovados:   { active: '#0284c7', tab: 'renovados',    isDropdown: false },
                 tabCorreos:     { active: '#3b82f6', tab: 'correos',      isDropdown: true  },
                 tabAmarillo:    { active: '#d97706', tab: 'amarillo',     isDropdown: false },
                 tabNegados:     { active: '#6b7280', tab: 'negados',      isDropdown: false },
@@ -2153,6 +2206,8 @@
             if (tab === 'activas') {
                 fetchList();
             } else if (tab === 'prospectos') {
+                fetchList();
+            } else if (tab === 'renovadoschat') {
                 fetchList();
             } else if (tab === 'archivadas') {
                 fetchArchivedList();
@@ -3688,6 +3743,161 @@
             reader.readAsArrayBuffer(file);
         }
 
+        async function executeBulkRenovados() {
+            const inputText = document.getElementById('renovadosInputArea').value;
+            if (!inputText.trim()) {
+                alert("Por favor, ingresa al menos un número y nombre en el formato indicado.");
+                return;
+            }
+
+            const lines = inputText.trim().split('\n');
+            const allUsers = [];
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                let parts = line.includes('\t') ? line.split('\t') : (line.includes(',') ? line.split(',') : line.split(';'));
+                if (parts.length >= 2) {
+                    const phone = parts[0].replace(/\D/g, '').trim();
+                    const name = parts.slice(1).join(' ').trim();
+                    if (phone && name) {
+                        allUsers.push({ phone, name });
+                    }
+                }
+            }
+
+            if (allUsers.length === 0) {
+                alert("No se detectaron usuarios válidos. Revisa el formato.");
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de enviar la campaña Renovados a ${allUsers.length} personas?`)) return;
+
+            const btn = document.getElementById('btnExecuteRenovados');
+            const statusText = document.getElementById('renovadosStatusText');
+
+            btn.disabled = true;
+
+            let totalSuccess = 0;
+            let totalFail = 0;
+            let allErrors = [];
+            const batchSize = 15;
+
+            document.getElementById('renovadosResults').style.display = 'block';
+
+            for (let i = 0; i < allUsers.length; i += batchSize) {
+                const chunk = allUsers.slice(i, i + batchSize);
+                btn.innerText = `⌛ ${i + 1} - ${Math.min(i + batchSize, allUsers.length)} de ${allUsers.length}...`;
+                statusText.innerText = `Enviando lote de ${chunk.length} renovados...`;
+
+                try {
+                    const res = await fetch('/admin/api/trigger-bulk-renovados', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ users: chunk })
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok && data.results) {
+                        totalSuccess += data.results.success;
+                        totalFail += data.results.fail;
+                        if (data.results.errors) allErrors = allErrors.concat(data.results.errors);
+
+                        document.getElementById('renovadosSuccessCount').innerText = totalSuccess;
+                        document.getElementById('renovadosFailCount').innerText = totalFail;
+
+                        const errorList = document.getElementById('renovadosErrorList');
+                        if (allErrors.length > 0) {
+                            errorList.innerHTML = allErrors.map(err => `<li>${err}</li>`).join('');
+                        } else {
+                            errorList.innerHTML = '<li>Sin errores reportados.</li>';
+                        }
+                    } else {
+                        totalFail += chunk.length;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    totalFail += chunk.length;
+                }
+
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            btn.innerText = '🔄 Enviar a Renovados';
+            btn.disabled = false;
+            statusText.innerText = "Campaña finalizada.";
+            alert(`Campaña terminada.\nÉxitos: ${totalSuccess}\nFallos: ${totalFail}`);
+        }
+
+        function handleRenovadosFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const statusText = document.getElementById('renovadosStatusText');
+            statusText.innerText = "Leyendo archivo...";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    let resultText = "";
+                    let count = 0;
+                    for (let i = 0; i < json.length; i++) {
+                        const row = json[i];
+                        if (row.length >= 2) {
+                            let phone = String(row[0] || "").replace(/\D/g, '').trim();
+                            let name = String(row[1] || "").trim();
+                            if (i === 0 && (phone === "telefono" || phone === "phone" || isNaN(phone))) continue;
+                            if (phone && name) {
+                                resultText += `${phone}, ${name}\n`;
+                                count++;
+                            }
+                        }
+                    }
+                    document.getElementById('renovadosInputArea').value = resultText;
+                    statusText.innerText = `Se cargaron ${count} renovados exitosamente.`;
+                    event.target.value = '';
+                } catch (err) {
+                    console.error("Error al leer Excel:", err);
+                    alert("Error al leer el archivo.");
+                    statusText.innerText = "Error de lectura.";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        document.getElementById('renovadosInputArea').addEventListener('paste', (e) => {
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('Text');
+
+            if (pastedData.includes('\t')) {
+                e.preventDefault();
+                const lines = pastedData.split(/\r?\n/);
+                const formatted = lines.map(line => {
+                    if (!line.trim()) return "";
+                    const parts = line.split('\t');
+                    if (parts.length >= 2) {
+                        return `${parts[0].trim()}, ${parts.slice(1).join(' ').trim()}`;
+                    }
+                    return line;
+                }).filter(l => l !== "").join('\n');
+
+                const textarea = e.target;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const value = textarea.value;
+                textarea.value = value.substring(0, start) + formatted + value.substring(end);
+
+                document.getElementById('renovadosStatusText').innerText = "Datos de Excel pegados y formateados.";
+            }
+        });
+
         // Detectar pegado desde Excel (Tabs) y convertir a formato Comma
         document.getElementById('leadsInputArea').addEventListener('paste', (e) => {
             const clipboardData = e.clipboardData || window.clipboardData;
@@ -3761,6 +3971,8 @@
             try {
                 const endpoint = currentTab === 'prospectos'
                     ? '/admin/api/lead-conversations'
+                    : currentTab === 'renovadoschat'
+                    ? '/admin/api/renovado-conversations'
                     : '/admin/api/conversations';
                 const res = await fetch(endpoint);
                 const data = await res.json();
@@ -3779,9 +3991,13 @@
         function renderList(conversations) {
             const listEl = document.getElementById('convList');
             const isLeadsTab = currentTab === 'prospectos';
+            const isRenovadosTab = currentTab === 'renovadoschat';
 
             if (conversations.length === 0) {
-                listEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #777;">${isLeadsTab ? 'No hay leads registrados' : 'No hay conversaciones registradas'}</div>`;
+                const emptyMsg = isLeadsTab ? 'No hay leads registrados'
+                    : isRenovadosTab ? 'No hay renovados registrados'
+                    : 'No hay conversaciones registradas';
+                listEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #777;">${emptyMsg}</div>`;
                 return;
             }
 
@@ -3822,6 +4038,7 @@
                     else if (c.status === 'waiting_for_cedula') statusLabel = 'BOT (Ced. Solicitud)';
                     else if (c.status === 'waiting_for_cedula_saldo') statusLabel = 'BOT (Ced. Saldo)';
                     else if (c.status === 'lead_notified') { statusClass = 'status-lead'; statusLabel = 'LEAD'; }
+                    else if (c.status === 'renovado_notified') { statusClass = 'status-renovado'; statusLabel = 'RENOVADO'; }
                 }
 
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
@@ -4485,7 +4702,7 @@
         }
 
         setInterval(async () => {
-            if (currentTab === 'activas' || currentTab === 'prospectos') {
+            if (currentTab === 'activas' || currentTab === 'prospectos' || currentTab === 'renovadoschat') {
                 await fetchList();
             } else if (currentTab === 'archivadas') {
                 await fetchArchivedList();
