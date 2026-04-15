@@ -775,7 +775,7 @@ class FlowHandler:
                 "Por favor escríbenos tu número de cuenta (solo dígitos, sin espacios ni guiones)."
             )
 
-        elif btn_id == "Enviar| Cuenta de tercero":
+        elif btn_id in ["Enviar Cuenta de tercero", "Enviar| Cuenta de tercero"]:
             set_user_state(user_phone, "waiting_for_nombre_tercero")
             WhatsAppService.send_message(
                 user_phone,
