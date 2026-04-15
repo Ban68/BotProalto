@@ -1900,11 +1900,31 @@
 
         let editEmailCurrentPhone = null;
 
+        function escapeHtmlAttr(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function openEditEmailModal(phone, currentEmail) {
             editEmailCurrentPhone = phone;
             document.getElementById('editEmailPhone').innerText = phone;
             document.getElementById('editEmailInput').value = currentEmail;
             document.getElementById('editEmailModal').classList.remove('hidden');
+        }
+
+        function openEditEmailModalFromRow(btn) {
+            const row = btn.closest('tr');
+            const phone = row.dataset.phone;
+            const email = row.dataset.email;
+            if (!phone || !email) {
+                alert('Error: no se pudo obtener los datos del registro.');
+                return;
+            }
+            openEditEmailModal(phone, email);
         }
 
         function closeEditEmailModal() {
@@ -2156,7 +2176,14 @@
 
         let capturedEmailsData = [];
 
-        function toggleEmailProcessed(phone, checkbox) {
+        function toggleEmailProcessed(checkbox) {
+            const row = checkbox.closest('tr');
+            const phone = row.dataset.phone;
+            if (!phone) {
+                alert('Error: no se pudo obtener el teléfono del registro.');
+                checkbox.checked = !checkbox.checked;
+                return;
+            }
             checkbox.disabled = true;
             fetch(`/admin/api/captured-emails/${encodeURIComponent(phone)}/toggle-processed`, {
                 method: 'POST',
@@ -2198,19 +2225,17 @@
             let rows = '';
             sorted.forEach(item => {
                 const isDone = !!item.processed;
-                const emailEsc = item.email.replace(/'/g, "\\'");
-                const phoneEsc = item.phone.replace(/'/g, "\\'");
                 const strike = isDone ? 'text-decoration: line-through; color: #9ca3af;' : '';
                 const rowBg = isDone ? 'background: #f9fafb;' : '';
-                rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}">
+                rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}" data-phone="${escapeHtmlAttr(item.phone)}" data-email="${escapeHtmlAttr(item.email)}">
                     <td style="padding: 10px; text-align: center;">
-                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed('${phoneEsc}', this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
+                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
                     </td>
                     <td style="padding: 10px; font-size: 0.85rem; ${strike}">${formatTime(item.created_at)}</td>
                     <td style="padding: 10px; ${strike}">${item.name || '---'}</td>
                     <td style="padding: 10px; ${strike}">${item.phone}</td>
                     <td style="padding: 10px; font-weight: 600; ${isDone ? 'color: #9ca3af;' : 'color: var(--primary-dark);'} ${strike}">${item.email}</td>
-                    <td style="padding: 10px;"><button onclick="openEditEmailModal('${phoneEsc}', '${emailEsc}')" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
+                    <td style="padding: 10px;"><button onclick="openEditEmailModalFromRow(this)" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
                 </tr>`;
             });
             tbody.innerHTML = rows;
