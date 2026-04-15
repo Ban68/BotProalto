@@ -1418,9 +1418,13 @@
             </div>
             <!-- Excluded users section -->
             <div id="rojoExcludedSection" style="display:none; margin-top:10px;">
-                <button onclick="toggleExcludedSection('rojo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
-                    <span id="rojoExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                </button>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button onclick="toggleExcludedSection('rojo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; flex:1; text-align:left;">
+                        <span id="rojoExcludedToggleLabel">▶ Ver excluidos (0)</span>
+                    </button>
+                    <button onclick="copyRojoExcludedToClipboard()" style="background:none; border:1px solid #6b7280; border-radius:5px; padding:6px 12px; font-size:0.8rem; color:#374151; cursor:pointer; white-space:nowrap;" title="Copiar para pegar en Excel o Google Sheets">📋 Copiar</button>
+                    <button onclick="exportRojoExcludedCSV()" style="background:none; border:1px solid #059669; border-radius:5px; padding:6px 12px; font-size:0.8rem; color:#065f46; cursor:pointer; white-space:nowrap;" title="Descargar como archivo CSV">⬇️ Exportar CSV</button>
+                </div>
                 <div id="rojoExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
                     <table style="width:100%; border-collapse:collapse;">
                         <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
@@ -2267,6 +2271,36 @@
             const a = document.createElement('a');
             a.href = url;
             a.download = `correos_capturados_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyRojoExcludedToClipboard() {
+            if (!pendingExcludedRojoData || pendingExcludedRojoData.length === 0) { alert('No hay excluidos para copiar.'); return; }
+            const header = 'Teléfono\tNombre\tEmpresa\tEnvíos\tRazón de exclusión';
+            const rows = pendingExcludedRojoData.map(u =>
+                `${u.phone}\t${u.name || ''}\t${u.empresa || ''}\t${u.send_count || 0}\t${(u.excluded_reasons || []).join(', ')}`
+            );
+            navigator.clipboard.writeText([header, ...rows].join('\n'))
+                .then(() => alert(`✅ ${pendingExcludedRojoData.length} excluidos copiados. Pega directamente en Excel o Google Sheets.`))
+                .catch(() => alert('Error al copiar. Intenta exportar como CSV.'));
+        }
+
+        function exportRojoExcludedCSV() {
+            if (!pendingExcludedRojoData || pendingExcludedRojoData.length === 0) { alert('No hay excluidos para exportar.'); return; }
+            const header = 'Teléfono,Nombre,Empresa,Envíos,Razón de exclusión';
+            const rows = pendingExcludedRojoData.map(u => {
+                const nombre = `"${(u.name || '').replace(/"/g, '""')}"`;
+                const empresa = `"${(u.empresa || '').replace(/"/g, '""')}"`;
+                const razones = `"${(u.excluded_reasons || []).join(', ').replace(/"/g, '""')}"`;
+                return `${u.phone},${nombre},${empresa},${u.send_count || 0},${razones}`;
+            });
+            const csv = '\uFEFF' + [header, ...rows].join('\n'); // BOM for Excel UTF-8
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `excluidos_falta_documento_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         }
