@@ -493,7 +493,7 @@ def api_toggle_email_processed(phone):
     return jsonify({"status": "error", "message": "No se encontró el registro"}), 404
 
 
-@admin_bp.route('/admin/api/captured-emails/by-id/<int:record_id>/toggle-processed', methods=['POST'])
+@admin_bp.route('/admin/api/captured-emails/by-id/<record_id>/toggle-processed', methods=['POST'])
 @requires_auth
 def api_toggle_email_processed_by_id(record_id):
     """Toggle the processed (sent) status of a specific captured email record by its ID."""
