@@ -436,6 +436,29 @@ def toggle_email_processed(phone: str) -> dict:
         return {"success": False, "processed": False}
 
 
+def toggle_email_processed_by_id(record_id: int) -> dict:
+    """Toggles the processed (sent) status of a captured email by its record ID."""
+    if not supabase_client:
+        return {"success": False, "processed": False}
+    try:
+        res = supabase_client.table('captured_emails')\
+            .select("id, processed")\
+            .eq("id", record_id)\
+            .execute()
+        if not res.data:
+            return {"success": False, "processed": False}
+        record = res.data[0]
+        new_state = not bool(record.get("processed", False))
+        supabase_client.table('captured_emails')\
+            .update({"processed": new_state})\
+            .eq("id", record_id)\
+            .execute()
+        return {"success": True, "processed": new_state}
+    except Exception as e:
+        print(f"❌ Error toggling email processed by id: {e}")
+        return {"success": False, "processed": False}
+
+
 def get_phones_with_email(phones: list) -> set:
     """Returns a set of phones that have already submitted their email."""
     if not supabase_client or not phones:

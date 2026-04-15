@@ -2178,14 +2178,14 @@
 
         function toggleEmailProcessed(checkbox) {
             const row = checkbox.closest('tr');
-            const phone = row.dataset.phone;
-            if (!phone) {
-                alert('Error: no se pudo obtener el teléfono del registro.');
+            const recordId = row.dataset.id;
+            if (!recordId) {
+                alert('Error: no se pudo obtener el ID del registro.');
                 checkbox.checked = !checkbox.checked;
                 return;
             }
             checkbox.disabled = true;
-            fetch(`/admin/api/captured-emails/${encodeURIComponent(phone)}/toggle-processed`, {
+            fetch(`/admin/api/captured-emails/by-id/${encodeURIComponent(recordId)}/toggle-processed`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -2193,7 +2193,7 @@
             .then(data => {
                 if (data.status === 'ok') {
                     // Update local data so re-render reflects DB state without a full reload
-                    const item = capturedEmailsData.find(e => e.phone === phone);
+                    const item = capturedEmailsData.find(e => String(e.id) === recordId);
                     if (item) item.processed = data.processed;
                     renderEmailsTable(capturedEmailsData);
                 } else {
@@ -2227,7 +2227,7 @@
                 const isDone = !!item.processed;
                 const strike = isDone ? 'text-decoration: line-through; color: #9ca3af;' : '';
                 const rowBg = isDone ? 'background: #f9fafb;' : '';
-                rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}" data-phone="${escapeHtmlAttr(item.phone)}" data-email="${escapeHtmlAttr(item.email)}">
+                rows += `<tr style="border-bottom: 1px solid #eee; ${rowBg}" data-id="${item.id}" data-phone="${escapeHtmlAttr(item.phone)}" data-email="${escapeHtmlAttr(item.email)}">
                     <td style="padding: 10px; text-align: center;">
                         <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleEmailProcessed(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary-dark);">
                     </td>

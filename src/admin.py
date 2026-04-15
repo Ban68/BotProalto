@@ -485,9 +485,20 @@ def api_update_captured_email(phone):
 @admin_bp.route('/admin/api/captured-emails/<phone>/toggle-processed', methods=['POST'])
 @requires_auth
 def api_toggle_email_processed(phone):
-    """Toggle the processed (sent) status of a captured email."""
+    """Toggle the processed (sent) status of a captured email (by phone, most recent record)."""
     from src.conversation_log import toggle_email_processed
     result = toggle_email_processed(phone)
+    if result["success"]:
+        return jsonify({"status": "ok", "processed": result["processed"]})
+    return jsonify({"status": "error", "message": "No se encontró el registro"}), 404
+
+
+@admin_bp.route('/admin/api/captured-emails/by-id/<int:record_id>/toggle-processed', methods=['POST'])
+@requires_auth
+def api_toggle_email_processed_by_id(record_id):
+    """Toggle the processed (sent) status of a specific captured email record by its ID."""
+    from src.conversation_log import toggle_email_processed_by_id
+    result = toggle_email_processed_by_id(record_id)
     if result["success"]:
         return jsonify({"status": "ok", "processed": result["processed"]})
     return jsonify({"status": "error", "message": "No se encontró el registro"}), 404
