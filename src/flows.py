@@ -423,6 +423,7 @@ class FlowHandler:
                 nombre = result['nombre_completo']
                 fecha = result['fecha_de_solicitud']
                 plazo = result.get('plazo')
+                cuota = result.get('cuota')
 
                 response_msg = (
                     f"🔍 *Resultado de Solicitud*\n\n"
@@ -447,6 +448,9 @@ class FlowHandler:
                 if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                     if plazo:
                         response_msg += f"⏱️ *Plazo:* {plazo} cuotas\n"
+                    if cuota:
+                        cuota_fmt = f"${cuota:,.0f}".replace(",", ".") if isinstance(cuota, (int, float)) else str(cuota)
+                        response_msg += f"💳 *Cuota:* {cuota_fmt}\n"
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
                     # 1. Send the result box
