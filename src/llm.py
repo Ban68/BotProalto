@@ -213,7 +213,7 @@ def _build_client_context_note(user_phone: str, state: str, client_name: str) ->
     valor = client_data.get("valor_preestudiado", 0)
     valor_fmt = f"${valor:,.0f}" if valor else "pendiente de evaluación"
     plazo = client_data.get("plazo")
-    plazo_fmt = f"{plazo} meses" if plazo else "por definir"
+    plazo_fmt = f"{plazo} cuotas" if plazo else "por definir"
 
     return f"""{base}
 
@@ -264,7 +264,7 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
             except (ValueError, TypeError):
                 valor_fmt = str(cedula_context.get("valor_preestudiado", "pendiente de evaluación"))
             plazo = cedula_context.get("plazo")
-            plazo_fmt = f"{plazo} meses" if plazo else "por definir"
+            plazo_fmt = f"{plazo} cuotas" if plazo else "por definir"
             state_note += f"""
 
 [DATOS POR CÉDULA — el cliente acaba de enviar su cédula y el sistema la consultó. Usa esta información para responder directamente]:

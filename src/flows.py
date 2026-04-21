@@ -446,7 +446,7 @@ class FlowHandler:
 
                 if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                     if plazo:
-                        response_msg += f"⏱️ *Plazo:* {plazo} meses\n"
+                        response_msg += f"⏱️ *Plazo:* {plazo} cuotas\n"
                     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
                     # 1. Send the result box
