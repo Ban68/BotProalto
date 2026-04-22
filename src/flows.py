@@ -443,7 +443,8 @@ class FlowHandler:
                 ]
 
                 if clean_status not in statuses_no_monto:
-                    response_msg += f"💰 *Monto Pre-aprobado:* ${monto:,.0f}\n"
+                    monto_label = "Monto Solicitado" if clean_status in ("ENVIADO A VB EMPRESA", "PENDIENTE POR ENVIAR A VB") else "Monto Aprobado"
+                    response_msg += f"💰 *{monto_label}:* ${monto:,.0f}\n"
 
                 if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                     if plazo:
