@@ -424,6 +424,7 @@ class FlowHandler:
                 fecha = result['fecha_de_solicitud']
                 plazo = result.get('plazo')
                 cuota = result.get('cuota')
+                frecuencia = result.get('frecuencia', '')
 
                 response_msg = (
                     f"🔍 *Resultado de Solicitud*\n\n"
@@ -448,7 +449,8 @@ class FlowHandler:
 
                 if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
                     if plazo:
-                        response_msg += f"⏱️ *Plazo:* {plazo} cuotas\n"
+                        plazo_label = f"{plazo} cuotas {frecuencia}".strip() if frecuencia else f"{plazo} cuotas"
+                        response_msg += f"⏱️ *Plazo:* {plazo_label}\n"
                     if cuota:
                         cuota_fmt = f"${cuota:,.0f}".replace(",", ".") if isinstance(cuota, (int, float)) else str(cuota)
                         response_msg += f"💳 *Cuota:* {cuota_fmt}\n"

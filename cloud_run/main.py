@@ -183,7 +183,7 @@ def get_solicitud(request):
             cur.execute("""
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
-                       empresa, documentos_faltantes, cuota
+                       empresa, documentos_faltantes, cuota, frecuencia
                 FROM v_solicitudes_whatsapp
                 WHERE telefono = %s OR telefono = %s
                 ORDER BY nro_solicitud DESC
@@ -205,6 +205,7 @@ def get_solicitud(request):
                     "documentos_faltantes": record[7] or "",
                     "tipo_empleador": "EMPRESA",
                     "cuota": float(record[8]) if record[8] else None,
+                    "frecuencia": record[9] or "",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
@@ -213,7 +214,7 @@ def get_solicitud(request):
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
-                       empresa, documentos_faltantes, cuota
+                       empresa, documentos_faltantes, cuota, frecuencia
                 FROM v_solicitudes_whatsapp
                 WHERE cedula_nit = %s
                 ORDER BY nro_solicitud DESC
@@ -236,6 +237,7 @@ def get_solicitud(request):
                     "documentos_faltantes": record[7] or "",
                     "tipo_empleador": "EMPRESA",
                     "cuota": float(record[8]) if record[8] else None,
+                    "frecuencia": record[9] or "",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
