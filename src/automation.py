@@ -293,19 +293,37 @@ REQUIRED_DOCUMENTS = [
 # Mapeo de nombres exactos (tal como vienen del software) → texto WhatsApp
 # Los valores se comparan en MAYÚSCULAS para ser tolerantes a variaciones de capitalización
 _DOC_LABEL_MAP_EMPRESA = {
-    "CERTIFICADO LABORAL":            "📄 Certificado laboral",
-    "CERTIFICADO DE DEUDA":           "📄 Certificado de Deuda",
-    "FECHA DE INGRESO A LA EMPRESA":  "📅 Fecha de ingreso a la empresa",
-    "RECIBO PÚBLICO":                 "🏠 Recibo público (agua, luz, gas, telefonía)",
-    "RECIBO PUBLICO":                 "🏠 Recibo público (agua, luz, gas, telefonía)",
+    "CERTIFICADO LABORAL":                          "📄 Certificado laboral",
+    "CERTIFICADO DE DEUDA":                         "📄 Certificado de Deuda",
+    "FECHA DE INGRESO A LA EMPRESA":                "📅 Fecha de ingreso a la empresa",
+    "RECIBO PÚBLICO":                               "🏠 Recibo público (agua, luz, gas, telefonía)",
+    "RECIBO PUBLICO":                               "🏠 Recibo público (agua, luz, gas, telefonía)",
+    # Nombres reales usados en el software
+    "FOTOCOPIA DE CÉDULA":                          "🪪 Foto de tu cédula (ambos lados)",
+    "FOTOCOPIA DE CEDULA":                          "🪪 Foto de tu cédula (ambos lados)",
+    "FOTO DE CÉDULA":                               "🪪 Foto de tu cédula (ambos lados)",
+    "FOTO DE CEDULA":                               "🪪 Foto de tu cédula (ambos lados)",
+    "2 ÚLTIMOS DESPRENDIBLES":                      "📄 2 últimos desprendibles de pago de nómina",
+    "2 ULTIMOS DESPRENDIBLES":                      "📄 2 últimos desprendibles de pago de nómina",
+    "2 ÚLTIMOS DESPRENDIBLES DE PAGO DE NÓMINA":   "📄 2 últimos desprendibles de pago de nómina",
+    "2 ULTIMOS DESPRENDIBLES DE PAGO DE NOMINA":   "📄 2 últimos desprendibles de pago de nómina",
+    "DESPRENDIBLES DE PAGO":                        "📄 2 últimos desprendibles de pago de nómina",
+    "CODEUDOR":                                     "👥 Documentación del codeudor",
 }
 
 # Para finca/rural no aplica certificado laboral
 _DOC_LABEL_MAP_FINCA = {
-    "CERTIFICADO DE DEUDA":           "📄 Certificado de Deuda",
-    "FECHA DE INGRESO A LA EMPRESA":  "📅 Fecha de ingreso a la empresa",
-    "RECIBO PÚBLICO":                 "🏠 Recibo público",
-    "RECIBO PUBLICO":                 "🏠 Recibo público",
+    "CERTIFICADO DE DEUDA":                         "📄 Certificado de Deuda",
+    "FECHA DE INGRESO A LA EMPRESA":                "📅 Fecha de ingreso a la empresa",
+    "RECIBO PÚBLICO":                               "🏠 Recibo público",
+    "RECIBO PUBLICO":                               "🏠 Recibo público",
+    "FOTOCOPIA DE CÉDULA":                          "🪪 Foto de tu cédula (ambos lados)",
+    "FOTOCOPIA DE CEDULA":                          "🪪 Foto de tu cédula (ambos lados)",
+    "FOTO DE CÉDULA":                               "🪪 Foto de tu cédula (ambos lados)",
+    "FOTO DE CEDULA":                               "🪪 Foto de tu cédula (ambos lados)",
+    "2 ÚLTIMOS DESPRENDIBLES":                      "📄 2 últimos desprendibles de pago de nómina",
+    "2 ULTIMOS DESPRENDIBLES":                      "📄 2 últimos desprendibles de pago de nómina",
+    "CODEUDOR":                                     "👥 Documentación del codeudor",
 }
 
 # Lista completa enviada cuando se selecciona "Todos los documentos" o el campo está vacío
@@ -336,7 +354,12 @@ def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
     doc_map  = _DOC_LABEL_MAP_FINCA if is_finca else _DOC_LABEL_MAP_EMPRESA
     all_docs = _ALL_DOCS_FINCA if is_finca else _ALL_DOCS_EMPRESA
 
-    items = [item.strip() for item in (docs_faltantes or "").split(";") if item.strip()]
+    # Normalizar: puede llegar como lista (PostgreSQL TEXT[]) o como string separado por ';'
+    if isinstance(docs_faltantes, list):
+        items = [item.strip() for item in docs_faltantes if item and item.strip()]
+    else:
+        items = [item.strip() for item in (docs_faltantes or "").split(";") if item.strip()]
+
     if not items or any("TODOS" in item.upper() for item in items):
         selected = all_docs
     else:
