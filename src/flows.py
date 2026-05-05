@@ -547,8 +547,7 @@ class FlowHandler:
                 
                 # Optional: Send a notification to Admin about the email
                 try:
-                    from src.notifications import notify_admin_agent_request
-                    notify_admin_agent_request(user_phone) 
+                    notify_admin_agent_request(user_phone)
                 except Exception as e:
                     print(f"Error notifying admin: {e}")
                 
