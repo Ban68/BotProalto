@@ -487,6 +487,29 @@ def api_trigger_bulk_renovados():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@admin_bp.route('/admin/api/anticipo-metrics')
+@requires_auth
+def api_anticipo_metrics():
+    """Get metrics for the anticipo_salario campaign."""
+    from src.conversation_log import get_anticipo_metrics
+    try:
+        metrics = get_anticipo_metrics()
+        return jsonify({"status": "ok", "metrics": metrics})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/anticipo-toggle-form/<phone>', methods=['POST'])
+@requires_auth
+def api_anticipo_toggle_form(phone):
+    """Toggle form_submitted status for a phone in anticipo_responses."""
+    from src.conversation_log import toggle_anticipo_form_submitted
+    result = toggle_anticipo_form_submitted(phone)
+    if result["success"]:
+        return jsonify({"status": "ok", "form_submitted": result["form_submitted"]})
+    return jsonify({"status": "error", "message": "No se encontró el registro"}), 404
+
+
 @admin_bp.route('/admin/api/trigger-bulk-anticipos', methods=['POST'])
 @requires_auth
 def api_trigger_bulk_anticipos():

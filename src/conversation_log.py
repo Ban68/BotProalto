@@ -232,6 +232,90 @@ def get_renovado_conversations() -> list:
         return []
 
 
+def log_anticipo_sent(phone: str, client_name: str):
+    """Record that anticipo_salario template was sent to this phone."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('anticipo_responses').upsert({
+            "phone": phone,
+            "client_name": client_name,
+            "template_sent_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"Supabase log_anticipo_sent error: {e}")
+
+
+def log_anticipo_response(phone: str, response: str):
+    """Update the button click response for a phone: 'solicitar' or 'no_gracias'."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('anticipo_responses').upsert({
+            "phone": phone,
+            "response": response,
+            "responded_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"Supabase log_anticipo_response error: {e}")
+
+
+def get_anticipo_metrics() -> dict:
+    """Get full metrics for the anticipo_salario campaign."""
+    if not supabase_client:
+        return {}
+    try:
+        res = supabase_client.table('anticipo_responses').select("*").order("template_sent_at", desc=True).execute()
+        rows = res.data or []
+        total = len(rows)
+        solicitar = [r for r in rows if r.get("response") == "solicitar"]
+        no_gracias = [r for r in rows if r.get("response") == "no_gracias"]
+        sin_respuesta = [r for r in rows if not r.get("response")]
+        return {
+            "total": total,
+            "solicitar": solicitar,
+            "solicitar_count": len(solicitar),
+            "no_gracias_count": len(no_gracias),
+            "sin_respuesta_count": len(sin_respuesta),
+        }
+    except Exception as e:
+        print(f"Supabase get_anticipo_metrics error: {e}")
+        return {}
+
+
+def toggle_anticipo_form_submitted(phone: str) -> dict:
+    """Toggle form_submitted status for a phone in anticipo_responses."""
+    if not supabase_client:
+        return {"success": False}
+    try:
+        res = supabase_client.table('anticipo_responses').select("form_submitted").eq("phone", phone).execute()
+        if not res.data:
+            return {"success": False}
+        new_val = not bool(res.data[0].get("form_submitted", False))
+        supabase_client.table('anticipo_responses').update({
+            "form_submitted": new_val,
+            "updated_at": datetime.now().isoformat()
+        }).eq("phone", phone).execute()
+        return {"success": True, "form_submitted": new_val}
+    except Exception as e:
+        print(f"Supabase toggle_anticipo_form_submitted error: {e}")
+        return {"success": False}
+
+
+def get_anticipo_no_gracias_phones(phones: list) -> set:
+    """Return subset of phones that already clicked 'Ahora no, gracias'."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('anticipo_responses').select("phone").in_("phone", phones).eq("response", "no_gracias").execute()
+        return {r["phone"] for r in res.data}
+    except Exception as e:
+        print(f"Supabase get_anticipo_no_gracias_phones error: {e}")
+        return set()
+
+
 def get_anticipos_conversations() -> list:
     """Get conversations that originated from the anticipo_nomina template."""
     try:

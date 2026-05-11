@@ -237,21 +237,37 @@ def execute_bulk_leads_notifications(users_list):
 
 def execute_bulk_anticipos_notifications(users_list):
     """
-    Sends the 'anticipo_nomina' template to a list of payroll advance leads.
+    Sends the 'anticipo_salario' template to a list of payroll advance leads.
+    Skips phones that previously clicked 'Ahora no, gracias'.
     Returns summary of results.
     """
-    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+    from src.conversation_log import set_client_name, log_anticipo_sent, get_anticipo_no_gracias_phones
 
+    results = {"total": len(users_list), "success": 0, "fail": 0, "skipped": 0, "errors": []}
+
+    # Collect all phones to batch-check no_gracias exclusions
+    all_phones = []
+    cleaned_users = []
     for user in users_list:
         phone_str = str(user.get("phone", "")).strip()
         phone_str = "".join(filter(str.isdigit, phone_str))
         if not phone_str:
             continue
-
         if not phone_str.startswith("57"):
             phone_str = f"57{phone_str}"
+        all_phones.append(phone_str)
+        cleaned_users.append({**user, "_phone": phone_str})
 
+    no_gracias_phones = get_anticipo_no_gracias_phones(all_phones)
+
+    for user in cleaned_users:
+        phone_str = user["_phone"]
         nombre = user.get("name", "Cliente").strip()
+
+        if phone_str in no_gracias_phones:
+            results["skipped"] += 1
+            results["errors"].append(f"{phone_str}: omitido (ya indicó que no está interesado)")
+            continue
 
         components = [
             {
@@ -271,9 +287,8 @@ def execute_bulk_anticipos_notifications(users_list):
         if response and response.get('messages'):
             results["success"] += 1
             set_user_state(phone_str, "anticipos_notified")
-
-            from src.conversation_log import set_client_name
             set_client_name(phone_str, nombre)
+            log_anticipo_sent(phone_str, nombre)
         else:
             results["fail"] += 1
             error_msg = "No response from Meta"

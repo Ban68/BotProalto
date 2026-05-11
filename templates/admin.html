@@ -1161,6 +1161,60 @@
     <!-- Anticipos Campaña State -->
     <div class="main-chat" id="anticiposState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
         <h2 style="color: #7c3aed; margin-bottom: 20px;">Campaña Anticipos: Anticipo de Nómina</h2>
+
+        <!-- ── Métricas ── -->
+        <div style="border: 1px solid #e9d5ff; border-radius: 8px; overflow: hidden; margin-bottom: 28px;">
+            <div style="background: #7c3aed; color: white; padding: 11px 16px; display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.95rem;">Métricas: anticipo_salario</strong>
+                <button onclick="fetchAnticiposMetrics()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem;">🔄 Actualizar</button>
+            </div>
+
+            <!-- Tarjetas resumen -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #e9d5ff;">
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #7c3aed;" id="metricTotal">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="metricSolicitar">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Solicitaron</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #059669;" id="metricSolicitarPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;" id="metricNoGracias">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">No interesados</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #dc2626;" id="metricNoGraciasPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #9ca3af;" id="metricSinRespuesta">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Sin respuesta</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #9ca3af;" id="metricSinRespuestaPct"></div>
+                </div>
+            </div>
+
+            <!-- Tabla interesados -->
+            <div style="background: white; padding: 14px 16px;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: #059669; margin-bottom: 10px;">Interesados — seguimiento de formulario</div>
+                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ede9fe; border-radius: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                        <thead style="background: #f5f3ff; position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th style="padding: 8px 10px; text-align: left; color: #4c1d95; font-weight: 600;">Nombre</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #4c1d95; font-weight: 600;">Teléfono</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #4c1d95; font-weight: 600;">Respondió</th>
+                                <th style="padding: 8px 10px; text-align: center; color: #4c1d95; font-weight: 600;">Formulario</th>
+                                <th style="padding: 8px 10px; text-align: center; color: #4c1d95; font-weight: 600;">Chat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="anticiposMetricsTableBody">
+                            <tr><td colspan="5" style="padding: 14px; text-align: center; color: #9ca3af;">Haz clic en Actualizar para cargar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- ── Fin Métricas ── -->
+
         <p style="color: var(--text-muted); margin-bottom: 20px;">
             Ingresa la lista de personas a las que deseas enviar la plantilla "anticipo_nomina".
             <strong>Formato:</strong> Un cliente por línea, teléfono seguido de coma y nombre (Ej: <em>573001234567, Juan Pérez</em>).
@@ -2267,6 +2321,8 @@
                 fetchList();
             } else if (tab === 'anticiposchat') {
                 fetchList();
+            } else if (tab === 'anticipos') {
+                fetchAnticiposMetrics();
             } else if (tab === 'archivadas') {
                 fetchArchivedList();
             } else if (tab === 'envios') {
@@ -3928,6 +3984,78 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        async function fetchAnticiposMetrics() {
+            try {
+                const res = await fetch('/admin/api/anticipo-metrics');
+                const data = await res.json();
+                if (!res.ok || !data.metrics) return;
+
+                const m = data.metrics;
+                const total = m.total || 0;
+
+                document.getElementById('metricTotal').innerText = total || '0';
+                document.getElementById('metricSolicitar').innerText = m.solicitar_count || 0;
+                document.getElementById('metricNoGracias').innerText = m.no_gracias_count || 0;
+                document.getElementById('metricSinRespuesta').innerText = m.sin_respuesta_count || 0;
+
+                if (total > 0) {
+                    document.getElementById('metricSolicitarPct').innerText = Math.round((m.solicitar_count / total) * 100) + '%';
+                    document.getElementById('metricNoGraciasPct').innerText = Math.round((m.no_gracias_count / total) * 100) + '%';
+                    document.getElementById('metricSinRespuestaPct').innerText = Math.round((m.sin_respuesta_count / total) * 100) + '%';
+                }
+
+                const tbody = document.getElementById('anticiposMetricsTableBody');
+                if (!m.solicitar || m.solicitar.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="padding:14px;text-align:center;color:#9ca3af;">Sin interesados aún.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = m.solicitar.map(r => {
+                    const fecha = r.responded_at ? new Date(r.responded_at).toLocaleString('es-CO', {dateStyle:'short', timeStyle:'short'}) : '—';
+                    const submitted = r.form_submitted;
+                    const btnBg    = submitted ? '#d1fae5' : '#fef3c7';
+                    const btnBdr   = submitted ? '#6ee7b7' : '#fcd34d';
+                    const btnColor = submitted ? '#065f46' : '#78350f';
+                    const btnLabel = submitted ? '✅ Enviado' : '⏳ Pendiente';
+                    return `<tr style="border-bottom:1px solid #f3f4f6;">
+                        <td style="padding:7px 10px;">${r.client_name || '—'}</td>
+                        <td style="padding:7px 10px;font-family:monospace;font-size:0.79rem;">${r.phone}</td>
+                        <td style="padding:7px 10px;color:#6b7280;font-size:0.78rem;">${fecha}</td>
+                        <td style="padding:7px 10px;text-align:center;">
+                            <button onclick="toggleAnticipioForm('${r.phone}', this)"
+                                style="background:${btnBg};border:1px solid ${btnBdr};border-radius:4px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:${btnColor};">
+                                ${btnLabel}
+                            </button>
+                        </td>
+                        <td style="padding:7px 10px;text-align:center;">
+                            <button onclick="goToChat('${r.phone}')"
+                                style="background:#ede9fe;border:none;border-radius:4px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:#7c3aed;">
+                                Chat
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) {
+                console.error('fetchAnticiposMetrics error:', e);
+            }
+        }
+
+        async function toggleAnticipioForm(phone, btn) {
+            try {
+                const res = await fetch(`/admin/api/anticipo-toggle-form/${phone}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    const submitted = data.form_submitted;
+                    btn.style.background = submitted ? '#d1fae5' : '#fef3c7';
+                    btn.style.border = `1px solid ${submitted ? '#6ee7b7' : '#fcd34d'}`;
+                    btn.style.color = submitted ? '#065f46' : '#78350f';
+                    btn.innerText = submitted ? '✅ Enviado' : '⏳ Pendiente';
+                }
+            } catch(e) {
+                console.error('toggleAnticipioForm error:', e);
+            }
         }
 
         async function executeBulkAnticipos() {

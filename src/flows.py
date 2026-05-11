@@ -901,6 +901,8 @@ class FlowHandler:
 
         elif btn_id == "Solicitar Anticipo":
             set_user_state(user_phone, "active")
+            from src.conversation_log import log_anticipo_response
+            log_anticipo_response(user_phone, "solicitar")
             WhatsAppService.send_message(
                 user_phone,
                 "Para solicitar tu anticipo de nomina, diligencia el siguiente formulario:\n\n"
@@ -910,6 +912,9 @@ class FlowHandler:
 
         elif btn_id == "Ahora no, gracias":
             set_user_state(user_phone, "active")
+            if state == "anticipos_notified":
+                from src.conversation_log import log_anticipo_response
+                log_anticipo_response(user_phone, "no_gracias")
             WhatsAppService.send_message(
                 user_phone,
                 "Entendido, agradecemos tu tiempo. Estaremos aquí cuando nos necesites."
