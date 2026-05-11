@@ -155,25 +155,28 @@
             font-size: 0.9rem;
         }
 
-        /* Chat filter toggle (Activas / Archivadas) */
+        /* Chat filter toggle */
         .chat-filter-bar {
             display: flex;
+            flex-wrap: wrap;
             background: white;
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
         }
 
         .chat-filter-btn {
-            flex: 1;
-            padding: 10px 0;
+            flex: 1 1 33%;
+            padding: 8px 4px;
             background: transparent;
             border: none;
             border-bottom: 3px solid transparent;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             font-weight: 600;
             color: var(--text-muted);
             transition: all 0.2s;
+            white-space: nowrap;
+            text-align: center;
         }
 
         .chat-filter-btn:hover {
@@ -920,8 +923,8 @@
             <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Clientes</button>
             <button type="button" class="chat-filter-btn" id="tabProspectos" onclick="switchTab('prospectos')">🎯 Leads</button>
             <button type="button" class="chat-filter-btn" id="tabRenovadosChat" onclick="switchTab('renovadoschat')">🔄 Renovados</button>
-            <button type="button" class="chat-filter-btn" id="tabAnticiposChat" onclick="switchTab('anticiposchat')">💰 Anticipos</button>
-            <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')">Archivadas</button>
+            <button type="button" class="chat-filter-btn" id="tabAnticiposChat" onclick="switchTab('anticiposchat')" style="flex: 1 1 50%;">💰 Anticipos</button>
+            <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')" style="flex: 1 1 50%;">Archivadas</button>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->
