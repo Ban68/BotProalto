@@ -903,7 +903,7 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             WhatsAppService.send_message(
                 user_phone,
-                "Que buena noticia! Para solicitar tu anticipo de nomina, diligencia el siguiente formulario:\n\n"
+                "Para solicitar tu anticipo de nomina, diligencia el siguiente formulario:\n\n"
                 "https://forms.gle/EVvXfpndrRGdtjMz5\n\n"
                 "Si tienes alguna duda durante el proceso, estamos aqui para ayudarte."
             )
