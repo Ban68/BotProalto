@@ -669,6 +669,29 @@ class FlowHandler:
                 FlowHandler.send_main_menu(user_phone)
             return
 
+        # 2g. anticipos_notified — template sent; absorb acks, route advisor requests, else show menu
+        if state == "anticipos_notified":
+            set_user_state(user_phone, "active")
+            ack_words = ["ok", "okay", "entendido", "gracias", "de acuerdo", "listo",
+                         "bien", "claro", "comprendo", "entiendo", "perfecto", "👍"]
+            norm = text.lower().strip()
+            is_ack = any(norm == w or norm.startswith(w + " ") or norm.startswith(w + ",") for w in ack_words)
+            if is_ack:
+                return
+            if _is_greeting(norm):
+                FlowHandler.send_main_menu(user_phone)
+                return
+            if _is_advisor_request(norm):
+                set_agent_mode(user_phone, "agent")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Con gusto! En un momento un asesor te contactara para darte informacion sobre el anticipo de nomina."
+                )
+                notify_admin_agent_request(user_phone)
+                return
+            FlowHandler.send_main_menu(user_phone)
+            return
+
         # 2f. renovado_notified — template sent; absorb acks, route advisor requests, else show menu
         if state == "renovado_notified":
             set_user_state(user_phone, "active")
@@ -856,7 +879,7 @@ class FlowHandler:
             set_user_state(user_phone, "active")
 
         elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
-            is_lead = (state in ("lead_notified", "renovado_notified"))
+            is_lead = (state in ("lead_notified", "renovado_notified", "anticipos_notified"))
             set_agent_mode(user_phone, "agent")
 
             try:
@@ -875,6 +898,15 @@ class FlowHandler:
                 )
 
             WhatsAppService.send_message(user_phone, msg)
+
+        elif btn_id == "Solicitar Anticipo":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Que buena noticia! Para solicitar tu anticipo de nomina, diligencia el siguiente formulario:\n\n"
+                "https://forms.gle/EVvXfpndrRGdtjMz5\n\n"
+                "Si tienes alguna duda durante el proceso, estamos aqui para ayudarte."
+            )
 
         elif btn_id == "Ahora no, gracias":
             set_user_state(user_phone, "active")

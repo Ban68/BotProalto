@@ -145,6 +145,16 @@ def _get_renovado_phones() -> set:
         return set()
 
 
+def _get_anticipos_phones() -> set:
+    """Get all phone numbers that ever received the anticipo_nomina template."""
+    try:
+        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: anticipo_salario]").execute()
+        return {m["phone"] for m in res.data}
+    except Exception as e:
+        print(f"Supabase _get_anticipos_phones error: {e}")
+        return set()
+
+
 def _build_conversation_list(convs_data: list) -> list:
     """Shared helper: given a list of bot_conversations rows, enrich with last message & count."""
     phones = [c["phone"] for c in convs_data]
@@ -177,12 +187,13 @@ def _build_conversation_list(convs_data: list) -> list:
 
 
 def get_conversations() -> list:
-    """Get non-lead/non-renovado conversations, sorted by most recent."""
+    """Get non-lead/non-renovado/non-anticipos conversations, sorted by most recent."""
     try:
         lead_phones = _get_lead_phones()
         renovado_phones = _get_renovado_phones()
-        excluded_phones = lead_phones | renovado_phones
-        excluded_statuses = {"lead_notified", "renovado_notified"}
+        anticipos_phones = _get_anticipos_phones()
+        excluded_phones = lead_phones | renovado_phones | anticipos_phones
+        excluded_statuses = {"lead_notified", "renovado_notified", "anticipos_notified"}
         # Over-fetch to compensate for entries we'll exclude
         convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(100).execute()
         filtered = [
@@ -218,6 +229,19 @@ def get_renovado_conversations() -> list:
         return _build_conversation_list(convs.data)
     except Exception as e:
         print(f"Supabase get_renovado_conversations error: {e}")
+        return []
+
+
+def get_anticipos_conversations() -> list:
+    """Get conversations that originated from the anticipo_nomina template."""
+    try:
+        anticipos_phones = list(_get_anticipos_phones())
+        if not anticipos_phones:
+            return []
+        convs = supabase_client.table('bot_conversations').select("*").in_("phone", anticipos_phones).neq("status", "archived").order("updated_at", desc=True).execute()
+        return _build_conversation_list(convs.data)
+    except Exception as e:
+        print(f"Supabase get_anticipos_conversations error: {e}")
         return []
 
 
