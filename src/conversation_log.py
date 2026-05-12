@@ -144,10 +144,14 @@ def _get_renovado_phones() -> set:
 
 
 def _get_anticipos_phones() -> set:
-    """Get all phone numbers that ever received the anticipo_nomina template."""
+    """Get all phone numbers that ever received the anticipo_salario template."""
     try:
-        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: anticipo_salario]").execute()
-        return {m["phone"] for m in res.data}
+        msg_res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: anticipo_salario]").execute()
+        phones = {m["phone"] for m in (msg_res.data or [])}
+        # Recovery: include phones whose log was lost but state was set correctly
+        conv_res = supabase_client.table('bot_conversations').select("phone").eq("status", "anticipos_notified").execute()
+        phones |= {r["phone"] for r in (conv_res.data or [])}
+        return phones
     except Exception as e:
         print(f"Supabase _get_anticipos_phones error: {e}")
         return set()
@@ -275,14 +279,24 @@ def get_anticipo_metrics() -> dict:
             .order("created_at", desc=False)\
             .execute()
 
-        if not sent_res.data:
-            return {"total": 0, "solicitar": [], "solicitar_count": 0,
-                    "no_gracias_count": 0, "sin_respuesta_count": 0}
-
         phone_sent_at = {}
-        for row in sent_res.data:
+        for row in (sent_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["created_at"]
+
+        # Recovery: include phones where set_user_state("anticipos_notified") ran
+        # but bot_messages log was lost due to the race-condition bug.
+        conv_res = supabase_client.table('bot_conversations')\
+            .select("phone, updated_at")\
+            .eq("status", "anticipos_notified")\
+            .execute()
+        for row in (conv_res.data or []):
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["updated_at"]
+
+        if not phone_sent_at:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "no_gracias_count": 0, "sin_respuesta_count": 0}
 
         all_phones = list(phone_sent_at.keys())
         total = len(all_phones)
