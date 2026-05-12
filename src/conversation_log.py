@@ -126,8 +126,11 @@ def set_agent_mode(phone: str, status: str = "agent"):
 def _get_lead_phones() -> set:
     """Get all phone numbers that ever received the contacto_leads template."""
     try:
-        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: contacto_leads]").execute()
-        return {m["phone"] for m in res.data}
+        msg_res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: contacto_leads]").execute()
+        phones = {m["phone"] for m in (msg_res.data or [])}
+        conv_res = supabase_client.table('bot_conversations').select("phone").eq("status", "lead_notified").execute()
+        phones |= {r["phone"] for r in (conv_res.data or [])}
+        return phones
     except Exception as e:
         print(f"Supabase _get_lead_phones error: {e}")
         return set()
@@ -136,8 +139,11 @@ def _get_lead_phones() -> set:
 def _get_renovado_phones() -> set:
     """Get all phone numbers that ever received the estado_renovar template."""
     try:
-        res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: estado_renovar]").execute()
-        return {m["phone"] for m in res.data}
+        msg_res = supabase_client.table('bot_messages').select("phone").eq("text", "[Template: estado_renovar]").execute()
+        phones = {m["phone"] for m in (msg_res.data or [])}
+        conv_res = supabase_client.table('bot_conversations').select("phone").eq("status", "renovado_notified").execute()
+        phones |= {r["phone"] for r in (conv_res.data or [])}
+        return phones
     except Exception as e:
         print(f"Supabase _get_renovado_phones error: {e}")
         return set()
@@ -440,14 +446,23 @@ def get_lead_metrics() -> dict:
             .order("created_at", desc=False)\
             .execute()
 
-        if not sent_res.data:
-            return {"total": 0, "solicitar": [], "solicitar_count": 0,
-                    "hablar_asesor_count": 0, "sin_respuesta_count": 0}
-
         phone_sent_at = {}
-        for row in sent_res.data:
+        for row in (sent_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["created_at"]
+
+        # Recovery: phones whose bot_messages log was lost but state was set correctly
+        conv_res = supabase_client.table('bot_conversations')\
+            .select("phone, updated_at")\
+            .eq("status", "lead_notified")\
+            .execute()
+        for row in (conv_res.data or []):
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["updated_at"]
+
+        if not phone_sent_at:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "hablar_asesor_count": 0, "ahora_no_count": 0, "sin_respuesta_count": 0}
 
         all_phones = list(phone_sent_at.keys())
         total = len(all_phones)
@@ -513,14 +528,23 @@ def get_renovado_metrics() -> dict:
             .order("created_at", desc=False)\
             .execute()
 
-        if not sent_res.data:
-            return {"total": 0, "solicitar": [], "solicitar_count": 0,
-                    "no_quiero_count": 0, "mas_info_count": 0, "sin_respuesta_count": 0}
-
         phone_sent_at = {}
-        for row in sent_res.data:
+        for row in (sent_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["created_at"]
+
+        # Recovery: phones whose bot_messages log was lost but state was set correctly
+        conv_res = supabase_client.table('bot_conversations')\
+            .select("phone, updated_at")\
+            .eq("status", "renovado_notified")\
+            .execute()
+        for row in (conv_res.data or []):
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["updated_at"]
+
+        if not phone_sent_at:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "no_quiero_count": 0, "mas_info_count": 0, "sin_respuesta_count": 0}
 
         all_phones = list(phone_sent_at.keys())
         total = len(all_phones)
