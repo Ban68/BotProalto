@@ -1130,24 +1130,29 @@
                 <strong style="font-size: 0.95rem;">Métricas: contacto_leads</strong>
                 <button onclick="fetchLeadMetrics()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem;">🔄 Actualizar</button>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #bbf7d0;">
-                <div style="background: white; padding: 14px 10px; text-align: center;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #bbf7d0;">
+                <div style="background: white; padding: 14px 8px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="leadMetricTotal">—</div>
-                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
                 </div>
-                <div style="background: white; padding: 14px 10px; text-align: center;">
+                <div style="background: white; padding: 14px 8px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #0284c7;" id="leadMetricSolicitar">—</div>
-                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Solicitaron crédito</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Solicitaron crédito</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: #0284c7;" id="leadMetricSolicitarPct"></div>
                 </div>
-                <div style="background: white; padding: 14px 10px; text-align: center;">
+                <div style="background: white; padding: 14px 8px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #d97706;" id="leadMetricAsesor">—</div>
-                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Pidieron asesor</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Pidieron asesor</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: #d97706;" id="leadMetricAsesorPct"></div>
                 </div>
-                <div style="background: white; padding: 14px 10px; text-align: center;">
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;" id="leadMetricAhoraNo">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Ahora no, gracias</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #dc2626;" id="leadMetricAhoraNosPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 8px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #9ca3af;" id="leadMetricSinRespuesta">—</div>
-                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Sin respuesta</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Sin respuesta</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: #9ca3af;" id="leadMetricSinRespuestaPct"></div>
                 </div>
             </div>
@@ -4104,11 +4109,13 @@
                 document.getElementById('leadMetricTotal').innerText = total || '0';
                 document.getElementById('leadMetricSolicitar').innerText = m.solicitar_count || 0;
                 document.getElementById('leadMetricAsesor').innerText = m.hablar_asesor_count || 0;
+                document.getElementById('leadMetricAhoraNo').innerText = m.ahora_no_count || 0;
                 document.getElementById('leadMetricSinRespuesta').innerText = m.sin_respuesta_count || 0;
 
                 if (total > 0) {
                     document.getElementById('leadMetricSolicitarPct').innerText = Math.round((m.solicitar_count / total) * 100) + '%';
                     document.getElementById('leadMetricAsesorPct').innerText = Math.round((m.hablar_asesor_count / total) * 100) + '%';
+                    document.getElementById('leadMetricAhoraNosPct').innerText = Math.round((m.ahora_no_count / total) * 100) + '%';
                     document.getElementById('leadMetricSinRespuestaPct').innerText = Math.round((m.sin_respuesta_count / total) * 100) + '%';
                 }
 

@@ -348,7 +348,7 @@ def get_lead_metrics() -> dict:
             .in_("phone", all_phones)\
             .eq("direction", "inbound")\
             .eq("msg_type", "button")\
-            .in_("text", ["Solicitar crédito", "Hablar con un asesor"])\
+            .in_("text", ["Solicitar crédito", "Hablar con un asesor", "Ahora no, gracias"])\
             .order("created_at", desc=False)\
             .execute()
 
@@ -365,6 +365,7 @@ def get_lead_metrics() -> dict:
 
         solicitar = []
         hablar_asesor_count = 0
+        ahora_no_count = 0
         sin_respuesta_count = 0
 
         for phone in all_phones:
@@ -374,12 +375,15 @@ def get_lead_metrics() -> dict:
                                   "responded_at": resp["responded_at"]})
             elif resp and resp["response"] == "Hablar con un asesor":
                 hablar_asesor_count += 1
+            elif resp and resp["response"] == "Ahora no, gracias":
+                ahora_no_count += 1
             else:
                 sin_respuesta_count += 1
 
         solicitar.sort(key=lambda x: x["responded_at"] or "", reverse=True)
         return {"total": total, "solicitar": solicitar, "solicitar_count": len(solicitar),
-                "hablar_asesor_count": hablar_asesor_count, "sin_respuesta_count": sin_respuesta_count}
+                "hablar_asesor_count": hablar_asesor_count, "ahora_no_count": ahora_no_count,
+                "sin_respuesta_count": sin_respuesta_count}
     except Exception as e:
         print(f"Supabase get_lead_metrics error: {e}")
         return {}
