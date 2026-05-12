@@ -31,34 +31,32 @@ def log_message(phone: str, direction: str, text: str, msg_type: str = "text", w
 
 def _supabase_log_task(phone, direction, text, msg_type, now, wamid=None):
     """Internal synchronous task to sync message to Supabase."""
+    # Step 1: update bot_conversations — isolated so a failure here never blocks step 2
     try:
-        # Check current status for auto-restore logic
-        current_status = "active"
         res = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
-        
         if res.data:
             current_status = res.data[0].get("status")
-            
-            # If archived and new user message, wake it up to active
             if current_status == "archived" and direction == "inbound":
                 supabase_client.table('bot_conversations').update({
                     "status": "active",
                     "updated_at": now
                 }).eq("phone", phone).execute()
             else:
-                # Just update the timestamp
                 supabase_client.table('bot_conversations').update({
                     "updated_at": now
                 }).eq("phone", phone).execute()
         else:
-            # New conversation
-            supabase_client.table('bot_conversations').insert({
+            # Use upsert to avoid unique constraint race with set_user_state() in bulk sends
+            supabase_client.table('bot_conversations').upsert({
                 "phone": phone,
                 "status": "pending_consent",
                 "updated_at": now
-            }).execute()
+            }, on_conflict="phone").execute()
+    except Exception as e:
+        print(f"⚠️ Supabase conversation update error: {e}")
 
-        # Insert message
+    # Step 2: always log the message, regardless of step 1 outcome
+    try:
         supabase_client.table('bot_messages').insert({
             "phone": phone,
             "direction": direction,
@@ -68,7 +66,7 @@ def _supabase_log_task(phone, direction, text, msg_type, now, wamid=None):
             "wamid": wamid
         }).execute()
     except Exception as e:
-        print(f"⚠️ Supabase logging error: {e}")
+        print(f"⚠️ Supabase message insert error: {e}")
 
 
 def get_user_state(phone: str) -> str:
