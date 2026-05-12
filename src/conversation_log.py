@@ -263,22 +263,88 @@ def log_anticipo_response(phone: str, response: str):
 
 
 def get_anticipo_metrics() -> dict:
-    """Get full metrics for the anticipo_salario campaign."""
+    """
+    Build anticipo_salario campaign metrics from bot_messages (fully retrospective).
+    form_submitted status is enriched from anticipo_responses if available.
+    """
     if not supabase_client:
         return {}
     try:
-        res = supabase_client.table('anticipo_responses').select("*").order("template_sent_at", desc=True).execute()
-        rows = res.data or []
-        total = len(rows)
-        solicitar = [r for r in rows if r.get("response") == "solicitar"]
-        no_gracias = [r for r in rows if r.get("response") == "no_gracias"]
-        sin_respuesta = [r for r in rows if not r.get("response")]
+        sent_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .eq("text", "[Template: anticipo_salario]")\
+            .eq("direction", "outbound")\
+            .order("created_at", desc=False)\
+            .execute()
+
+        if not sent_res.data:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "no_gracias_count": 0, "sin_respuesta_count": 0}
+
+        phone_sent_at = {}
+        for row in sent_res.data:
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["created_at"]
+
+        all_phones = list(phone_sent_at.keys())
+        total = len(all_phones)
+
+        btn_res = supabase_client.table('bot_messages')\
+            .select("phone, text, created_at")\
+            .in_("phone", all_phones)\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "button")\
+            .in_("text", ["Solicitar Anticipo", "Ahora no, gracias"])\
+            .order("created_at", desc=False)\
+            .execute()
+
+        phone_responses = {}
+        for row in btn_res.data:
+            if row["phone"] not in phone_responses:
+                phone_responses[row["phone"]] = {"response": row["text"], "responded_at": row["created_at"]}
+
+        name_res = supabase_client.table('bot_conversations')\
+            .select("phone, client_name")\
+            .in_("phone", all_phones)\
+            .execute()
+        names = {r["phone"]: r.get("client_name") or "" for r in name_res.data}
+
+        # Secondary lookup: form_submitted from anticipo_responses (best-effort)
+        form_submitted_map = {}
+        try:
+            ar_res = supabase_client.table('anticipo_responses')\
+                .select("phone, form_submitted")\
+                .in_("phone", all_phones)\
+                .execute()
+            form_submitted_map = {r["phone"]: bool(r.get("form_submitted")) for r in (ar_res.data or [])}
+        except Exception:
+            pass
+
+        solicitar = []
+        no_gracias_count = 0
+        sin_respuesta_count = 0
+
+        for phone in all_phones:
+            resp = phone_responses.get(phone)
+            if resp and resp["response"] == "Solicitar Anticipo":
+                solicitar.append({
+                    "phone": phone,
+                    "client_name": names.get(phone, ""),
+                    "responded_at": resp["responded_at"],
+                    "form_submitted": form_submitted_map.get(phone, False),
+                })
+            elif resp and resp["response"] == "Ahora no, gracias":
+                no_gracias_count += 1
+            else:
+                sin_respuesta_count += 1
+
+        solicitar.sort(key=lambda x: x["responded_at"] or "", reverse=True)
         return {
             "total": total,
             "solicitar": solicitar,
             "solicitar_count": len(solicitar),
-            "no_gracias_count": len(no_gracias),
-            "sin_respuesta_count": len(sin_respuesta),
+            "no_gracias_count": no_gracias_count,
+            "sin_respuesta_count": sin_respuesta_count,
         }
     except Exception as e:
         print(f"Supabase get_anticipo_metrics error: {e}")
@@ -286,18 +352,18 @@ def get_anticipo_metrics() -> dict:
 
 
 def toggle_anticipo_form_submitted(phone: str) -> dict:
-    """Toggle form_submitted status for a phone in anticipo_responses."""
+    """Toggle form_submitted status for a phone in anticipo_responses (upserts if not present)."""
     if not supabase_client:
         return {"success": False}
     try:
         res = supabase_client.table('anticipo_responses').select("form_submitted").eq("phone", phone).execute()
-        if not res.data:
-            return {"success": False}
-        new_val = not bool(res.data[0].get("form_submitted", False))
-        supabase_client.table('anticipo_responses').update({
+        current_val = bool(res.data[0].get("form_submitted", False)) if res.data else False
+        new_val = not current_val
+        supabase_client.table('anticipo_responses').upsert({
+            "phone": phone,
             "form_submitted": new_val,
             "updated_at": datetime.now().isoformat()
-        }).eq("phone", phone).execute()
+        }, on_conflict="phone").execute()
         return {"success": True, "form_submitted": new_val}
     except Exception as e:
         print(f"Supabase toggle_anticipo_form_submitted error: {e}")
@@ -305,12 +371,43 @@ def toggle_anticipo_form_submitted(phone: str) -> dict:
 
 
 def get_anticipo_no_gracias_phones(phones: list) -> set:
-    """Return subset of phones that already clicked 'Ahora no, gracias'."""
+    """Return subset of phones that clicked 'Ahora no, gracias' specifically after the anticipo_salario template."""
     if not supabase_client or not phones:
         return set()
     try:
-        res = supabase_client.table('anticipo_responses').select("phone").in_("phone", phones).eq("response", "no_gracias").execute()
-        return {r["phone"] for r in res.data}
+        # Get when anticipo template was sent to each phone
+        sent_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("text", "[Template: anticipo_salario]")\
+            .eq("direction", "outbound")\
+            .execute()
+
+        sent_at_map = {}
+        for r in (sent_res.data or []):
+            p = r["phone"]
+            if p not in sent_at_map or r["created_at"] > sent_at_map[p]:
+                sent_at_map[p] = r["created_at"]
+
+        if not sent_at_map:
+            return set()
+
+        # Get "Ahora no, gracias" button clicks for those phones
+        btn_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", list(sent_at_map.keys()))\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "button")\
+            .eq("text", "Ahora no, gracias")\
+            .execute()
+
+        # Only count clicks that happened after the anticipo template was sent
+        excluded = set()
+        for r in (btn_res.data or []):
+            p = r["phone"]
+            if p in sent_at_map and r["created_at"] >= sent_at_map[p]:
+                excluded.add(p)
+        return excluded
     except Exception as e:
         print(f"Supabase get_anticipo_no_gracias_phones error: {e}")
         return set()
