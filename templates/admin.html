@@ -1123,8 +1123,57 @@
     <!-- Leads Campaña State -->
     <div class="main-chat" id="leadsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
         <h2 style="color: #059669; margin-bottom: 20px;">Campaña Leads: Oferta de Crédito</h2>
+
+        <!-- ── Métricas Leads ── -->
+        <div style="border: 1px solid #bbf7d0; border-radius: 8px; overflow: hidden; margin-bottom: 28px;">
+            <div style="background: #059669; color: white; padding: 11px 16px; display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.95rem;">Métricas: contacto_leads</strong>
+                <button onclick="fetchLeadMetrics()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem;">🔄 Actualizar</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #bbf7d0;">
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="leadMetricTotal">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #0284c7;" id="leadMetricSolicitar">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Solicitaron crédito</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #0284c7;" id="leadMetricSolicitarPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #d97706;" id="leadMetricAsesor">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Pidieron asesor</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #d97706;" id="leadMetricAsesorPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #9ca3af;" id="leadMetricSinRespuesta">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Sin respuesta</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #9ca3af;" id="leadMetricSinRespuestaPct"></div>
+                </div>
+            </div>
+            <div style="background: white; padding: 14px 16px;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: #0284c7; margin-bottom: 10px;">Leads que solicitaron crédito</div>
+                <div style="max-height: 280px; overflow-y: auto; border: 1px solid #d1fae5; border-radius: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                        <thead style="background: #f0fdf4; position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th style="padding: 8px 10px; text-align: left; color: #065f46; font-weight: 600;">Nombre</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #065f46; font-weight: 600;">Teléfono</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #065f46; font-weight: 600;">Respondió</th>
+                                <th style="padding: 8px 10px; text-align: center; color: #065f46; font-weight: 600;">Chat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadMetricsTableBody">
+                            <tr><td colspan="4" style="padding: 14px; text-align: center; color: #9ca3af;">Haz clic en Actualizar para cargar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- ── Fin Métricas Leads ── -->
+
         <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Ingresa la lista de leads a los que deseas enviar la plantilla "contacto_leads". 
+            Ingresa la lista de leads a los que deseas enviar la plantilla "contacto_leads".
             <strong>Formato:</strong> Un cliente por línea, teléfono seguido de coma y nombre (Ej: <em>573001234567, Juan Pérez</em>).
         </p>
         
@@ -1253,6 +1302,60 @@
     <!-- Renovados Campaña State -->
     <div class="main-chat" id="renovadosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
         <h2 style="color: #0284c7; margin-bottom: 20px;">Campaña Renovados: Oferta de Renovación</h2>
+
+        <!-- ── Métricas Renovados ── -->
+        <div style="border: 1px solid #bae6fd; border-radius: 8px; overflow: hidden; margin-bottom: 28px;">
+            <div style="background: #0284c7; color: white; padding: 11px 16px; display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.95rem;">Métricas: estado_renovar</strong>
+                <button onclick="fetchRenovadoMetrics()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem;">🔄 Actualizar</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #bae6fd;">
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #0284c7;" id="renovadoMetricTotal">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
+                </div>
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #059669;" id="renovadoMetricSolicitar">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Renovaron</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #059669;" id="renovadoMetricSolicitarPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;" id="renovadoMetricNoQuiero">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">No interesados</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #dc2626;" id="renovadoMetricNoQuieroPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #d97706;" id="renovadoMetricMasInfo">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Más información</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #d97706;" id="renovadoMetricMasInfoPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 8px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #9ca3af;" id="renovadoMetricSinRespuesta">—</div>
+                    <div style="font-size: 0.72rem; color: #6b7280; margin-top: 2px;">Sin respuesta</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #9ca3af;" id="renovadoMetricSinRespuestaPct"></div>
+                </div>
+            </div>
+            <div style="background: white; padding: 14px 16px;">
+                <div style="font-size: 0.85rem; font-weight: 600; color: #059669; margin-bottom: 10px;">Clientes que solicitaron renovación</div>
+                <div style="max-height: 280px; overflow-y: auto; border: 1px solid #bae6fd; border-radius: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                        <thead style="background: #f0f9ff; position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th style="padding: 8px 10px; text-align: left; color: #075985; font-weight: 600;">Nombre</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #075985; font-weight: 600;">Teléfono</th>
+                                <th style="padding: 8px 10px; text-align: left; color: #075985; font-weight: 600;">Respondió</th>
+                                <th style="padding: 8px 10px; text-align: center; color: #075985; font-weight: 600;">Chat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="renovadoMetricsTableBody">
+                            <tr><td colspan="4" style="padding: 14px; text-align: center; color: #9ca3af;">Haz clic en Actualizar para cargar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- ── Fin Métricas Renovados ── -->
+
         <p style="color: var(--text-muted); margin-bottom: 20px;">
             Ingresa la lista de clientes con crédito próximo a vencer a los que deseas enviar la plantilla "contacto_renovados".
             <strong>Formato:</strong> Un cliente por línea, teléfono seguido de coma y nombre (Ej: <em>573001234567, Juan Pérez</em>).
@@ -2321,6 +2424,10 @@
                 fetchList();
             } else if (tab === 'anticiposchat') {
                 fetchList();
+            } else if (tab === 'leads') {
+                fetchLeadMetrics();
+            } else if (tab === 'renovados') {
+                fetchRenovadoMetrics();
             } else if (tab === 'anticipos') {
                 fetchAnticiposMetrics();
             } else if (tab === 'archivadas') {
@@ -3984,6 +4091,90 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        async function fetchLeadMetrics() {
+            try {
+                const res = await fetch('/admin/api/lead-metrics');
+                const data = await res.json();
+                if (!res.ok || !data.metrics) return;
+                const m = data.metrics;
+                const total = m.total || 0;
+
+                document.getElementById('leadMetricTotal').innerText = total || '0';
+                document.getElementById('leadMetricSolicitar').innerText = m.solicitar_count || 0;
+                document.getElementById('leadMetricAsesor').innerText = m.hablar_asesor_count || 0;
+                document.getElementById('leadMetricSinRespuesta').innerText = m.sin_respuesta_count || 0;
+
+                if (total > 0) {
+                    document.getElementById('leadMetricSolicitarPct').innerText = Math.round((m.solicitar_count / total) * 100) + '%';
+                    document.getElementById('leadMetricAsesorPct').innerText = Math.round((m.hablar_asesor_count / total) * 100) + '%';
+                    document.getElementById('leadMetricSinRespuestaPct').innerText = Math.round((m.sin_respuesta_count / total) * 100) + '%';
+                }
+
+                const tbody = document.getElementById('leadMetricsTableBody');
+                if (!m.solicitar || m.solicitar.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding:14px;text-align:center;color:#9ca3af;">Sin conversiones aún.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = m.solicitar.map(r => {
+                    const fecha = r.responded_at ? new Date(r.responded_at).toLocaleString('es-CO', {dateStyle:'short', timeStyle:'short'}) : '—';
+                    return `<tr style="border-bottom:1px solid #f3f4f6;">
+                        <td style="padding:7px 10px;">${r.client_name || '—'}</td>
+                        <td style="padding:7px 10px;font-family:monospace;font-size:0.79rem;">${r.phone}</td>
+                        <td style="padding:7px 10px;color:#6b7280;font-size:0.78rem;">${fecha}</td>
+                        <td style="padding:7px 10px;text-align:center;">
+                            <button onclick="goToChat('${r.phone}')"
+                                style="background:#dcfce7;border:none;border-radius:4px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:#065f46;">
+                                Chat
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) { console.error('fetchLeadMetrics error:', e); }
+        }
+
+        async function fetchRenovadoMetrics() {
+            try {
+                const res = await fetch('/admin/api/renovado-metrics');
+                const data = await res.json();
+                if (!res.ok || !data.metrics) return;
+                const m = data.metrics;
+                const total = m.total || 0;
+
+                document.getElementById('renovadoMetricTotal').innerText = total || '0';
+                document.getElementById('renovadoMetricSolicitar').innerText = m.solicitar_count || 0;
+                document.getElementById('renovadoMetricNoQuiero').innerText = m.no_quiero_count || 0;
+                document.getElementById('renovadoMetricMasInfo').innerText = m.mas_info_count || 0;
+                document.getElementById('renovadoMetricSinRespuesta').innerText = m.sin_respuesta_count || 0;
+
+                if (total > 0) {
+                    document.getElementById('renovadoMetricSolicitarPct').innerText = Math.round((m.solicitar_count / total) * 100) + '%';
+                    document.getElementById('renovadoMetricNoQuieroPct').innerText = Math.round((m.no_quiero_count / total) * 100) + '%';
+                    document.getElementById('renovadoMetricMasInfoPct').innerText = Math.round((m.mas_info_count / total) * 100) + '%';
+                    document.getElementById('renovadoMetricSinRespuestaPct').innerText = Math.round((m.sin_respuesta_count / total) * 100) + '%';
+                }
+
+                const tbody = document.getElementById('renovadoMetricsTableBody');
+                if (!m.solicitar || m.solicitar.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding:14px;text-align:center;color:#9ca3af;">Sin renovaciones aún.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = m.solicitar.map(r => {
+                    const fecha = r.responded_at ? new Date(r.responded_at).toLocaleString('es-CO', {dateStyle:'short', timeStyle:'short'}) : '—';
+                    return `<tr style="border-bottom:1px solid #f3f4f6;">
+                        <td style="padding:7px 10px;">${r.client_name || '—'}</td>
+                        <td style="padding:7px 10px;font-family:monospace;font-size:0.79rem;">${r.phone}</td>
+                        <td style="padding:7px 10px;color:#6b7280;font-size:0.78rem;">${fecha}</td>
+                        <td style="padding:7px 10px;text-align:center;">
+                            <button onclick="goToChat('${r.phone}')"
+                                style="background:#e0f2fe;border:none;border-radius:4px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:#075985;">
+                                Chat
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) { console.error('fetchRenovadoMetrics error:', e); }
         }
 
         async function fetchAnticiposMetrics() {

@@ -487,6 +487,28 @@ def api_trigger_bulk_renovados():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@admin_bp.route('/admin/api/lead-metrics')
+@requires_auth
+def api_lead_metrics():
+    """Get metrics for the contacto_leads campaign (retrospective from bot_messages)."""
+    from src.conversation_log import get_lead_metrics
+    try:
+        return jsonify({"status": "ok", "metrics": get_lead_metrics()})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/renovado-metrics')
+@requires_auth
+def api_renovado_metrics():
+    """Get metrics for the estado_renovar campaign (retrospective from bot_messages)."""
+    from src.conversation_log import get_renovado_metrics
+    try:
+        return jsonify({"status": "ok", "metrics": get_renovado_metrics()})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/anticipo-metrics')
 @requires_auth
 def api_anticipo_metrics():

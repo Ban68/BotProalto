@@ -316,6 +316,148 @@ def get_anticipo_no_gracias_phones(phones: list) -> set:
         return set()
 
 
+def get_lead_metrics() -> dict:
+    """
+    Build leads campaign metrics from bot_messages (fully retrospective).
+    msg_type='button' = template button click (vs 'interactive' = menu click).
+    """
+    if not supabase_client:
+        return {}
+    try:
+        sent_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .eq("text", "[Template: contacto_leads]")\
+            .eq("direction", "outbound")\
+            .order("created_at", desc=False)\
+            .execute()
+
+        if not sent_res.data:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "hablar_asesor_count": 0, "sin_respuesta_count": 0}
+
+        phone_sent_at = {}
+        for row in sent_res.data:
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["created_at"]
+
+        all_phones = list(phone_sent_at.keys())
+        total = len(all_phones)
+
+        btn_res = supabase_client.table('bot_messages')\
+            .select("phone, text, created_at")\
+            .in_("phone", all_phones)\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "button")\
+            .in_("text", ["Solicitar crédito", "Hablar con un asesor"])\
+            .order("created_at", desc=False)\
+            .execute()
+
+        phone_responses = {}
+        for row in btn_res.data:
+            if row["phone"] not in phone_responses:
+                phone_responses[row["phone"]] = {"response": row["text"], "responded_at": row["created_at"]}
+
+        name_res = supabase_client.table('bot_conversations')\
+            .select("phone, client_name")\
+            .in_("phone", all_phones)\
+            .execute()
+        names = {r["phone"]: r.get("client_name") or "" for r in name_res.data}
+
+        solicitar = []
+        hablar_asesor_count = 0
+        sin_respuesta_count = 0
+
+        for phone in all_phones:
+            resp = phone_responses.get(phone)
+            if resp and resp["response"] == "Solicitar crédito":
+                solicitar.append({"phone": phone, "client_name": names.get(phone, ""),
+                                  "responded_at": resp["responded_at"]})
+            elif resp and resp["response"] == "Hablar con un asesor":
+                hablar_asesor_count += 1
+            else:
+                sin_respuesta_count += 1
+
+        solicitar.sort(key=lambda x: x["responded_at"] or "", reverse=True)
+        return {"total": total, "solicitar": solicitar, "solicitar_count": len(solicitar),
+                "hablar_asesor_count": hablar_asesor_count, "sin_respuesta_count": sin_respuesta_count}
+    except Exception as e:
+        print(f"Supabase get_lead_metrics error: {e}")
+        return {}
+
+
+def get_renovado_metrics() -> dict:
+    """
+    Build renovados campaign metrics from bot_messages (fully retrospective).
+    msg_type='button' = template button click (vs 'interactive' = menu click).
+    """
+    if not supabase_client:
+        return {}
+    try:
+        sent_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .eq("text", "[Template: estado_renovar]")\
+            .eq("direction", "outbound")\
+            .order("created_at", desc=False)\
+            .execute()
+
+        if not sent_res.data:
+            return {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "no_quiero_count": 0, "mas_info_count": 0, "sin_respuesta_count": 0}
+
+        phone_sent_at = {}
+        for row in sent_res.data:
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["created_at"]
+
+        all_phones = list(phone_sent_at.keys())
+        total = len(all_phones)
+
+        btn_res = supabase_client.table('bot_messages')\
+            .select("phone, text, created_at")\
+            .in_("phone", all_phones)\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "button")\
+            .in_("text", ["Solicitar crédito", "No lo quiero", "Necesito más información"])\
+            .order("created_at", desc=False)\
+            .execute()
+
+        phone_responses = {}
+        for row in btn_res.data:
+            if row["phone"] not in phone_responses:
+                phone_responses[row["phone"]] = {"response": row["text"], "responded_at": row["created_at"]}
+
+        name_res = supabase_client.table('bot_conversations')\
+            .select("phone, client_name")\
+            .in_("phone", all_phones)\
+            .execute()
+        names = {r["phone"]: r.get("client_name") or "" for r in name_res.data}
+
+        solicitar = []
+        no_quiero_count = 0
+        mas_info_count = 0
+        sin_respuesta_count = 0
+
+        for phone in all_phones:
+            resp = phone_responses.get(phone)
+            if resp and resp["response"] == "Solicitar crédito":
+                solicitar.append({"phone": phone, "client_name": names.get(phone, ""),
+                                  "responded_at": resp["responded_at"]})
+            elif resp and resp["response"] == "No lo quiero":
+                no_quiero_count += 1
+            elif resp and resp["response"] == "Necesito más información":
+                mas_info_count += 1
+            else:
+                sin_respuesta_count += 1
+
+        solicitar.sort(key=lambda x: x["responded_at"] or "", reverse=True)
+        return {"total": total, "solicitar": solicitar, "solicitar_count": len(solicitar),
+                "no_quiero_count": no_quiero_count, "mas_info_count": mas_info_count,
+                "sin_respuesta_count": sin_respuesta_count}
+    except Exception as e:
+        print(f"Supabase get_renovado_metrics error: {e}")
+        return {}
+
+
 def get_anticipos_conversations() -> list:
     """Get conversations that originated from the anticipo_nomina template."""
     try:
