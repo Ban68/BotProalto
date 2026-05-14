@@ -1224,7 +1224,7 @@
             </div>
 
             <!-- Tarjetas resumen -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #e9d5ff;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #e9d5ff;">
                 <div style="background: white; padding: 14px 10px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #7c3aed;" id="metricTotal">—</div>
                     <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Total enviados</div>
@@ -1238,6 +1238,11 @@
                     <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;" id="metricNoGracias">—</div>
                     <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">No interesados</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: #dc2626;" id="metricNoGraciasPct"></div>
+                </div>
+                <div style="background: white; padding: 14px 10px; text-align: center;">
+                    <div style="font-size: 1.8rem; font-weight: 700; color: #2563eb;" id="metricChat">—</div>
+                    <div style="font-size: 0.73rem; color: #6b7280; margin-top: 2px;">Respondieron por chat</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #2563eb;" id="metricChatPct"></div>
                 </div>
                 <div style="background: white; padding: 14px 10px; text-align: center;">
                     <div style="font-size: 1.8rem; font-weight: 700; color: #9ca3af;" id="metricSinRespuesta">—</div>
@@ -4196,11 +4201,13 @@
                 document.getElementById('metricTotal').innerText = total || '0';
                 document.getElementById('metricSolicitar').innerText = m.solicitar_count || 0;
                 document.getElementById('metricNoGracias').innerText = m.no_gracias_count || 0;
+                document.getElementById('metricChat').innerText = m.respondieron_chat_count || 0;
                 document.getElementById('metricSinRespuesta').innerText = m.sin_respuesta_count || 0;
 
                 if (total > 0) {
                     document.getElementById('metricSolicitarPct').innerText = Math.round((m.solicitar_count / total) * 100) + '%';
                     document.getElementById('metricNoGraciasPct').innerText = Math.round((m.no_gracias_count / total) * 100) + '%';
+                    document.getElementById('metricChatPct').innerText = Math.round(((m.respondieron_chat_count || 0) / total) * 100) + '%';
                     document.getElementById('metricSinRespuestaPct').innerText = Math.round((m.sin_respuesta_count / total) * 100) + '%';
                 }
 

@@ -272,8 +272,12 @@ def log_anticipo_response(phone: str, response: str):
 
 def get_anticipo_metrics() -> dict:
     """
-    Build anticipo_salario campaign metrics from bot_messages (fully retrospective).
-    form_submitted status is enriched from anticipo_responses if available.
+    Build anticipo_salario campaign metrics (fully retrospective).
+    Merges click data from bot_messages and anticipo_responses since each source
+    drops entries: bot_messages logging runs in a daemon thread and can be lost
+    under load; anticipo_responses skips the 'no_gracias' write when the user's
+    state is no longer 'anticipos_notified'. Latest-response-wins per phone.
+    Phones that replied only by free text are reported separately.
     """
     if not supabase_client:
         return {}
@@ -302,57 +306,83 @@ def get_anticipo_metrics() -> dict:
 
         if not phone_sent_at:
             return {"total": 0, "solicitar": [], "solicitar_count": 0,
-                    "no_gracias_count": 0, "sin_respuesta_count": 0}
+                    "no_gracias_count": 0, "respondieron_chat_count": 0,
+                    "sin_respuesta_count": 0}
 
         all_phones = list(phone_sent_at.keys())
         total = len(all_phones)
 
+        # Source A: button clicks logged in bot_messages (latest first)
         btn_res = supabase_client.table('bot_messages')\
             .select("phone, text, created_at")\
             .in_("phone", all_phones)\
             .eq("direction", "inbound")\
             .eq("msg_type", "button")\
             .in_("text", ["Solicitar Anticipo", "Ahora no, gracias"])\
-            .order("created_at", desc=False)\
+            .order("created_at", desc=True)\
             .execute()
 
-        phone_responses = {}
-        for row in btn_res.data:
-            if row["phone"] not in phone_responses:
-                phone_responses[row["phone"]] = {"response": row["text"], "responded_at": row["created_at"]}
+        # phone -> (kind, responded_at) — latest wins across both sources
+        responses: dict = {}
+        for row in (btn_res.data or []):
+            if row["phone"] in responses:
+                continue
+            kind = "solicitar" if row["text"] == "Solicitar Anticipo" else "no_gracias"
+            responses[row["phone"]] = (kind, row["created_at"])
+
+        # Source B: anticipo_responses (synchronous insert, more reliable for solicitar)
+        form_submitted_map = {}
+        try:
+            ar_res = supabase_client.table('anticipo_responses')\
+                .select("phone, response, responded_at, form_submitted")\
+                .in_("phone", all_phones)\
+                .execute()
+            for row in (ar_res.data or []):
+                phone = row["phone"]
+                resp = row.get("response")
+                if resp not in ("solicitar", "no_gracias"):
+                    continue
+                ts = row.get("responded_at") or ""
+                existing = responses.get(phone)
+                if not existing or (ts and ts > (existing[1] or "")):
+                    responses[phone] = (resp, ts)
+            form_submitted_map = {r["phone"]: bool(r.get("form_submitted")) for r in (ar_res.data or [])}
+        except Exception:
+            pass
+
+        # Source C: free-text responses (typed instead of clicking)
+        text_res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", all_phones)\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "text")\
+            .execute()
+        phones_with_text = set(r["phone"] for r in (text_res.data or []))
 
         name_res = supabase_client.table('bot_conversations')\
             .select("phone, client_name")\
             .in_("phone", all_phones)\
             .execute()
-        names = {r["phone"]: r.get("client_name") or "" for r in name_res.data}
-
-        # Secondary lookup: form_submitted from anticipo_responses (best-effort)
-        form_submitted_map = {}
-        try:
-            ar_res = supabase_client.table('anticipo_responses')\
-                .select("phone, form_submitted")\
-                .in_("phone", all_phones)\
-                .execute()
-            form_submitted_map = {r["phone"]: bool(r.get("form_submitted")) for r in (ar_res.data or [])}
-        except Exception:
-            pass
+        names = {r["phone"]: r.get("client_name") or "" for r in (name_res.data or [])}
 
         solicitar = []
         no_gracias_count = 0
+        respondieron_chat_count = 0
         sin_respuesta_count = 0
 
         for phone in all_phones:
-            resp = phone_responses.get(phone)
-            if resp and resp["response"] == "Solicitar Anticipo":
+            resp = responses.get(phone)
+            if resp and resp[0] == "solicitar":
                 solicitar.append({
                     "phone": phone,
                     "client_name": names.get(phone, ""),
-                    "responded_at": resp["responded_at"],
+                    "responded_at": resp[1],
                     "form_submitted": form_submitted_map.get(phone, False),
                 })
-            elif resp and resp["response"] == "Ahora no, gracias":
+            elif resp and resp[0] == "no_gracias":
                 no_gracias_count += 1
+            elif phone in phones_with_text:
+                respondieron_chat_count += 1
             else:
                 sin_respuesta_count += 1
 
@@ -362,6 +392,7 @@ def get_anticipo_metrics() -> dict:
             "solicitar": solicitar,
             "solicitar_count": len(solicitar),
             "no_gracias_count": no_gracias_count,
+            "respondieron_chat_count": respondieron_chat_count,
             "sin_respuesta_count": sin_respuesta_count,
         }
     except Exception as e:
