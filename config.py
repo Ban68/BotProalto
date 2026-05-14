@@ -34,7 +34,9 @@ class Config:
     GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_APPS_SCRIPT_URL", "https://script.google.com/macros/s/AKfycbwPHixL8u1fNY43ifidJXYLWMMQnXQWdWGS0lkKDs1EUDrLLu0NZl_FVPxE7hLhi-Jy/exec")
 
     # Google Apps Script Web App (Sheet de Anticipo de Salario — consulta por cédula)
-    GOOGLE_APPS_SCRIPT_ANTICIPO_URL = os.getenv("GOOGLE_APPS_SCRIPT_ANTICIPO_URL", "")
+    # .strip() defensivo: si en Render se pegó la URL con un espacio o newline
+    # al final, la petición HTTP a Google falla silenciosamente.
+    GOOGLE_APPS_SCRIPT_ANTICIPO_URL = os.getenv("GOOGLE_APPS_SCRIPT_ANTICIPO_URL", "").strip()
 
 
 # Log de arranque: confirma si la env var del Sheet de anticipos quedó cargada
