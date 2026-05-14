@@ -205,8 +205,19 @@ def _build_client_context_note(user_phone: str, state: str, client_name: str) ->
 
     base = f"[Contexto interno: estado = '{state}', nombre = '{client_name}']"
 
+    dos_productos_policy = (
+        "\n[POLÍTICA — DOS PRODUCTOS ACTIVOS]: "
+        "ProAlto opera dos productos: 'crédito ordinario' (libranza, gestionado por nuestro sistema interno) y 'anticipo de salario' (producto nuevo, gestionado por fuera del sistema). "
+        "Un mismo cliente puede tener una solicitud de cada uno al mismo tiempo. "
+        "Si el cliente pregunta por 'su solicitud' o 'su crédito' sin aclarar el tipo, NO asumas — pregunta primero: "
+        "'¿Te refieres a tu solicitud de crédito ordinario o a tu solicitud de anticipo de salario?'. "
+        "Para cualquier consulta sustantiva sobre el ANTICIPO (cómo funciona, montos, plazos, requisitos, estado detallado, tiempos), "
+        "NO inventes datos: escala a asesor con [HABLAR_ASESOR]. "
+        "Si el cliente quiere consultar el estado de su solicitud, invítalo a usar el menú: [MOSTRAR_MENU]."
+    )
+
     if not client_data:
-        return base + "\n[No se encontró solicitud activa para este número. Si el cliente pregunta por su caso específico, dile que no tienes su información registrada y pídele que revise si el número de WhatsApp que usa es el mismo que registró con ProAlto.]"
+        return base + "\n[No se encontró solicitud activa para este número. Si el cliente pregunta por su caso específico, dile que no tienes su información registrada y pídele que revise si el número de WhatsApp que usa es el mismo que registró con ProAlto.]" + dos_productos_policy
 
     estado_interno = client_data.get("estado_interno", "")
     estado_legible = _STATUS_MAPPING.get(estado_interno.upper(), estado_interno)
@@ -226,7 +237,7 @@ def _build_client_context_note(user_phone: str, state: str, client_name: str) ->
 - Fecha de solicitud: {client_data.get('fecha_de_solicitud', 'N/A')}
 
 Con estos datos puedes responder directamente sobre el estado de la solicitud.
-Si el cliente pregunta por su saldo y no tienes datos de saldo aquí, invítalo a consultarlo desde el menú: "Puedes ver tu saldo desde el menú, te lo muestro.[MOSTRAR_MENU]" """
+Si el cliente pregunta por su saldo y no tienes datos de saldo aquí, invítalo a consultarlo desde el menú: "Puedes ver tu saldo desde el menú, te lo muestro.[MOSTRAR_MENU]" """ + dos_productos_policy
 
 
 def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "Cliente", cedula_context: dict = None, saldo_context: list = None) -> str:

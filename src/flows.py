@@ -1,6 +1,6 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
-from src.google_sheets import get_solicitud_reciente_sheet
+from src.google_sheets import get_solicitud_reciente_sheet, get_anticipo_by_cedula
 from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents
 from src.notifications import notify_admin_agent_request, notify_admin_error
 import os
@@ -266,6 +266,180 @@ def _handle_llm_agent(user_phone: str, text: str):
             _handle_llm_agent(user_phone, pending_text)
 
 
+# ── Status messages map (used by both waiting_for_cedula and choice handlers) ─
+def _render_credito_result(user_phone, result):
+    """Builds and sends the response for a crédito ordinario lookup, and sets the
+    appropriate next state. Extracted so it can be called both from the cédula
+    flow and from the disambiguation choice flow."""
+    estado_interno = result['estado_interno']
+    clean_status = estado_interno.strip().upper() if estado_interno else "NULL"
+    mensaje_cliente = STATUS_MESSAGES.get(clean_status, estado_interno or "Pendiente / En Estudio")
+
+    monto = result['valor_preestudiado']
+    nombre = result['nombre_completo']
+    fecha = result['fecha_de_solicitud']
+    plazo = result.get('plazo')
+    cuota = result.get('cuota')
+    frecuencia = result.get('frecuencia', '')
+
+    response_msg = (
+        f"🔍 *Resultado de Solicitud*\n\n"
+        f"👤 *Cliente:* {nombre}\n"
+        f"📅 *Fecha:* {fecha}\n"
+    )
+
+    statuses_no_monto = [
+        "REVISAR NUEVAMENTE",
+        "FALTA ALGÚN DOCUMENTO",
+        "EMPRESA PAUSADA",
+        "DENEGADO",
+        "CANCELADO POR LA EMPRESA",
+        "DESISTIÓ DEL CRÉDITO",
+        "NO RESPONDIÓ",
+    ]
+
+    if clean_status not in statuses_no_monto:
+        monto_label = "Monto Solicitado" if clean_status in ("ENVIADO A VB EMPRESA", "PENDIENTE POR ENVIAR A VB") else "Monto Aprobado"
+        response_msg += f"💰 *{monto_label}:* ${monto:,.0f}\n"
+
+    if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
+        if plazo:
+            plazo_label = f"{plazo} cuotas {frecuencia}".strip() if frecuencia else f"{plazo} cuotas"
+            response_msg += f"⏱️ *Plazo:* {plazo_label}\n"
+        if cuota:
+            cuota_fmt = f"${cuota:,.0f}".replace(",", ".") if isinstance(cuota, (int, float)) else str(cuota)
+            response_msg += f"💳 *Cuota:* {cuota_fmt}\n"
+        response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
+
+        WhatsAppService.send_message(user_phone, response_msg)
+
+        from src.conversation_log import get_email_for_phone
+        existing_email = get_email_for_phone(user_phone)
+
+        if existing_email:
+            WhatsAppService.send_message(
+                user_phone,
+                f"📧 En breve te llegará el contrato para firma electrónica al correo *{existing_email}*.\n\n"
+                "Estamos trabajando en tu proceso. ¡Pronto tendrás noticias!"
+            )
+            set_user_state(user_phone, "active")
+        else:
+            instruction_msg = (
+                "⚠️ *ACCIÓN NECESARIA*\n\n"
+                "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
+                "_Lo necesitamos para enviarte el contrato para firma electrónica._"
+            )
+            WhatsAppService.send_message(user_phone, instruction_msg)
+            set_client_name(user_phone, nombre)
+            set_user_state(user_phone, "waiting_for_email")
+        return
+
+    if clean_status == "FALTA ALGÚN DOCUMENTO":
+        from src.automation import build_docs_message
+        from src.conversation_log import set_solicitud_context
+        docs_faltantes = result.get("documentos_faltantes", "")
+        tipo_empleador = result.get("tipo_empleador", "EMPRESA")
+        set_client_name(user_phone, nombre)
+        set_solicitud_context(user_phone, result.get("empresa", ""), docs_faltantes, tipo_empleador)
+        set_user_state(user_phone, "waiting_for_docs_rojo")
+        docs_part = build_docs_message(docs_faltantes, tipo_empleador)
+        combined = (
+            response_msg
+            + "📋 *Estado:* Tu proceso está detenido porque te faltan los siguientes documentos:\n\n"
+            + docs_part.split("\n\n", 1)[1]
+        )
+        WhatsAppService.send_message(user_phone, combined)
+        log_message(user_phone, "outbound", "[Menu: estado_rojo]", "text")
+        return
+
+    # Estado neutro: mostrar y volver a "active"
+    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
+    WhatsAppService.send_message(user_phone, response_msg)
+    set_user_state(user_phone, "active")
+    WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+
+
+def _render_anticipo_result(user_phone, anticipo):
+    """Responde sobre el estado del anticipo de salario combinando dos columnas
+    del Sheet:
+      - 'Estado'         → decisión: Aprobado / Denegado / (vacío = en estudio)
+      - 'Estado Interno' → etapa operativa: Listo para llamar, Listo en panda,
+                           Listo para documentación, Desprendible, Desembolsado.
+    Prioridad: Estado Interno (más específico) sobre Estado (más general)."""
+    nombre = (anticipo.get("nombre_completo") or "").strip()
+    fecha = (anticipo.get("fecha_de_solicitud") or "").strip()
+    estado_apr = (anticipo.get("estado") or "").strip().upper()
+    estado_int = (anticipo.get("estado_interno") or "").strip().upper()
+
+    saludo = f"Hola {nombre.split()[0]}, " if nombre else ""
+    fecha_txt = f" el {fecha}" if fecha else ""
+    header = "🔍 *Resultado de Solicitud*"
+    cierre_default = "Necesitas algo más? Escribe 'Hola' para ver el menú."
+
+    # 1. Estado Interno tiene la información operativa más útil
+    if "DESEMBOLSADO" in estado_int:
+        body = (
+            f"{saludo}tu anticipo de salario ya fue *desembolsado*. "
+            f"Si no has visto el dinero en tu cuenta, escríbenos para revisarlo."
+        )
+        next_msg = cierre_default
+    elif "DESPRENDIBLE" in estado_int:
+        body = (
+            f"{saludo}tu solicitud de anticipo está pendiente porque nos falta tu *último desprendible de pago*. "
+            f"Puedes enviárnoslo por este chat para continuar."
+        )
+        next_msg = "Cuando lo envíes, lo revisamos. Si necesitas algo más, escribe 'Hola' para ver el menú."
+    elif "PANDA" in estado_int or "DOCUMENTACI" in estado_int:
+        body = (
+            f"{saludo}tu anticipo de salario fue *aprobado* y estamos preparando el contrato para firma. "
+            f"Te avisaremos cuando esté listo para firmar."
+        )
+        next_msg = cierre_default
+    elif "LLAMAR" in estado_int:
+        body = (
+            f"{saludo}tu anticipo de salario fue *aprobado*. Un asesor te contactará pronto para terminar el proceso."
+        )
+        next_msg = cierre_default
+    # 2. Si Estado Interno está vacío, caemos a Estado (Aprobado / Denegado)
+    elif "DENEGADO" in estado_apr:
+        body = (
+            f"{saludo}tu solicitud de anticipo fue revisada y no fue viable en esta ocasión. "
+            f"Si quieres más detalle, un asesor te puede atender."
+        )
+        next_msg = cierre_default
+    elif "APROBADO" in estado_apr:
+        body = (
+            f"{saludo}tu anticipo de salario fue *aprobado*. "
+            f"Estamos coordinando los siguientes pasos, te avisamos por este medio apenas tengamos novedad."
+        )
+        next_msg = cierre_default
+    # 3. Ninguno de los dos campos tiene valor → recién radicada
+    else:
+        body = (
+            f"{saludo}hemos recibido tu solicitud de anticipo de salario{fecha_txt}. "
+            f"Actualmente se encuentra *En Estudio*.\n\n"
+            f"Te avisaremos por este medio apenas tengamos novedad."
+        )
+        next_msg = cierre_default
+
+    WhatsAppService.send_message(user_phone, f"{header}\n\n{body}")
+    set_user_state(user_phone, "active")
+    WhatsAppService.send_message(user_phone, next_msg)
+
+
+def _ask_solicitud_choice(user_phone, cedula):
+    """Sends the two-button disambiguation prompt and parks the state with the cédula."""
+    WhatsAppService.send_interactive_button(
+        user_phone,
+        "Vemos que tienes dos solicitudes activas: una de crédito ordinario y una de anticipo de salario.\n\n¿Sobre cuál quieres consultar?",
+        [
+            {"id": "choice_credito", "title": "Crédito ordinario"},
+            {"id": "choice_anticipo", "title": "Anticipo de salario"},
+        ]
+    )
+    set_user_state(user_phone, f"waiting_for_solicitud_choice|{cedula}")
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -413,111 +587,64 @@ class FlowHandler:
                  return
 
             result = get_solicitud_status(text)
-            
+            anticipo = get_anticipo_by_cedula(text)
+
+            # Branch 1: cliente con ambas solicitudes activas → preguntar cuál
+            if result and anticipo:
+                _ask_solicitud_choice(user_phone, text)
+                return
+
+            # Branch 2: solo crédito ordinario → comportamiento original
             if result:
-                estado_interno = result['estado_interno']
-                clean_status = estado_interno.strip().upper() if estado_interno else "NULL"
-                mensaje_cliente = STATUS_MESSAGES.get(clean_status, estado_interno or "Pendiente / En Estudio")
-                
-                monto = result['valor_preestudiado']
-                nombre = result['nombre_completo']
-                fecha = result['fecha_de_solicitud']
-                plazo = result.get('plazo')
-                cuota = result.get('cuota')
-                frecuencia = result.get('frecuencia', '')
+                _render_credito_result(user_phone, result)
+                return
 
-                response_msg = (
+            # Branch 3: solo anticipo de salario → confirmar recepción
+            if anticipo:
+                _render_anticipo_result(user_phone, anticipo)
+                return
+
+            # Branch 4: ninguno → fallback al Sheet de crédito recién radicado
+            sheet_result = get_solicitud_reciente_sheet(text)
+            if sheet_result:
+                WhatsAppService.send_message(
+                    user_phone,
                     f"🔍 *Resultado de Solicitud*\n\n"
-                    f"👤 *Cliente:* {nombre}\n"
-                    f"📅 *Fecha:* {fecha}\n"
+                    f"¡Hola! Hemos recibido tu solicitud radicada recientemente. Actualmente se encuentra *En Estudio*.\n\n"
+                    f"Te estaremos avisando por este medio apenas tengamos una respuesta o novedad."
                 )
-
-                # Definir estados en los que NO se debe mostrar el monto
-                statuses_no_monto = [
-                    "REVISAR NUEVAMENTE", 
-                    "FALTA ALGÚN DOCUMENTO", 
-                    "EMPRESA PAUSADA", 
-                    "DENEGADO", 
-                    "CANCELADO POR LA EMPRESA",
-                    "DESISTIÓ DEL CRÉDITO", 
-                    "NO RESPONDIÓ"
-                ]
-
-                if clean_status not in statuses_no_monto:
-                    monto_label = "Monto Solicitado" if clean_status in ("ENVIADO A VB EMPRESA", "PENDIENTE POR ENVIAR A VB") else "Monto Aprobado"
-                    response_msg += f"💰 *{monto_label}:* ${monto:,.0f}\n"
-
-                if clean_status in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN"]:
-                    if plazo:
-                        plazo_label = f"{plazo} cuotas {frecuencia}".strip() if frecuencia else f"{plazo} cuotas"
-                        response_msg += f"⏱️ *Plazo:* {plazo_label}\n"
-                    if cuota:
-                        cuota_fmt = f"${cuota:,.0f}".replace(",", ".") if isinstance(cuota, (int, float)) else str(cuota)
-                        response_msg += f"💳 *Cuota:* {cuota_fmt}\n"
-                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
-
-                    # 1. Send the result box
-                    WhatsAppService.send_message(user_phone, response_msg)
-
-                    # 2. Check if email already captured
-                    from src.conversation_log import get_email_for_phone
-                    existing_email = get_email_for_phone(user_phone)
-
-                    if existing_email:
-                        WhatsAppService.send_message(
-                            user_phone,
-                            f"📧 En breve te llegará el contrato para firma electrónica al correo *{existing_email}*.\n\n"
-                            "Estamos trabajando en tu proceso. ¡Pronto tendrás noticias!"
-                        )
-                        set_user_state(user_phone, "active")
-                    else:
-                        instruction_msg = (
-                            "⚠️ *ACCIÓN NECESARIA*\n\n"
-                            "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
-                            "_Lo necesitamos para enviarte el contrato para firma electrónica._"
-                        )
-                        WhatsAppService.send_message(user_phone, instruction_msg)
-                        set_client_name(user_phone, nombre)
-                        set_user_state(user_phone, "waiting_for_email")
-                elif clean_status == "FALTA ALGÚN DOCUMENTO":
-                    from src.automation import build_docs_message
-                    from src.conversation_log import set_solicitud_context
-                    docs_faltantes = result.get("documentos_faltantes", "")
-                    tipo_empleador = result.get("tipo_empleador", "EMPRESA")
-                    set_client_name(user_phone, nombre)
-                    set_solicitud_context(user_phone, result.get("empresa", ""), docs_faltantes, tipo_empleador)
-                    set_user_state(user_phone, "waiting_for_docs_rojo")
-                    # build_docs_message returns "Para agilizar...\n\n{lista}\n\nPuedes enviárnoslos..."
-                    # We skip its intro and use our own to produce a single combined message
-                    docs_part = build_docs_message(docs_faltantes, tipo_empleador)
-                    combined = (
-                        response_msg
-                        + "📋 *Estado:* Tu proceso está detenido porque te faltan los siguientes documentos:\n\n"
-                        + docs_part.split("\n\n", 1)[1]
-                    )
-                    WhatsAppService.send_message(user_phone, combined)
-                    log_message(user_phone, "outbound", "[Menu: estado_rojo]", "text")
-                else:
-                    response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
-                    WhatsAppService.send_message(user_phone, response_msg)
             else:
-                # 2.3 Si no está en BD, verificar en Google Sheets de los últimos 3 días
-                sheet_result = get_solicitud_reciente_sheet(text)
-                
-                if sheet_result:
-                    WhatsAppService.send_message(
-                        user_phone, 
-                        f"🔍 *Resultado de Solicitud*\n\n"
-                        f"¡Hola! Hemos recibido tu solicitud radicada recientemente. Actualmente se encuentra *En Estudio*.\n\n"
-                        f"Te estaremos avisando por este medio apenas tengamos una respuesta o novedad."
-                    )
+                WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            return
+
+        # 2.b Disambiguación entre crédito ordinario y anticipo (cliente con ambas)
+        if state.startswith("waiting_for_solicitud_choice"):
+            cedula = state.split("|", 1)[1] if "|" in state else ""
+            norm = text.lower().strip()
+            if re.search(r"\b(cr[eé]d|ordinari|libranza)", norm):
+                result = get_solicitud_status(cedula) if cedula else None
+                if result:
+                    _render_credito_result(user_phone, result)
                 else:
-                    WhatsAppService.send_message(user_phone, f"❌ No encontramos ninguna solicitud reciente con la cédula *{text}*.")
-            
-            # Reset state and ask if they need anything else, UNLESS they are in "Aprobado" and we're waiting for them to type email
-            if not result or clean_status not in ["APROBADO POR EL CLIENTE", "LISTO PARA HACERLE DOCUMENTACIÓN", "FALTA ALGÚN DOCUMENTO"]:
+                    set_user_state(user_phone, "active")
+                    WhatsAppService.send_message(user_phone, "No pude recuperar tu solicitud de crédito en este momento. Intenta consultarla de nuevo desde el menú.")
+                return
+            if re.search(r"\b(antic|salari|n[oó]min)", norm):
+                anticipo = get_anticipo_by_cedula(cedula) if cedula else None
+                if anticipo:
+                    _render_anticipo_result(user_phone, anticipo)
+                else:
+                    set_user_state(user_phone, "active")
+                    WhatsAppService.send_message(user_phone, "No pude recuperar tu solicitud de anticipo en este momento. Intenta consultarla de nuevo desde el menú.")
+                return
+            # Texto no reconocido → reenviar botones
+            if cedula:
+                _ask_solicitud_choice(user_phone, cedula)
+            else:
                 set_user_state(user_phone, "active")
-                WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+                FlowHandler.send_main_menu(user_phone)
             return
 
         # 2a. Check if waiting for Email
@@ -821,6 +948,28 @@ class FlowHandler:
             else:
                 prefix = "¡Excelente elección! " if btn_id == "Solicitar crédito" else ""
                 WhatsAppService.send_message(user_phone, f"{prefix}Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
+
+        elif btn_id in ["choice_credito", "choice_anticipo"]:
+            # Respuesta a la disambiguación cuando el cliente tenía solicitud
+            # de crédito Y de anticipo activas al mismo tiempo.
+            cedula = state.split("|", 1)[1] if state.startswith("waiting_for_solicitud_choice") and "|" in state else ""
+            if not cedula:
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+            elif btn_id == "choice_credito":
+                result = get_solicitud_status(cedula)
+                if result:
+                    _render_credito_result(user_phone, result)
+                else:
+                    set_user_state(user_phone, "active")
+                    WhatsAppService.send_message(user_phone, "No pude recuperar tu solicitud de crédito en este momento. Intenta consultarla de nuevo desde el menú.")
+            else:  # choice_anticipo
+                anticipo = get_anticipo_by_cedula(cedula)
+                if anticipo:
+                    _render_anticipo_result(user_phone, anticipo)
+                else:
+                    set_user_state(user_phone, "active")
+                    WhatsAppService.send_message(user_phone, "No pude recuperar tu solicitud de anticipo en este momento. Intenta consultarla de nuevo desde el menú.")
 
         elif btn_id == "menu_saldo":
             set_user_state(user_phone, "waiting_for_cedula_saldo")

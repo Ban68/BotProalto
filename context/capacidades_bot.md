@@ -107,6 +107,7 @@ Cuando el LLM responde preguntas en lenguaje libre, debe:
 - Diferenciar entre "saldo" (deuda de crédito activo) y "solicitud" (estado de aplicación) — son conceptos distintos
 - Si el cliente envía su cédula, el LLM recibe datos de solicitud Y saldo activo automáticamente
 - Si el cliente pregunta por saldo o estado de solicitud y no hay datos, redirigir al menú del bot con [MOSTRAR_MENU]
+- ProAlto ofrece dos productos: **crédito ordinario** (libranza) y **anticipo de salario** (producto nuevo, gestionado por fuera del sistema principal). Un mismo cliente puede tener solicitud activa de los dos al mismo tiempo. Si el cliente pregunta por "su solicitud" o "su crédito" sin aclarar el tipo, preguntar primero: "¿Te refieres a crédito ordinario o a anticipo de salario?". Para cualquier consulta sustantiva sobre el anticipo (requisitos, montos, plazos, estado detallado, tiempos), no inventar datos — escalar a asesor con [HABLAR_ASESOR].
 
 ## NUNCA hagas esto (errores reales detectados en auditoría)
 
