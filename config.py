@@ -36,3 +36,11 @@ class Config:
     # Google Apps Script Web App (Sheet de Anticipo de Salario — consulta por cédula)
     GOOGLE_APPS_SCRIPT_ANTICIPO_URL = os.getenv("GOOGLE_APPS_SCRIPT_ANTICIPO_URL", "")
 
+
+# Log de arranque: confirma si la env var del Sheet de anticipos quedó cargada
+print(
+    f"[startup] GOOGLE_APPS_SCRIPT_ANTICIPO_URL "
+    f"configured={bool(Config.GOOGLE_APPS_SCRIPT_ANTICIPO_URL)} "
+    f"len={len(Config.GOOGLE_APPS_SCRIPT_ANTICIPO_URL)}"
+)
+
