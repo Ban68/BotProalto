@@ -38,18 +38,13 @@ def get_anticipo_by_cedula(cedula):
              None si no existe o si hay error/URL no configurada.
     """
     url = Config.GOOGLE_APPS_SCRIPT_ANTICIPO_URL
-    print(f"[anticipo-lookup] cedula={cedula} url_configured={bool(url)} url_len={len(url) if url else 0}")
     if not url:
-        print("[anticipo-lookup] URL NO configurada — retorna None")
         return None
     try:
         response = requests.get(url, params={"cedula": cedula}, timeout=15)
-        print(f"[anticipo-lookup] status={response.status_code} body_preview={response.text[:200]!r}")
         if response.status_code == 200:
             data = response.json()
-            found = data.get("found")
-            print(f"[anticipo-lookup] found={found}")
-            return data if found else None
+            return data if data.get("found") else None
         print(f"❌ Error en Apps Script de anticipos: {response.status_code} - {response.text}")
         return None
     except requests.exceptions.Timeout:

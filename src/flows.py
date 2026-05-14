@@ -588,7 +588,6 @@ class FlowHandler:
 
             result = get_solicitud_status(text)
             anticipo = get_anticipo_by_cedula(text)
-            print(f"[cedula-flow] cedula={text} credito={'SI' if result else 'NO'} anticipo={'SI' if anticipo else 'NO'}")
 
             # Branch 1: cliente con ambas solicitudes activas → preguntar cuál
             if result and anticipo:
