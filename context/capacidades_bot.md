@@ -17,7 +17,7 @@ Este archivo define claramente qué puede y qué no puede hacer el bot. Es funda
 - ✅ Recibir y almacenar documentos enviados por WhatsApp (fotos, PDFs)
 - ✅ Capturar número de cuenta bancaria y banco para el desembolso
 - ✅ Redirigir al formulario de solicitud de nuevo crédito
-- ✅ Recibir actualización anual de datos de contacto del cliente (cédula, teléfono actual, teléfono alterno, dirección, correo, referencia personal) — disponible desde el menú principal como "Actualizar mis datos" y también vía campaña proactiva con template `actualizacion_datos`
+- ✅ Recibir actualización anual de datos de contacto del cliente (cédula, teléfono actual, teléfono alterno, dirección, correo, referencia personal) — únicamente vía campaña proactiva con template `actualizacion_datos`; no se ofrece como opción del menú
 
 ### Gestión de la conversación
 - ✅ Mostrar el menú de opciones disponibles
@@ -42,7 +42,7 @@ Este archivo define claramente qué puede y qué no puede hacer el bot. Es funda
 - ❌ Registrar prepagos o abonos extraordinarios
 
 ### Gestión de datos
-- ❌ Cambiar datos personales en el core directamente — el bot SÍ recibe la actualización anual de datos de contacto (campaña `actualizacion_datos` o menú "Actualizar mis datos"), pero la fila queda en Supabase y un asesor la sincroniza al core; el LLM no debe simular que "ya actualicé tus datos en el sistema"
+- ❌ Cambiar datos personales en el core directamente — el bot SÍ recibe la actualización anual de datos de contacto cuando le llega al cliente la campaña `actualizacion_datos`, pero la fila queda en Supabase y un asesor la sincroniza al core; el LLM no debe simular que "ya actualicé tus datos en el sistema"
 - ❌ Cambiar la cuenta bancaria registrada (una vez registrada, debe hacerlo un asesor)
 - ❌ Eliminar o modificar solicitudes existentes
 - ❌ Ver información de créditos de terceros (solo del titular de la cédula ingresada)
@@ -108,7 +108,7 @@ Cuando el LLM responde preguntas en lenguaje libre, debe:
 - Diferenciar entre "saldo" (deuda de crédito activo) y "solicitud" (estado de aplicación) — son conceptos distintos
 - Si el cliente envía su cédula, el LLM recibe datos de solicitud Y saldo activo automáticamente
 - Si el cliente pregunta por saldo o estado de solicitud y no hay datos, redirigir al menú del bot con [MOSTRAR_MENU]
-- Si el cliente quiere actualizar sus datos de contacto ("quiero actualizar mis datos", "cambié de número", "tengo otra dirección"), redirigir al menú con [MOSTRAR_MENU] para que use la opción "Actualizar mis datos" — NO intentes capturar los datos en una conversación libre; el flujo estructurado los valida (incluida la cédula contra el core) y los guarda correctamente
+- Si el cliente quiere actualizar sus datos de contacto ("quiero actualizar mis datos", "cambié de número", "tengo otra dirección"), explicar que la actualización se hace una vez al año y que le llegará por este mismo WhatsApp con un botón para iniciarla. Si insiste en hacerlo ya, registrar con [REGISTRAR_SOLICITUD:general] para que un asesor lo coordine — NO intentes capturar los datos en conversación libre
 - ProAlto ofrece dos productos: **crédito ordinario** (libranza) y **anticipo de salario** (producto nuevo, gestionado por fuera del sistema principal). Un mismo cliente puede tener solicitud activa de los dos al mismo tiempo. Si el cliente pregunta por "su solicitud" o "su crédito" sin aclarar el tipo, preguntar primero: "¿Te refieres a crédito ordinario o a anticipo de salario?". Para cualquier consulta sustantiva sobre el anticipo (requisitos, montos, plazos, estado detallado, tiempos), no inventar datos — escalar a asesor con [HABLAR_ASESOR].
 
 ## NUNCA hagas esto (errores reales detectados en auditoría)

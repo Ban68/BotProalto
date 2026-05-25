@@ -1415,14 +1415,9 @@ class FlowHandler:
             set_user_state(user_phone, "active")
             WhatsAppService.send_message(
                 user_phone,
-                "Listo, lo dejamos para más adelante. Cuando quieras actualizar tus datos, "
-                "vuelve al menú y elige 'Actualizar mis datos'."
+                "Listo, lo dejamos para más adelante. Te recordaremos por este "
+                "mismo medio cuando sea momento de actualizar tus datos."
             )
-
-        elif btn_id == "menu_actualizar_datos":
-            # Manual entry from the main menu — within session window, so
-            # we send the legal block as a regular message before asking.
-            _start_contact_update_flow(user_phone, "manual_menu", send_intro=True)
 
         elif btn_id == "update_data_confirm":
             from src.conversation_log import get_in_progress_contact_update, confirm_contact_update
@@ -1469,18 +1464,12 @@ class FlowHandler:
     @staticmethod
     def send_main_menu(user_phone):
         menu_text = "Hola, en qué podemos ayudarte hoy?"
-        sections = [
-            {
-                "title": "Opciones",
-                "rows": [
-                    {"id": "menu_cliente", "title": "Soy Cliente"},
-                    {"id": "menu_solicitud", "title": "Estado Solicitud"},
-                    {"id": "menu_credito", "title": "Solicitar Crédito"},
-                    {"id": "menu_actualizar_datos", "title": "Actualizar mis datos"},
-                ],
-            }
+        buttons = [
+            {"id": "menu_cliente", "title": "Soy Cliente"},
+            {"id": "menu_solicitud", "title": "Estado Solicitud"},
+            {"id": "menu_credito", "title": "Solicitar Crédito"}
         ]
-        WhatsAppService.send_interactive_list(user_phone, menu_text, "Ver opciones", sections)
+        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
 
     @staticmethod
     def send_client_menu(user_phone):

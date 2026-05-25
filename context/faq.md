@@ -219,4 +219,4 @@ Te pedimos confirmar tu cédula, tu celular actual, un celular alterno (familiar
 Sí. La conversación es directa con ProAlto y tus datos quedan resguardados según nuestra Política de Privacidad y la Ley 1581 de 2012. Antes de iniciar, validamos tu identidad pidiéndote la cédula.
 
 **Quiero actualizar mis datos ahora, ¿cómo lo hago?**
-Escribe "Hola" para ver el menú principal y selecciona la opción "Actualizar mis datos". El bot te guía paso a paso.
+La actualización se hace una vez al año y te llega por este mismo WhatsApp con un botón "Actualizar ahora" para iniciar el flujo. Si necesitas hacerlo antes de que te llegue la solicitud, escríbenos y un asesor te coordina la actualización manualmente.
