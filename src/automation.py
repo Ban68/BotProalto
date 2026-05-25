@@ -1,3 +1,4 @@
+import re
 import time
 import atexit
 from datetime import datetime
@@ -408,8 +409,9 @@ def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
     """
     Builds the personalized document list message for a client.
 
-    docs_faltantes: nombres de documentos separados por ';'
-                    (e.g. 'Certificado de Deuda;Certificado Laboral'),
+    docs_faltantes: nombres de documentos separados por ';' o ','
+                    (e.g. 'Certificado de Deuda;Certificado Laboral' o
+                    'Recibo público, 2 últimos desprendibles, Fotocopia de cédula'),
                     'Todos los documentos', o vacío/None para enviar la lista completa.
     tipo_empleador: 'EMPRESA' (default) o 'FINCA'
     """
@@ -417,11 +419,12 @@ def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
     doc_map  = _DOC_LABEL_MAP_FINCA if is_finca else _DOC_LABEL_MAP_EMPRESA
     all_docs = _ALL_DOCS_FINCA if is_finca else _ALL_DOCS_EMPRESA
 
-    # Normalizar: puede llegar como lista (PostgreSQL TEXT[]) o como string separado por ';'
+    # Normalizar: puede llegar como lista (PostgreSQL TEXT[]) o como string
+    # separado por ';' o ',' (la vista v_solicitudes_whatsapp usa coma).
     if isinstance(docs_faltantes, list):
         items = [item.strip() for item in docs_faltantes if item and item.strip()]
     else:
-        items = [item.strip() for item in (docs_faltantes or "").split(";") if item.strip()]
+        items = [item.strip() for item in re.split(r"[;,]", docs_faltantes or "") if item.strip()]
 
     if not items or any("TODOS" in item.upper() for item in items):
         selected = all_docs
