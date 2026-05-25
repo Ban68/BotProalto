@@ -8,6 +8,7 @@ myenv/
 .DS_Store
 data/
 test_*.py
+!src/test_mode.py
 old_reqs.txt
 .claude/
 

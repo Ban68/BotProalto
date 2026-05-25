@@ -3,6 +3,13 @@ import json
 import os
 from config import Config
 from src.conversation_log import log_message
+from src import test_mode
+
+
+def _fake_meta_response() -> dict:
+    """Respuesta simulada compatible con la forma que devuelve Meta."""
+    return {"messages": [{"id": "test_message"}]}
+
 
 class WhatsAppService:
     @staticmethod
@@ -11,6 +18,14 @@ class WhatsAppService:
         Send a text message to a WhatsApp user specifically for Cloud API.
         msg_type: log type — use "llm" for LLM-generated responses (admin-only marker).
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "text",
+                "body": message_body,
+                "msg_type": msg_type,
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -22,12 +37,12 @@ class WhatsAppService:
             "type": "text",
             "text": {"body": message_body}
         }
-        
+
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
             res_json = response.json()
-            
+
             # Extract WhatsApp Message ID
             wamid = None
             if "messages" in res_json and len(res_json["messages"]) > 0:
@@ -47,6 +62,14 @@ class WhatsAppService:
         """
         Send an image via public URL.
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "image",
+                "url": image_url,
+                "caption": caption or "",
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -79,6 +102,15 @@ class WhatsAppService:
         """
         Send a document via public URL.
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "document",
+                "url": doc_url,
+                "filename": filename or "",
+                "caption": caption or "",
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -114,6 +146,14 @@ class WhatsAppService:
         Send an interactive message with buttons.
         buttons: list of dictionaries, e.g., [{"id": "btn1", "title": "Option 1"}]
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "interactive",
+                "body": body_text,
+                "buttons": [{"id": b.get("id"), "title": b.get("title")} for b in (buttons or [])],
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -166,6 +206,15 @@ class WhatsAppService:
         Send an interactive list message (for >3 options).
         sections: list of dicts, e.g. [{ "title": "Section Title", "rows": [{"id": "1", "title": "Row 1"}] }]
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "list",
+                "body": body_text,
+                "button_text": button_text,
+                "sections": sections,
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -202,6 +251,15 @@ class WhatsAppService:
         Send a WhatsApp template message.
         components: List of component dicts (e.g. for parameters)
         """
+        if test_mode.is_test_phone(to_number):
+            test_mode.append_outbound(to_number, {
+                "type": "template",
+                "template_name": template_name,
+                "language_code": language_code,
+                "components": components or [],
+            })
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -316,6 +374,9 @@ class WhatsAppService:
         The message must have been sent within the last 2 days.
         Returns (True, result) on success, (False, error_msg) on failure.
         """
+        if isinstance(message_id, str) and message_id.startswith("test_"):
+            return True, {"status": "test_skipped"}
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",

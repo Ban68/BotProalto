@@ -849,3 +849,145 @@ def api_mark_docs_completos():
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────
+# MODO TEST — panel para probar el bot sin contaminar datos reales
+# ─────────────────────────────────────────────────────────────────────
+
+import time as _time
+from src import test_mode
+
+
+@admin_bp.route('/admin/test')
+@requires_auth
+def test_dashboard():
+    """Panel de pruebas. Conversa con el bot sin tocar Supabase ni Meta."""
+    return render_template('admin_test.html')
+
+
+@admin_bp.route('/admin/api/test/start', methods=['POST'])
+@requires_auth
+def api_test_start():
+    """Crea una sesión de prueba y devuelve su test_phone."""
+    body = request.get_json(silent=True) or {}
+    client_name = (body.get("client_name") or "").strip()
+    test_phone = test_mode.register_session()
+    if client_name:
+        test_mode.set_client_name(test_phone, client_name)
+    return jsonify({
+        "status": "ok",
+        "test_phone": test_phone,
+        "snapshot": test_mode.snapshot(test_phone),
+    })
+
+
+def _wait_for_llm(test_phone: str, timeout_s: float = 6.0) -> bool:
+    """Espera a que termine el thread del LLM agent para este phone test.
+    Devuelve True si terminó, False si timeout."""
+    deadline = _time.time() + timeout_s
+    while _time.time() < deadline:
+        if not test_mode.is_llm_pending(test_phone):
+            return True
+        _time.sleep(0.15)
+    return not test_mode.is_llm_pending(test_phone)
+
+
+@admin_bp.route('/admin/api/test/send', methods=['POST'])
+@requires_auth
+def api_test_send():
+    """Envía un mensaje al bot dentro de la sesión de prueba.
+
+    Body: { test_phone, text, [kind: 'text' | 'button_reply'], [button_id] }
+    """
+    body = request.get_json(silent=True) or {}
+    test_phone = (body.get("test_phone") or "").strip()
+    text = (body.get("text") or "").strip()
+    kind = (body.get("kind") or "text").strip()
+    button_id = (body.get("button_id") or "").strip()
+
+    if not test_mode.session_exists(test_phone):
+        return jsonify({"status": "error", "message": "Sesión de prueba inválida o expirada"}), 400
+    if not text and not button_id:
+        return jsonify({"status": "error", "message": "Texto o button_id requerido"}), 400
+
+    # Limpiar buffer outbound previo para que esta llamada solo vea las
+    # respuestas generadas por este mensaje.
+    test_mode.drain_outbound(test_phone)
+
+    msg_id = f"test_msg_{int(_time.time() * 1000)}"
+    if kind == "button_reply":
+        message = {
+            "from": test_phone,
+            "id": msg_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "button_reply",
+                "button_reply": {"id": button_id or "btn", "title": text or button_id or "Botón"},
+            },
+        }
+    else:
+        message = {
+            "from": test_phone,
+            "id": msg_id,
+            "type": "text",
+            "text": {"body": text},
+        }
+
+    payload = {"entry": [{"changes": [{"value": {"messages": [message]}}]}]}
+
+    from src.flows import FlowHandler
+    try:
+        FlowHandler.handle_incoming_message(payload)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error procesando mensaje: {e}"}), 500
+
+    # Esperar al LLM si arrancó en background.
+    llm_done = _wait_for_llm(test_phone, timeout_s=6.0)
+    outbound = test_mode.drain_outbound(test_phone)
+
+    return jsonify({
+        "status": "ok",
+        "outbound": outbound,
+        "llm_pending": not llm_done,
+        "snapshot": test_mode.snapshot(test_phone),
+    })
+
+
+@admin_bp.route('/admin/api/test/poll', methods=['GET'])
+@requires_auth
+def api_test_poll():
+    """Devuelve los mensajes outbound acumulados desde la última llamada.
+    Usado por el frontend mientras el LLM thread sigue corriendo."""
+    test_phone = (request.args.get("test_phone") or "").strip()
+    if not test_mode.session_exists(test_phone):
+        return jsonify({"status": "error", "message": "Sesión de prueba inválida o expirada"}), 400
+
+    outbound = test_mode.drain_outbound(test_phone)
+    return jsonify({
+        "status": "ok",
+        "outbound": outbound,
+        "llm_pending": test_mode.is_llm_pending(test_phone),
+        "snapshot": test_mode.snapshot(test_phone),
+    })
+
+
+@admin_bp.route('/admin/api/test/reset', methods=['POST'])
+@requires_auth
+def api_test_reset():
+    """Resetea el estado de la sesión sin desregistrarla."""
+    body = request.get_json(silent=True) or {}
+    test_phone = (body.get("test_phone") or "").strip()
+    if not test_mode.reset_session(test_phone):
+        return jsonify({"status": "error", "message": "Sesión no encontrada"}), 404
+    return jsonify({"status": "ok", "snapshot": test_mode.snapshot(test_phone)})
+
+
+@admin_bp.route('/admin/api/test/end', methods=['POST'])
+@requires_auth
+def api_test_end():
+    """Cierra la sesión y libera memoria."""
+    body = request.get_json(silent=True) or {}
+    test_phone = (body.get("test_phone") or "").strip()
+    test_mode.unregister_session(test_phone)
+    return jsonify({"status": "ok"})

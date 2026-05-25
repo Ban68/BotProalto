@@ -2,6 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from config import Config
 from src.services import WhatsAppService
+from src import test_mode
 
 def is_business_hours() -> bool:
     """Check if the current time is within business hours (8am - 5pm, Mon-Fri)."""
@@ -36,6 +37,13 @@ def notify_admins(message: str) -> None:
 
 def notify_admin_agent_request(user_phone: str) -> None:
     """Notify admins that a user has requested an agent during business hours."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "agent_request",
+            "body": "Notificación a admin suprimida: el cliente pidió hablar con asesor.",
+        })
+        return
     if is_business_hours():
         msg = (
             f"🚨 *Aviso de Soporte*\n\n"
@@ -46,6 +54,14 @@ def notify_admin_agent_request(user_phone: str) -> None:
 
 def notify_admin_llm_request(user_phone: str, tipo: str) -> None:
     """Notify admins that the LLM agent registered a pending request (no escalation)."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "llm_request",
+            "tipo": tipo,
+            "body": f"Notificación a admin suprimida: solicitud LLM tipo {tipo}.",
+        })
+        return
     tipo_labels = {
         "desembolso_pendiente": "Desembolso pendiente",
         "paz_salvo": "Paz y salvo",
@@ -68,6 +84,13 @@ def notify_admin_llm_request(user_phone: str, tipo: str) -> None:
 
 def notify_admin_error(user_phone: str, error_msg: str) -> None:
     """Notify admins that a system error occurred while interacting with a user."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "error",
+            "body": f"Notificación a admin suprimida: error {error_msg[:120]}",
+        })
+        return
     msg = (
         f"⚠️ *Alerta de Sistema*\n\n"
         f"La conversación con {user_phone} generó un error.\n"
@@ -82,6 +105,14 @@ def notify_admin_contact_update(user_phone: str, client_name: str, summary: dict
     summary keys (all optional): cedula, telefono_principal, telefono_alterno,
     direccion, email, ref_nombre, ref_telefono, ref_parentesco.
     """
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "contact_update",
+            "body": "Notificación a admin suprimida: actualización de datos confirmada.",
+            "summary": dict(summary or {}),
+        })
+        return
     def _v(k):
         return (summary or {}).get(k) or "-"
 
@@ -103,6 +134,13 @@ def notify_admin_contact_update(user_phone: str, client_name: str, summary: dict
 def notify_admin_cedula_mismatch(user_phone: str) -> None:
     """Notify admins that a client failed cedula verification during the
     contact-data update flow and was escalated to a human agent."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "cedula_mismatch",
+            "body": "Notificación a admin suprimida: verificación de cédula fallida.",
+        })
+        return
     msg = (
         f"⚠️ *Verificación de identidad fallida*\n\n"
         f"El número {user_phone} intentó actualizar sus datos pero no logró "

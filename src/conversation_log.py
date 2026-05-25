@@ -7,6 +7,7 @@ import threading
 from datetime import datetime
 from config import Config
 from supabase import create_client, Client
+from src import test_mode
 
 # Initialize Supabase client
 supabase_client = None
@@ -20,8 +21,11 @@ else:
 
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text", wamid: str = None):
     """Log a single message to the conversation history in background."""
+    if test_mode.is_test_phone(phone):
+        test_mode.log_message(phone, direction, text, msg_type)
+        return
     now = datetime.now().isoformat()
-    
+
     # Run DB insert in background to avoid blocking WhatsApp webhook response
     threading.Thread(
         target=_supabase_log_task,
@@ -71,6 +75,8 @@ def _supabase_log_task(phone, direction, text, msg_type, now, wamid=None):
 
 def get_user_state(phone: str) -> str:
     """Fetch the current detailed status/state of the user from Supabase."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_state(phone)
     try:
         res = supabase_client.table('bot_conversations').select("status").eq("phone", phone).execute()
         if res.data:
@@ -83,6 +89,9 @@ def get_user_state(phone: str) -> str:
 
 def set_user_state(phone: str, state: str):
     """Update the detailed status/state of the user in Supabase."""
+    if test_mode.is_test_phone(phone):
+        test_mode.set_state(phone, state)
+        return
     now = datetime.now().isoformat()
     try:
         supabase_client.table('bot_conversations').upsert({
@@ -96,6 +105,9 @@ def set_user_state(phone: str, state: str):
 
 def set_client_name(phone: str, name: str):
     """Store the client name in bot_conversations for reliable retrieval."""
+    if test_mode.is_test_phone(phone):
+        test_mode.set_client_name(phone, name)
+        return
     try:
         supabase_client.table('bot_conversations').upsert({
             "phone": phone,
@@ -108,6 +120,8 @@ def set_client_name(phone: str, name: str):
 
 def get_client_name(phone: str) -> str:
     """Retrieve the stored client name from bot_conversations."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_client_name(phone)
     try:
         res = supabase_client.table('bot_conversations').select("client_name").eq("phone", phone).execute()
         if res.data:
@@ -242,6 +256,8 @@ def get_renovado_conversations() -> list:
 
 def log_anticipo_sent(phone: str, client_name: str):
     """Record that anticipo_salario template was sent to this phone."""
+    if test_mode.is_test_phone(phone):
+        return
     if not supabase_client:
         return
     try:
@@ -257,6 +273,8 @@ def log_anticipo_sent(phone: str, client_name: str):
 
 def log_anticipo_response(phone: str, response: str):
     """Update the button click response for a phone: 'solicitar' or 'no_gracias'."""
+    if test_mode.is_test_phone(phone):
+        return
     if not supabase_client:
         return
     try:
@@ -802,10 +820,13 @@ def mark_message_deleted(message_id: str):
 
 def save_captured_email(phone: str, email: str, name: str):
     """Saves a captured email to the captured_emails table."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_captured_email(phone, email)
+        return True
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot save email.")
         return False
-    
+
     try:
         data = {
             "phone": phone,
@@ -922,6 +943,8 @@ def get_phones_with_email(phones: list) -> set:
 
 def get_email_for_phone(phone: str):
     """Returns the most recent captured email for a phone, or None."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_captured_email(phone)
     if not supabase_client:
         return None
     try:
@@ -955,6 +978,9 @@ def get_phones_with_docs_completos(phones: list) -> set:
 
 def mark_docs_completos(phone: str, value: bool = True):
     """Marks or unmarks a client as having submitted all required documents."""
+    if test_mode.is_test_phone(phone):
+        test_mode.mark_docs_completos(phone, value)
+        return
     if not supabase_client:
         return
     try:
@@ -969,6 +995,9 @@ def mark_docs_completos(phone: str, value: bool = True):
 
 def set_solicitud_context(phone: str, empresa: str, docs_faltantes: str, tipo_empleador: str):
     """Store solicitud context (empresa, docs_faltantes, tipo_empleador) per phone for use in flows."""
+    if test_mode.is_test_phone(phone):
+        test_mode.set_solicitud_context(phone, empresa, docs_faltantes, tipo_empleador)
+        return
     if not supabase_client:
         return
     try:
@@ -985,6 +1014,12 @@ def set_solicitud_context(phone: str, empresa: str, docs_faltantes: str, tipo_em
 
 def get_solicitud_context(phone: str) -> dict:
     """Retrieve stored docs_faltantes and tipo_empleador for a phone."""
+    if test_mode.is_test_phone(phone):
+        ctx = test_mode.get_solicitud_context(phone)
+        return {
+            "docs_faltantes": ctx.get("docs_faltantes", ""),
+            "tipo_empleador": ctx.get("tipo_empleador", "EMPRESA"),
+        }
     if not supabase_client:
         return {}
     try:
@@ -1076,6 +1111,8 @@ def get_phones_menu_contacted_rojo_batch(phones: list) -> set:
 
 def count_received_documents(phone: str) -> int:
     """Returns how many documents have already been received from this phone."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.count_received_documents(phone)
     if not supabase_client:
         return 0
     try:
@@ -1088,6 +1125,9 @@ def count_received_documents(phone: str) -> int:
 
 def log_received_document(phone: str, client_name: str, filename: str, mime_type: str, storage_url: str):
     """Logs a received document to the received_documents table."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_received_document(phone)
+        return
     if not supabase_client:
         return
     try:
@@ -1260,6 +1300,9 @@ def get_notified_phones_denegado_batch(phones: list) -> set:
 
 def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
     """Saves a captured account number (cuenta propia) to captured_cuentas. banco is NULL until step 2."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_captured_cuenta(phone)
+        return True
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot save cuenta.")
         return False
@@ -1280,6 +1323,9 @@ def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
 def save_partial_tercero_cuenta(phone: str, name: str, nombre_tercero: str, cedula_url: str) -> bool:
     """Creates a partial captured_cuentas row for a tercero account.
     numero_cuenta and banco are NULL and will be filled in subsequent steps."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_captured_cuenta(phone)
+        return True
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot save tercero cuenta.")
         return False
@@ -1300,6 +1346,8 @@ def save_partial_tercero_cuenta(phone: str, name: str, nombre_tercero: str, cedu
 
 def update_tercero_cuenta_numero(phone: str, numero_cuenta: str) -> bool:
     """Updates the most recent tercero captured_cuentas row for phone with the account number."""
+    if test_mode.is_test_phone(phone):
+        return True
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot update tercero numero.")
         return False
@@ -1326,6 +1374,8 @@ def update_tercero_cuenta_numero(phone: str, numero_cuenta: str) -> bool:
 
 def update_captured_cuenta_banco(phone: str, banco: str):
     """Updates the most recent captured_cuentas row for phone with the banco name (step 2)."""
+    if test_mode.is_test_phone(phone):
+        return True
     if not supabase_client:
         print("⚠️ Supabase client not initialized. Cannot update banco.")
         return False
@@ -1412,6 +1462,9 @@ def mark_all_docs_reviewed(phone: str):
 
 def save_llm_request(phone: str, client_name: str, tipo: str, detalle: str = ""):
     """Saves a special request captured by the LLM agent to llm_requests table."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_llm_request(phone, tipo, detalle)
+        return
     if not supabase_client:
         return
     try:
@@ -1463,6 +1516,8 @@ def start_contact_update(phone: str, trigger_source: str) -> bool:
 
     trigger_source: 'campaign_annual' | 'manual_menu'
     """
+    if test_mode.is_test_phone(phone):
+        return test_mode.start_contact_update(phone, trigger_source)
     if not supabase_client:
         return False
     try:
@@ -1480,14 +1535,16 @@ def start_contact_update(phone: str, trigger_source: str) -> bool:
 
 def update_contact_field(phone: str, field_name: str, value: str) -> bool:
     """Update a single field of the most recent in_progress contact_data_updates row."""
-    if not supabase_client:
-        return False
     allowed = {
         "cedula", "telefono_principal", "telefono_alterno",
         "direccion", "email", "ref_nombre", "ref_telefono", "ref_parentesco",
     }
     if field_name not in allowed:
         print(f"❌ update_contact_field: campo no permitido {field_name}")
+        return False
+    if test_mode.is_test_phone(phone):
+        return test_mode.update_contact_field(phone, field_name, value)
+    if not supabase_client:
         return False
     try:
         res = supabase_client.table('contact_data_updates')\
@@ -1512,6 +1569,8 @@ def update_contact_field(phone: str, field_name: str, value: str) -> bool:
 
 def get_in_progress_contact_update(phone: str) -> dict | None:
     """Return the most recent in_progress contact_data_updates row for a phone, or None."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_in_progress_contact_update(phone)
     if not supabase_client:
         return None
     try:
@@ -1531,6 +1590,8 @@ def get_in_progress_contact_update(phone: str) -> dict | None:
 def confirm_contact_update(phone: str) -> bool:
     """Mark the most recent in_progress row as confirmed and stamp the
     ultima_actualizacion_datos field on bot_conversations."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.confirm_contact_update(phone)
     if not supabase_client:
         return False
     now = datetime.now().isoformat()
@@ -1562,6 +1623,8 @@ def confirm_contact_update(phone: str) -> bool:
 
 def abandon_contact_update(phone: str, reason: str = "abandoned") -> bool:
     """Mark the most recent in_progress row as abandoned or cedula_mismatch."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.abandon_contact_update(phone, reason)
     if not supabase_client:
         return False
     try:
@@ -1623,6 +1686,8 @@ def mark_contact_update_processed(record_id, admin_user: str) -> bool:
 
 def get_last_contact_update_date(phone: str):
     """Return the ultima_actualizacion_datos timestamp string for a phone, or None."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_last_contact_update_date(phone)
     if not supabase_client:
         return None
     try:
@@ -1675,6 +1740,8 @@ def get_phones_with_in_progress_contact_update(phones: list) -> set:
 
 def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:
     """Return recent messages formatted as an Anthropic messages array for LLM context."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_recent_messages_for_llm(phone, limit)
     if not supabase_client:
         return []
     try:
