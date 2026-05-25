@@ -193,6 +193,59 @@ def get_solicitud(request):
             sin_tel = [{"cedula": str(r[0]), "nombre": r[1] or "", "telefono": str(r[2]) if r[2] is not None else None} for r in cur.fetchall()]
             diag["7_ejemplos_con_match_pero_sin_telefono"] = sin_tel
 
+            # 8. Tipos de columna (para descartar mismatch text vs bigint)
+            cur.execute("""
+                SELECT table_name, column_name, data_type, udt_name
+                FROM information_schema.columns
+                WHERE (table_name = 'vista_consulta_saldo' AND column_name = 'cedula')
+                   OR (table_name = 'v_solicitudes_whatsapp' AND column_name = 'cedula_nit')
+            """)
+            diag["8_tipos_columnas"] = [
+                {"vista": r[0], "columna": r[1], "data_type": r[2], "udt_name": r[3]} for r in cur.fetchall()
+            ]
+
+            # 9. JOIN con CAST a TEXT (descarta mismatch de tipo)
+            cur.execute("""
+                SELECT COUNT(DISTINCT s.cedula)
+                FROM vista_consulta_saldo s
+                INNER JOIN v_solicitudes_whatsapp w ON CAST(w.cedula_nit AS TEXT) = CAST(s.cedula AS TEXT)
+                WHERE s.saldo_actual > 0
+            """)
+            diag["9_activos_con_join_CAST_text"] = cur.fetchone()[0]
+
+            # 10. JOIN limpiando puntos, guiones y espacios
+            cur.execute("""
+                SELECT COUNT(DISTINCT s.cedula)
+                FROM vista_consulta_saldo s
+                INNER JOIN v_solicitudes_whatsapp w
+                  ON regexp_replace(CAST(w.cedula_nit AS TEXT), '[^0-9]', '', 'g')
+                   = regexp_replace(CAST(s.cedula AS TEXT), '[^0-9]', '', 'g')
+                WHERE s.saldo_actual > 0
+            """)
+            diag["10_activos_con_join_limpiando_no_digitos"] = cur.fetchone()[0]
+
+            # 11. Sample raw de 5 cédulas de cada vista (sin cast, así vemos el formato real)
+            cur.execute("SELECT DISTINCT cedula FROM vista_consulta_saldo LIMIT 5")
+            diag["11a_sample_cedulas_vista_consulta_saldo"] = [
+                {"raw": str(r[0]), "len": len(str(r[0]))} for r in cur.fetchall()
+            ]
+            cur.execute("SELECT DISTINCT cedula_nit FROM v_solicitudes_whatsapp LIMIT 5")
+            diag["11b_sample_cedula_nit_v_solicitudes_whatsapp"] = [
+                {"raw": str(r[0]), "len": len(str(r[0]))} for r in cur.fetchall()
+            ]
+
+            # 12. Buscar una cédula puntual de las "sin match" con búsqueda relajada
+            target = "1193048909"
+            cur.execute("""
+                SELECT cedula_nit, nombre_completo, telefono
+                FROM v_solicitudes_whatsapp
+                WHERE regexp_replace(CAST(cedula_nit AS TEXT), '[^0-9]', '', 'g') = %s
+                LIMIT 3
+            """, (target,))
+            diag[f"12_busqueda_relajada_cedula_{target}"] = [
+                {"cedula_nit_raw": str(r[0]), "nombre": r[1], "telefono": r[2]} for r in cur.fetchall()
+            ]
+
             cur.close()
             conn.close()
             return jsonify({"diagnostico": diag}), 200
