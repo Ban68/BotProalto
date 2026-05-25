@@ -230,6 +230,45 @@ def get_listo_en_docusign():
         return None
 
 
+def get_clientes_activos():
+    """
+    Queries the Cloud Run API bridge to get all clients with an active loan.
+    Used by the yearly contact-data update campaign.
+
+    NOTE: The Cloud Run API must support {"tipo": "activos"} returning a
+    `clientes` array with at least: telefono, nombre_completo, cedula.
+    """
+    if not CLOUD_RUN_URL:
+        print("❌ CLOUD_RUN_URL not configured")
+        return None
+
+    try:
+        response = requests.post(
+            CLOUD_RUN_URL,
+            json={"tipo": "activos"},
+            headers={
+                "Authorization": f"Bearer {API_TOKEN_SECRET}",
+                "Content-Type": "application/json"
+            },
+            timeout=20
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("found"):
+                return data.get("clientes", [])
+            return []
+        else:
+            print(f"❌ Cloud Run API Error ({response.status_code}): {response.text}")
+            return None
+    except requests.exceptions.Timeout:
+        print("❌ Cloud Run API: Request timed out for get_clientes_activos")
+        return None
+    except Exception as e:
+        print(f"❌ Cloud Run API Error for get_clientes_activos: {e}")
+        return None
+
+
 def get_name_by_phone(phone: str) -> str | None:
     """
     Queries the Cloud Run API to get the client's name by phone number.
@@ -279,6 +318,7 @@ def get_client_context_by_phone(phone: str) -> dict | None:
                 return {
                     "nro_solicitud": data.get("nro_solicitud"),
                     "nombre_completo": data.get("nombre_completo", ""),
+                    "cedula": data.get("cedula", ""),
                     "fecha_de_solicitud": data.get("fecha_de_solicitud", ""),
                     "valor_preestudiado": data.get("valor_preestudiado", 0),
                     "estado_interno": data.get("estado_interno", ""),
@@ -291,6 +331,21 @@ def get_client_context_by_phone(phone: str) -> dict | None:
     except Exception as e:
         print(f"[DB] get_client_context_by_phone error for {phone}: {e}")
     return None
+
+
+def verify_cedula_matches_phone(phone: str, cedula_digitada: str) -> bool:
+    """Return True if the cedula the client just typed matches the one
+    registered in the core for this WhatsApp phone number.
+
+    Uses get_client_context_by_phone, which depends on the Cloud Run endpoint
+    `por_telefono_completo` returning a `cedula` field.
+    """
+    ctx = get_client_context_by_phone(phone)
+    if not ctx:
+        return False
+    expected = "".join(filter(str.isdigit, str(ctx.get("cedula", ""))))
+    typed = "".join(filter(str.isdigit, cedula_digitada or ""))
+    return bool(expected) and expected == typed
 
 
 def test_cloud_run_connection():

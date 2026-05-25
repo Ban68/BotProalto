@@ -2,10 +2,11 @@
 
 ## Menú principal
 
-Al iniciar la conversación, el cliente ve tres opciones:
+Al iniciar la conversación, el cliente ve cuatro opciones:
 - **"Soy Cliente"** → Submenú con consulta de saldo y hablar con asesor
 - **"Estado Solicitud"** → Consultar en qué etapa está su solicitud de crédito
 - **"Solicitar Crédito"** → Iniciar una nueva solicitud
+- **"Actualizar mis datos"** → Flujo de actualización anual de datos de contacto
 
 ---
 
@@ -111,6 +112,27 @@ Al iniciar la conversación, el cliente ve tres opciones:
 
 ---
 
+## Flujo 8: Actualización Anual de Datos de Contacto
+
+**Cuándo usarlo:** El cliente necesita actualizar sus datos de contacto (obligación contractual anual, Cláusula Tercera y Vigésima Quinta).
+
+**Cómo se activa:**
+- Por campaña proactiva con el template `actualizacion_datos` (clientes con préstamo activo y >12 meses sin actualizar)
+- Por iniciativa del cliente desde el menú "Actualizar mis datos"
+
+**Pasos:**
+1. El cliente recibe (o ve en el menú) el bloque legal con la cita contractual y los datos que se le pedirán
+2. Acepta tocando "Actualizar ahora" o seleccionando la opción del menú
+3. El bot le pide la cédula y la valida contra el core. Si no coincide tras 1 reintento, se escala a asesor humano
+4. El bot captura paso a paso: teléfono celular actual, teléfono alterno, dirección, correo, nombre de referencia, teléfono de referencia, parentesco
+5. Muestra un resumen y pide confirmación con botones [Confirmar] [Corregir]
+6. Al confirmar: se marca `ultima_actualizacion_datos` en `bot_conversations`, se guarda la fila confirmada en `contact_data_updates`, se notifica a admin por WhatsApp para que sincronice manualmente con el core
+7. La próxima campaña excluye al cliente por 12 meses
+
+**Comportamiento del LLM:** Si el cliente dice "quiero actualizar mis datos" en conversación libre, el LLM debe responder con [MOSTRAR_MENU] — NO debe intentar capturar los datos por chat libre.
+
+---
+
 ## Notificaciones masivas proactivas (outbound)
 
 El equipo de ProAlto también puede enviar mensajes proactivos a grupos de clientes:
@@ -121,6 +143,7 @@ El equipo de ProAlto también puede enviar mensajes proactivos a grupos de clien
 | `estado_rojo` | Falta documentación | Envío de documentos |
 | `estado_amarillo` | Listo para desembolso | Captura de cuenta bancaria |
 | `contacto_leads` | Prospecto nuevo | Menú principal |
+| `actualizacion_datos` | Cliente activo con >12 meses sin actualizar datos | Actualización anual de datos |
 
 ---
 

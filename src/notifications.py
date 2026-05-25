@@ -74,3 +74,39 @@ def notify_admin_error(user_phone: str, error_msg: str) -> None:
         f"Detalle: {error_msg}"
     )
     notify_admins(msg)
+
+
+def notify_admin_contact_update(user_phone: str, client_name: str, summary: dict) -> None:
+    """Notify admins that a client just confirmed their yearly contact-data update.
+
+    summary keys (all optional): cedula, telefono_principal, telefono_alterno,
+    direccion, email, ref_nombre, ref_telefono, ref_parentesco.
+    """
+    def _v(k):
+        return (summary or {}).get(k) or "-"
+
+    msg = (
+        f"📝 *Actualización de datos confirmada*\n\n"
+        f"Cliente: {client_name or 'Cliente'} ({user_phone})\n"
+        f"Cédula: {_v('cedula')}\n"
+        f"Teléfono actual: {_v('telefono_principal')}\n"
+        f"Teléfono alterno: {_v('telefono_alterno')}\n"
+        f"Dirección: {_v('direccion')}\n"
+        f"Correo: {_v('email')}\n"
+        f"Referencia: {_v('ref_nombre')} - {_v('ref_telefono')} ({_v('ref_parentesco')})\n\n"
+        f"Por favor sincroniza estos datos en el core. "
+        f"Revísalo en el panel: https://bot.proalto.co/admin"
+    )
+    notify_admins(msg)
+
+
+def notify_admin_cedula_mismatch(user_phone: str) -> None:
+    """Notify admins that a client failed cedula verification during the
+    contact-data update flow and was escalated to a human agent."""
+    msg = (
+        f"⚠️ *Verificación de identidad fallida*\n\n"
+        f"El número {user_phone} intentó actualizar sus datos pero no logró "
+        f"verificar su cédula tras varios intentos. Fue derivado a asesor humano.\n"
+        f"Revísalo en el panel: https://bot.proalto.co/admin"
+    )
+    notify_admins(msg)

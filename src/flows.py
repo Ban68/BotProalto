@@ -2,7 +2,7 @@ from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet, get_anticipo_by_cedula
 from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents
-from src.notifications import notify_admin_agent_request, notify_admin_error
+from src.notifications import notify_admin_agent_request, notify_admin_error, notify_admin_contact_update, notify_admin_cedula_mismatch
 import os
 import json
 import re
@@ -440,6 +440,297 @@ def _ask_solicitud_choice(user_phone, cedula):
     set_user_state(user_phone, f"waiting_for_solicitud_choice|{cedula}")
 
 
+# ── Yearly contact-data update flow ──────────────────────────────────────────
+# Block of text that mirrors the approved Meta template content, used when
+# the flow is triggered from the menu (or as a follow-up) — that is, within
+# the 24h session window where templates are not needed.
+CONTACT_UPDATE_INTRO_TEXT = (
+    "¡Hola! 👋\n\n"
+    "En FINANCIERA PROALTO SAS queremos seguir brindándote el mejor servicio.\n\n"
+    "Le recordamos que, de acuerdo con la Cláusula Tercera de su contrato y lo "
+    "ratificado en la Cláusula Vigésima Quinta, es su obligación contractual "
+    "realizar la actualización de sus datos personales anualmente. Esto nos "
+    "permite cumplir con la Ley 1581 de 2012 y asegurar que tus notificaciones "
+    "lleguen correctamente.\n\n"
+    "Por favor, confírmanos los siguientes datos:\n"
+    "Cédula o NIT:\n"
+    "Teléfono celular actual:\n"
+    "Dirección:\n"
+    "Contacto de referencia (Nombre y teléfono):\n\n"
+    "⚖️ Nota Legal: Al suministrar estos datos, autorizas el tratamiento de tu "
+    "información según nuestra Política de Privacidad y la normativa de Habeas "
+    "Data vigente."
+)
+
+# Ordered list of (state, field_in_db, prompt_template). The prompt may include
+# {nombre_ref} which is replaced with the previously-captured reference name.
+_CONTACT_UPDATE_STEPS = [
+    ("actualizar_datos_telefono_principal", "telefono_principal",
+     "Confírmanos tu número de celular actual. Si es el mismo desde el que escribes, contesta SI."),
+    ("actualizar_datos_telefono_alterno", "telefono_alterno",
+     "Por si no logramos ubicarte, déjanos un segundo número de contacto (familiar o cercano). Si no tienes, contesta NINGUNO."),
+    ("actualizar_datos_direccion", "direccion",
+     "Cuál es tu dirección de residencia actual? Incluye barrio y ciudad."),
+    ("actualizar_datos_email", "email",
+     "Cuál es tu correo electrónico vigente?"),
+    ("actualizar_datos_ref_nombre", "ref_nombre",
+     "Para terminar, danos un contacto de referencia. Escribe el nombre completo de esa persona."),
+    ("actualizar_datos_ref_telefono", "ref_telefono",
+     "Cuál es el teléfono de {nombre_ref}?"),
+    ("actualizar_datos_ref_parentesco", "ref_parentesco",
+     "Qué parentesco tiene {nombre_ref} contigo? (mamá, hermano, cónyuge, etc.)"),
+]
+
+
+def _send_contact_update_summary(user_phone: str):
+    """Build and send the confirmation summary with [Confirmar] [Corregir] buttons."""
+    from src.conversation_log import get_in_progress_contact_update
+    row = get_in_progress_contact_update(user_phone) or {}
+
+    def _v(k):
+        return row.get(k) or "-"
+
+    summary = (
+        "Estos son los datos que registramos:\n\n"
+        f"Cédula: {_v('cedula')}\n"
+        f"Teléfono actual: {_v('telefono_principal')}\n"
+        f"Teléfono alterno: {_v('telefono_alterno')}\n"
+        f"Dirección: {_v('direccion')}\n"
+        f"Correo: {_v('email')}\n"
+        f"Referencia: {_v('ref_nombre')} - {_v('ref_telefono')} ({_v('ref_parentesco')})\n\n"
+        "Están correctos?"
+    )
+    WhatsAppService.send_interactive_button(
+        user_phone,
+        summary,
+        [
+            {"id": "update_data_confirm", "title": "Confirmar"},
+            {"id": "update_data_correct", "title": "Corregir"},
+        ],
+    )
+
+
+def _start_contact_update_flow(user_phone: str, trigger_source: str, send_intro: bool = True):
+    """Kick off the contact-data update flow. Inserts the in_progress row,
+    optionally sends the legal intro text, then asks for the cedula."""
+    from src.conversation_log import start_contact_update
+    start_contact_update(user_phone, trigger_source)
+    if send_intro:
+        WhatsAppService.send_message(user_phone, CONTACT_UPDATE_INTRO_TEXT)
+    set_user_state(user_phone, "actualizar_datos_inicio|0")
+    WhatsAppService.send_message(
+        user_phone,
+        "Vamos por partes. Primero, escribe tu número de cédula o NIT (sin puntos ni espacios).",
+    )
+
+
+def _send_contact_update_next_prompt(user_phone: str, next_state: str):
+    """Send the prompt that corresponds to a given step state."""
+    from src.conversation_log import get_in_progress_contact_update
+    for state_key, _field, prompt in _CONTACT_UPDATE_STEPS:
+        if state_key == next_state:
+            if "{nombre_ref}" in prompt:
+                row = get_in_progress_contact_update(user_phone) or {}
+                ref_name = row.get("ref_nombre") or "esa persona"
+                prompt = prompt.replace("{nombre_ref}", ref_name)
+            WhatsAppService.send_message(user_phone, prompt)
+            return
+
+
+def _advance_contact_update(user_phone: str, current_state: str):
+    """Move to the next step in the contact-update flow, or finish with summary."""
+    keys = [s[0] for s in _CONTACT_UPDATE_STEPS]
+    try:
+        idx = keys.index(current_state)
+    except ValueError:
+        # Came from `actualizar_datos_inicio` → first step
+        next_state = _CONTACT_UPDATE_STEPS[0][0]
+        set_user_state(user_phone, next_state)
+        _send_contact_update_next_prompt(user_phone, next_state)
+        return
+
+    if idx + 1 < len(_CONTACT_UPDATE_STEPS):
+        next_state = _CONTACT_UPDATE_STEPS[idx + 1][0]
+        set_user_state(user_phone, next_state)
+        _send_contact_update_next_prompt(user_phone, next_state)
+    else:
+        set_user_state(user_phone, "actualizar_datos_confirmacion")
+        _send_contact_update_summary(user_phone)
+
+
+def _handle_contact_update_text(user_phone: str, text: str, state: str) -> bool:
+    """Handle a user text message when in any of the contact-update states.
+    Returns True if the state was handled, False otherwise."""
+    from src.conversation_log import update_contact_field
+    from src.database import verify_cedula_matches_phone
+
+    if _is_greeting(text):
+        # User wants to escape the flow → drop them back to main menu
+        from src.conversation_log import abandon_contact_update
+        abandon_contact_update(user_phone, "abandoned")
+        set_user_state(user_phone, "active")
+        FlowHandler.send_main_menu(user_phone)
+        return True
+
+    # Step 0: cedula verification with up to 2 retries (state encodes attempt count)
+    if state.startswith("actualizar_datos_inicio"):
+        attempts = 0
+        if "|" in state:
+            try:
+                attempts = int(state.split("|", 1)[1])
+            except ValueError:
+                attempts = 0
+
+        typed = "".join(filter(str.isdigit, text))
+        if not typed:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor envía solo el número de tu cédula (sin puntos ni espacios)."
+            )
+            return True
+
+        if verify_cedula_matches_phone(user_phone, typed):
+            update_contact_field(user_phone, "cedula", typed)
+            _advance_contact_update(user_phone, "actualizar_datos_inicio")
+            return True
+
+        # Mismatch
+        if attempts >= 1:
+            # Already used 1 retry → escalate
+            from src.conversation_log import abandon_contact_update
+            abandon_contact_update(user_phone, "cedula_mismatch")
+            set_agent_mode(user_phone, "agent")
+            WhatsAppService.send_message(
+                user_phone,
+                "No logramos verificar tu identidad por este medio. "
+                "En un momento un asesor te contacta para ayudarte."
+            )
+            try:
+                notify_admin_cedula_mismatch(user_phone)
+            except Exception as e:
+                print(f"Error notifying admin (cedula_mismatch): {e}")
+            return True
+
+        set_user_state(user_phone, f"actualizar_datos_inicio|{attempts + 1}")
+        WhatsAppService.send_message(
+            user_phone,
+            "Esa cédula no coincide con la que tenemos registrada para este número. "
+            "Por favor intenta de nuevo (sin puntos ni espacios)."
+        )
+        return True
+
+    # Telefono principal: SI or 10-digit number
+    if state == "actualizar_datos_telefono_principal":
+        norm = text.strip().lower()
+        if norm in ("si", "sí", "s"):
+            # Use the WhatsApp number itself, strip the 57 country code if present
+            phone_clean = user_phone[2:] if user_phone.startswith("57") and len(user_phone) > 10 else user_phone
+            update_contact_field(user_phone, "telefono_principal", phone_clean)
+            _advance_contact_update(user_phone, state)
+            return True
+        digits = "".join(filter(str.isdigit, text))
+        if len(digits) == 10:
+            update_contact_field(user_phone, "telefono_principal", digits)
+            _advance_contact_update(user_phone, state)
+            return True
+        WhatsAppService.send_message(
+            user_phone,
+            "Por favor escribe SI si es el mismo número desde el que chateas, o envíanos tu celular actual de 10 dígitos."
+        )
+        return True
+
+    # Telefono alterno: 10 digits or 'ninguno'
+    if state == "actualizar_datos_telefono_alterno":
+        norm = text.strip().lower()
+        if norm in ("ninguno", "no", "no tengo", "n/a", "na"):
+            update_contact_field(user_phone, "telefono_alterno", "")
+            _advance_contact_update(user_phone, state)
+            return True
+        digits = "".join(filter(str.isdigit, text))
+        if len(digits) == 10:
+            update_contact_field(user_phone, "telefono_alterno", digits)
+            _advance_contact_update(user_phone, state)
+            return True
+        WhatsAppService.send_message(
+            user_phone,
+            "Por favor envíanos un celular alterno de 10 dígitos, o escribe NINGUNO si no tienes."
+        )
+        return True
+
+    # Direccion: at least 10 characters
+    if state == "actualizar_datos_direccion":
+        direccion = text.strip()
+        if len(direccion) < 10:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor escribe tu dirección completa, incluyendo barrio y ciudad."
+            )
+            return True
+        update_contact_field(user_phone, "direccion", direccion)
+        _advance_contact_update(user_phone, state)
+        return True
+
+    # Email
+    if state == "actualizar_datos_email":
+        email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+        email = email_match.group(0) if email_match else None
+        if not email:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor envíanos un correo electrónico válido (ejemplo: correo@email.com)."
+            )
+            return True
+        update_contact_field(user_phone, "email", email)
+        _advance_contact_update(user_phone, state)
+        return True
+
+    # Reference name
+    if state == "actualizar_datos_ref_nombre":
+        nombre = text.strip()
+        if len(nombre) < 5:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor escribe el nombre completo de la persona de referencia."
+            )
+            return True
+        update_contact_field(user_phone, "ref_nombre", nombre)
+        _advance_contact_update(user_phone, state)
+        return True
+
+    # Reference phone
+    if state == "actualizar_datos_ref_telefono":
+        digits = "".join(filter(str.isdigit, text))
+        if len(digits) != 10:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor envíanos un celular de 10 dígitos."
+            )
+            return True
+        update_contact_field(user_phone, "ref_telefono", digits)
+        _advance_contact_update(user_phone, state)
+        return True
+
+    # Reference parentesco
+    if state == "actualizar_datos_ref_parentesco":
+        parentesco = text.strip()
+        if len(parentesco) < 3:
+            WhatsAppService.send_message(
+                user_phone,
+                "Por favor escribe el parentesco (mamá, hermano, cónyuge, amigo, etc.)."
+            )
+            return True
+        update_contact_field(user_phone, "ref_parentesco", parentesco)
+        _advance_contact_update(user_phone, state)
+        return True
+
+    # Confirmation state — user wrote text instead of tapping a button: resend buttons
+    if state == "actualizar_datos_confirmacion":
+        _send_contact_update_summary(user_phone)
+        return True
+
+    return False
+
+
 class FlowHandler:
     @staticmethod
     def handle_incoming_message(payload):
@@ -464,7 +755,11 @@ class FlowHandler:
             if msg_type == "text":
                 log_message(user_phone, "inbound", message["text"]["body"].strip(), "text", wamid=msg_id)
             elif msg_type == "interactive":
-                btn_title = message["interactive"].get("button_reply", {}).get("title", "")
+                interactive = message["interactive"]
+                if interactive.get("type") == "list_reply":
+                    btn_title = interactive.get("list_reply", {}).get("title", "")
+                else:
+                    btn_title = interactive.get("button_reply", {}).get("title", "")
                 log_message(user_phone, "inbound", btn_title, "button_reply", wamid=msg_id)
             elif msg_type == "button":
                 btn_text = message["button"].get("text", "")
@@ -539,10 +834,15 @@ class FlowHandler:
                 text_body = message["text"]["body"].strip()
                 FlowHandler.process_text_input(user_phone, text_body, current_state)
                 
-            # Handle Interactive Button Replies
+            # Handle Interactive Button Replies (both button and list replies)
             elif msg_type == "interactive":
-                reply = message["interactive"]["button_reply"]
-                reply_id = reply["id"]
+                interactive = message["interactive"]
+                interactive_type = interactive.get("type")
+                if interactive_type == "list_reply":
+                    reply = interactive.get("list_reply", {})
+                else:
+                    reply = interactive.get("button_reply", {})
+                reply_id = reply.get("id", "")
                 FlowHandler.process_button_click(user_phone, reply_id, current_state)
             
             # Handle Template Button Replies (Quick Replies)
@@ -646,6 +946,20 @@ class FlowHandler:
                 set_user_state(user_phone, "active")
                 FlowHandler.send_main_menu(user_phone)
             return
+
+        # 2a-bis. Yearly contact-data update flow — handle all of its states
+        if state.startswith("actualizar_datos_") or state == "esperando_respuesta_actualizacion":
+            if state == "esperando_respuesta_actualizacion":
+                # Client typed text instead of tapping the template buttons.
+                # Treat any non-greeting text as a desire to start the flow.
+                if _is_greeting(text):
+                    set_user_state(user_phone, "active")
+                    FlowHandler.send_main_menu(user_phone)
+                    return
+                _start_contact_update_flow(user_phone, "campaign_annual", send_intro=False)
+                return
+            if _handle_contact_update_text(user_phone, text, state):
+                return
 
         # 2a. Check if waiting for Email
         if state == "waiting_for_email":
@@ -1090,6 +1404,52 @@ class FlowHandler:
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
 
+        # ── Yearly contact-data update — template buttons & menu entry ──
+        elif btn_id in ("update_data_yes", "Actualizar ahora"):
+            # Client tapped "Actualizar ahora" on the campaign template.
+            # The legal intro is already in the template body itself, so we
+            # don't resend it — go straight into the cedula step.
+            _start_contact_update_flow(user_phone, "campaign_annual", send_intro=False)
+
+        elif btn_id in ("update_data_no", "Más tarde", "Mas tarde"):
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Listo, lo dejamos para más adelante. Cuando quieras actualizar tus datos, "
+                "vuelve al menú y elige 'Actualizar mis datos'."
+            )
+
+        elif btn_id == "menu_actualizar_datos":
+            # Manual entry from the main menu — within session window, so
+            # we send the legal block as a regular message before asking.
+            _start_contact_update_flow(user_phone, "manual_menu", send_intro=True)
+
+        elif btn_id == "update_data_confirm":
+            from src.conversation_log import get_in_progress_contact_update, confirm_contact_update
+            row = get_in_progress_contact_update(user_phone) or {}
+            confirm_contact_update(user_phone)
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Gracias! Hemos registrado tu actualización. Cualquier cambio adicional, "
+                "escríbenos y con gusto te ayudamos."
+            )
+            try:
+                client_name = get_client_name(user_phone)
+                notify_admin_contact_update(user_phone, client_name, row)
+            except Exception as e:
+                print(f"Error notifying admin (contact_update): {e}")
+
+        elif btn_id == "update_data_correct":
+            # Reinicia el flujo desde el inicio. La fila in_progress queda,
+            # los campos se sobreescriben con la siguiente captura.
+            set_user_state(user_phone, "actualizar_datos_inicio|0")
+            WhatsAppService.send_message(
+                user_phone,
+                "Sin problema. Empecemos otra vez para corregir. "
+                "Escribe tu número de cédula o NIT (sin puntos ni espacios)."
+            )
+
         elif btn_id in ["acepto_condiciones", "Acepto las condiciones"]:
             set_user_state(user_phone, "waiting_for_email")
             WhatsAppService.send_message(user_phone, "¡Excelente! Por favor envíanos tu *correo electrónico* para poder enviarte el contrato de crédito.")
@@ -1109,12 +1469,18 @@ class FlowHandler:
     @staticmethod
     def send_main_menu(user_phone):
         menu_text = "Hola, en qué podemos ayudarte hoy?"
-        buttons = [
-            {"id": "menu_cliente", "title": "Soy Cliente"},
-            {"id": "menu_solicitud", "title": "Estado Solicitud"},
-            {"id": "menu_credito", "title": "Solicitar Crédito"}
+        sections = [
+            {
+                "title": "Opciones",
+                "rows": [
+                    {"id": "menu_cliente", "title": "Soy Cliente"},
+                    {"id": "menu_solicitud", "title": "Estado Solicitud"},
+                    {"id": "menu_credito", "title": "Solicitar Crédito"},
+                    {"id": "menu_actualizar_datos", "title": "Actualizar mis datos"},
+                ],
+            }
         ]
-        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
+        WhatsAppService.send_interactive_list(user_phone, menu_text, "Ver opciones", sections)
 
     @staticmethod
     def send_client_menu(user_phone):

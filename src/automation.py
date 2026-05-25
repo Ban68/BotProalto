@@ -3,7 +3,7 @@ import time
 import atexit
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_listo_en_docusign, get_denegado
+from src.database import get_aprobados_por_el_cliente, get_falta_documento, get_listo_en_docusign, get_denegado, get_clientes_activos
 from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
@@ -11,7 +11,8 @@ from src.conversation_log import (
     get_phones_with_email, get_phones_with_docs_completos,
     get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
     get_phones_with_cuenta, set_solicitud_context,
-    get_notified_phones_denegado_batch, get_template_stats_batch_denegado
+    get_notified_phones_denegado_batch, get_template_stats_batch_denegado,
+    get_phones_recently_updated, get_phones_with_in_progress_contact_update,
 )
 
 # --- TEST MODE CONFIG ---
@@ -806,6 +807,189 @@ def execute_bulk_denegado_notifications(users_list):
 
         if response and response.get('messages'):
             set_user_state(phone_str, "denegado_notified")
+            from src.conversation_log import set_client_name
+            set_client_name(phone_str, nombre)
+            results["success"] += 1
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get('error'):
+                error_msg = response['error'].get('message', error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+
+    return results
+
+
+# --- Yearly contact-data update campaign ----------------------------------
+def get_pending_contact_update_notifications():
+    """
+    Returns a dict with 'eligible' and 'excluded' lists for the yearly
+    contact-data update campaign.
+
+    A client is eligible if:
+      - They have an active loan (from Cloud Run /activos)
+      - Their `ultima_actualizacion_datos` is NULL or older than 12 months
+      - They are not currently in an in_progress contact-update flow
+      - They have not received the actualizacion_datos template today
+      - They have received fewer than 3 lifetime sends of this template
+    """
+    if TEST_MODE:
+        return {
+            "eligible": [{"phone": TEST_NUMBER, "name": "PROALTO TEST", "send_count": 0, "last_sent": None}],
+            "excluded": [],
+        }
+
+    clientes = get_clientes_activos()
+    if not clientes:
+        return {"eligible": [], "excluded": []}
+
+    raw_users = []
+    phones_to_check = []
+    for user in clientes:
+        telefono = user.get("telefono")
+        nombre = user.get("nombre_completo", "Cliente")
+
+        phone_str = str(telefono).split(".")[0]
+        phone_str = "".join(filter(str.isdigit, phone_str))
+        if not phone_str:
+            continue
+        if not phone_str.startswith("57"):
+            phone_str = f"57{phone_str}"
+
+        raw_users.append({"phone": phone_str, "name": nombre})
+        phones_to_check.append(phone_str)
+
+    if not phones_to_check:
+        return {"eligible": [], "excluded": []}
+
+    recently_updated = get_phones_recently_updated(phones_to_check, months=12)
+    in_progress = get_phones_with_in_progress_contact_update(phones_to_check)
+    notified_today = _get_notified_phones_actualizacion_today(phones_to_check)
+
+    eligible_users = []
+    excluded_users = []
+    for u in raw_users:
+        reasons = []
+        if u["phone"] in recently_updated:
+            reasons.append("Actualizó datos en los últimos 12 meses")
+        if u["phone"] in in_progress:
+            reasons.append("Ya tiene una actualización en curso")
+        if u["phone"] in notified_today:
+            reasons.append("Ya notificado hoy")
+        if reasons:
+            u["excluded_reasons"] = reasons
+            excluded_users.append(u)
+        else:
+            eligible_users.append(u)
+
+    # Enforce 3-send lifetime cap
+    eligible_phones = [u["phone"] for u in eligible_users]
+    stats = _get_template_stats_actualizacion(eligible_phones)
+    for user in eligible_users:
+        s = stats.get(user["phone"], {})
+        user["send_count"] = s.get("count", 0)
+        user["last_sent"] = s.get("last_sent", None)
+
+    over_limit = [u for u in eligible_users if u["send_count"] >= 3]
+    for u in over_limit:
+        u["excluded_reasons"] = ["Límite de 3 envíos alcanzado"]
+    excluded_users.extend(over_limit)
+    eligible_users = [u for u in eligible_users if u["send_count"] < 3]
+    eligible_users.sort(key=lambda u: u["send_count"])
+
+    if excluded_users:
+        excl_phones = [u["phone"] for u in excluded_users]
+        excl_stats = _get_template_stats_actualizacion(excl_phones)
+        for user in excluded_users:
+            s = excl_stats.get(user["phone"], {})
+            user.setdefault("send_count", s.get("count", 0))
+            user.setdefault("last_sent", s.get("last_sent", None))
+
+    return {"eligible": eligible_users, "excluded": excluded_users}
+
+
+def _get_notified_phones_actualizacion_today(phones: list) -> set:
+    """Return phones that already received the actualizacion_datos template today."""
+    from src.conversation_log import supabase_client
+    if not supabase_client or not phones:
+        return set()
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: actualizacion_datos]")\
+            .gte("created_at", f"{today}T00:00:00")\
+            .execute()
+        return {item["phone"] for item in (res.data or [])}
+    except Exception as e:
+        print(f"_get_notified_phones_actualizacion_today error: {e}")
+        return set()
+
+
+def _get_template_stats_actualizacion(phones: list) -> dict:
+    """Return {phone: {count, last_sent}} for the actualizacion_datos template."""
+    from src.conversation_log import supabase_client
+    if not supabase_client or not phones:
+        return {}
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("text", "[Template: actualizacion_datos]")\
+            .execute()
+        stats = {}
+        for row in (res.data or []):
+            phone = row["phone"]
+            if phone not in stats:
+                stats[phone] = {"count": 0, "last_sent": None}
+            stats[phone]["count"] += 1
+            created = row.get("created_at")
+            if created and (stats[phone]["last_sent"] is None or created > stats[phone]["last_sent"]):
+                stats[phone]["last_sent"] = created
+        return stats
+    except Exception as e:
+        print(f"_get_template_stats_actualizacion error: {e}")
+        return {}
+
+
+def execute_bulk_contact_update_notifications(users_list):
+    """Send the 'actualizacion_datos' template to a list of users.
+    The template expects a single named body parameter `nombre`. After Meta
+    accepts the send, the client is left in state 'esperando_respuesta_actualizacion'
+    so their next message — button or text — is handled by the flow.
+    """
+    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+
+    for user in users_list:
+        phone_str = user.get("phone")
+        nombre = user.get("name") or "Cliente"
+        if not phone_str:
+            continue
+
+        # Meta truncates aggressively if the parameter contains line breaks or
+        # excessive whitespace; use the first given name to keep the greeting tight.
+        nombre_clean = (nombre or "Cliente").strip().split()[0] if nombre else "Cliente"
+
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": nombre_clean,
+                        "parameter_name": "nombre",
+                    }
+                ],
+            }
+        ]
+
+        response = WhatsAppService.send_template(phone_str, "actualizacion_datos", components=components)
+
+        if response and response.get('messages'):
+            set_user_state(phone_str, "esperando_respuesta_actualizacion")
             from src.conversation_log import set_client_name
             set_client_name(phone_str, nombre)
             results["success"] += 1

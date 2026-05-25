@@ -204,3 +204,19 @@ Normalmente se descuenta el saldo de la liquidación, según lo permitido por la
 
 **¿Puedo pedir un paz y salvo?**
 Sí. Escríbenos por acá y lo gestionamos. Se genera manualmente y se entrega generalmente por WhatsApp o por email.
+
+---
+
+## Sobre la actualización anual de datos
+
+**¿Por qué me piden actualizar mis datos?**
+En tu contrato (Cláusula Tercera y ratificado en la Vigésima Quinta) te comprometes a actualizar tus datos de contacto al menos una vez al año. Esto nos permite cumplir con la Ley 1581 de 2012 (Habeas Data) y asegurar que cualquier notificación importante te llegue al número, dirección y correo correctos.
+
+**¿Qué datos me van a pedir?**
+Te pedimos confirmar tu cédula, tu celular actual, un celular alterno (familiar o cercano), tu dirección de residencia, tu correo electrónico y los datos de una persona de referencia (nombre, teléfono y parentesco). Toma menos de 3 minutos.
+
+**¿Es seguro enviar mis datos por WhatsApp?**
+Sí. La conversación es directa con ProAlto y tus datos quedan resguardados según nuestra Política de Privacidad y la Ley 1581 de 2012. Antes de iniciar, validamos tu identidad pidiéndote la cédula.
+
+**Quiero actualizar mis datos ahora, ¿cómo lo hago?**
+Escribe "Hola" para ver el menú principal y selecciona la opción "Actualizar mis datos". El bot te guía paso a paso.

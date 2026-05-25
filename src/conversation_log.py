@@ -1454,6 +1454,225 @@ def resolve_llm_request(request_id: str):
         print(f"Supabase resolve_llm_request error: {e}")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Contact data updates — yearly contact info refresh flow
+# ─────────────────────────────────────────────────────────────────────────────
+
+def start_contact_update(phone: str, trigger_source: str) -> bool:
+    """Insert a new in_progress row in contact_data_updates for this phone.
+
+    trigger_source: 'campaign_annual' | 'manual_menu'
+    """
+    if not supabase_client:
+        return False
+    try:
+        supabase_client.table('contact_data_updates').insert({
+            "phone": phone,
+            "status": "in_progress",
+            "trigger_source": trigger_source,
+            "started_at": datetime.now().isoformat(),
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error starting contact update: {e}")
+        return False
+
+
+def update_contact_field(phone: str, field_name: str, value: str) -> bool:
+    """Update a single field of the most recent in_progress contact_data_updates row."""
+    if not supabase_client:
+        return False
+    allowed = {
+        "cedula", "telefono_principal", "telefono_alterno",
+        "direccion", "email", "ref_nombre", "ref_telefono", "ref_parentesco",
+    }
+    if field_name not in allowed:
+        print(f"❌ update_contact_field: campo no permitido {field_name}")
+        return False
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("id")\
+            .eq("phone", phone)\
+            .eq("status", "in_progress")\
+            .order("started_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if not res.data:
+            return False
+        row_id = res.data[0]["id"]
+        supabase_client.table('contact_data_updates')\
+            .update({field_name: value})\
+            .eq("id", row_id)\
+            .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error updating contact field {field_name}: {e}")
+        return False
+
+
+def get_in_progress_contact_update(phone: str) -> dict | None:
+    """Return the most recent in_progress contact_data_updates row for a phone, or None."""
+    if not supabase_client:
+        return None
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("*")\
+            .eq("phone", phone)\
+            .eq("status", "in_progress")\
+            .order("started_at", desc=True)\
+            .limit(1)\
+            .execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        print(f"❌ Error fetching in_progress contact update: {e}")
+        return None
+
+
+def confirm_contact_update(phone: str) -> bool:
+    """Mark the most recent in_progress row as confirmed and stamp the
+    ultima_actualizacion_datos field on bot_conversations."""
+    if not supabase_client:
+        return False
+    now = datetime.now().isoformat()
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("id")\
+            .eq("phone", phone)\
+            .eq("status", "in_progress")\
+            .order("started_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if not res.data:
+            return False
+        row_id = res.data[0]["id"]
+        supabase_client.table('contact_data_updates')\
+            .update({"status": "confirmed", "confirmed_at": now})\
+            .eq("id", row_id)\
+            .execute()
+        supabase_client.table('bot_conversations').upsert({
+            "phone": phone,
+            "ultima_actualizacion_datos": now,
+            "updated_at": now,
+        }, on_conflict="phone").execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error confirming contact update: {e}")
+        return False
+
+
+def abandon_contact_update(phone: str, reason: str = "abandoned") -> bool:
+    """Mark the most recent in_progress row as abandoned or cedula_mismatch."""
+    if not supabase_client:
+        return False
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("id")\
+            .eq("phone", phone)\
+            .eq("status", "in_progress")\
+            .order("started_at", desc=True)\
+            .limit(1)\
+            .execute()
+        if not res.data:
+            return False
+        row_id = res.data[0]["id"]
+        supabase_client.table('contact_data_updates')\
+            .update({"status": reason})\
+            .eq("id", row_id)\
+            .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error abandoning contact update: {e}")
+        return False
+
+
+def get_unprocessed_contact_updates() -> list:
+    """Return all confirmed-but-not-yet-processed contact updates for admin panel."""
+    if not supabase_client:
+        return []
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("*")\
+            .eq("status", "confirmed")\
+            .eq("processed", False)\
+            .order("confirmed_at", desc=True)\
+            .execute()
+        return res.data or []
+    except Exception as e:
+        print(f"❌ Error fetching unprocessed contact updates: {e}")
+        return []
+
+
+def mark_contact_update_processed(record_id, admin_user: str) -> bool:
+    """Mark a contact_data_updates row as processed by the given admin user."""
+    if not supabase_client:
+        return False
+    try:
+        supabase_client.table('contact_data_updates')\
+            .update({
+                "processed": True,
+                "processed_at": datetime.now().isoformat(),
+                "admin_processor": admin_user or "",
+            })\
+            .eq("id", record_id)\
+            .execute()
+        return True
+    except Exception as e:
+        print(f"❌ Error marking contact update processed: {e}")
+        return False
+
+
+def get_last_contact_update_date(phone: str):
+    """Return the ultima_actualizacion_datos timestamp string for a phone, or None."""
+    if not supabase_client:
+        return None
+    try:
+        res = supabase_client.table('bot_conversations')\
+            .select("ultima_actualizacion_datos")\
+            .eq("phone", phone)\
+            .execute()
+        if res.data:
+            return res.data[0].get("ultima_actualizacion_datos")
+        return None
+    except Exception as e:
+        print(f"Supabase get_last_contact_update_date error: {e}")
+        return None
+
+
+def get_phones_recently_updated(phones: list, months: int = 12) -> set:
+    """Return the subset of phones whose ultima_actualizacion_datos is within
+    the last `months` months. Used to exclude them from the campaign."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now() - timedelta(days=30 * months)).isoformat()
+        res = supabase_client.table('bot_conversations')\
+            .select("phone, ultima_actualizacion_datos")\
+            .in_("phone", phones)\
+            .gte("ultima_actualizacion_datos", cutoff)\
+            .execute()
+        return {item["phone"] for item in (res.data or []) if item.get("ultima_actualizacion_datos")}
+    except Exception as e:
+        print(f"Supabase get_phones_recently_updated error: {e}")
+        return set()
+
+
+def get_phones_with_in_progress_contact_update(phones: list) -> set:
+    """Return phones that currently have an in_progress contact update."""
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('contact_data_updates')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("status", "in_progress")\
+            .execute()
+        return {item["phone"] for item in (res.data or [])}
+    except Exception as e:
+        print(f"Supabase get_phones_with_in_progress_contact_update error: {e}")
+        return set()
+
+
 def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:
     """Return recent messages formatted as an Anthropic messages array for LLM context."""
     if not supabase_client:
