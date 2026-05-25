@@ -13,7 +13,7 @@ def get_solicitud(request):
     tipo = request_json.get("tipo", "solicitud") if request_json else "solicitud"
 
     cedula = request_json.get("cedula") if request_json else None
-    if tipo not in ("aprobados", "falta_documento", "por_telefono", "por_telefono_completo", "listo_en_docusign", "denegado", "activos") and not cedula:
+    if tipo not in ("aprobados", "falta_documento", "por_telefono", "por_telefono_completo", "listo_en_docusign", "denegado", "activos", "diagnostico_activos") and not cedula:
         return jsonify({"error": "Cedula no proporcionada"}), 400
 
     try:
@@ -129,6 +129,73 @@ def get_solicitud(request):
                 return jsonify({"found": True, "clientes": clientes}), 200
             else:
                 return jsonify({"found": False, "clientes": []}), 200
+
+        elif tipo == "diagnostico_activos":
+            # Endpoint temporal para diagnosticar por qué la campaña actualizacion_datos
+            # solo encuentra ~572 clientes cuando ProAlto reporta ~2744 activos.
+            # Devuelve conteos en cada paso del embudo y algunos ejemplos.
+            diag = {}
+
+            cur.execute("SELECT COUNT(DISTINCT cedula) FROM vista_consulta_saldo")
+            diag["1_total_cedulas_en_vista_consulta_saldo"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(DISTINCT cedula) FROM vista_consulta_saldo WHERE saldo_actual > 0")
+            diag["2_cedulas_con_saldo_mayor_a_cero"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(DISTINCT cedula) FROM vista_consulta_saldo WHERE saldo_actual IS NULL")
+            diag["2b_cedulas_con_saldo_null"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(DISTINCT cedula) FROM vista_consulta_saldo WHERE saldo_actual = 0")
+            diag["2c_cedulas_con_saldo_cero"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(DISTINCT cedula_nit) FROM v_solicitudes_whatsapp")
+            diag["3_total_cedulas_en_v_solicitudes_whatsapp"] = cur.fetchone()[0]
+
+            cur.execute("""
+                SELECT COUNT(DISTINCT s.cedula)
+                FROM vista_consulta_saldo s
+                INNER JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
+                WHERE s.saldo_actual > 0
+            """)
+            diag["4_activos_con_join_a_solicitudes"] = cur.fetchone()[0]
+
+            cur.execute("""
+                SELECT COUNT(DISTINCT s.cedula)
+                FROM vista_consulta_saldo s
+                INNER JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
+                WHERE s.saldo_actual > 0
+                  AND w.telefono IS NOT NULL
+                  AND w.telefono != ''
+            """)
+            diag["5_activos_con_join_y_telefono_no_vacio"] = cur.fetchone()[0]
+
+            # Ejemplos: 5 cédulas activas que NO matchean en v_solicitudes_whatsapp
+            cur.execute("""
+                SELECT s.cedula, s.nombre_completo
+                FROM vista_consulta_saldo s
+                LEFT JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
+                WHERE s.saldo_actual > 0
+                  AND w.cedula_nit IS NULL
+                LIMIT 5
+            """)
+            sin_join = [{"cedula": str(r[0]), "nombre": r[1] or ""} for r in cur.fetchall()]
+            diag["6_ejemplos_sin_match_en_solicitudes"] = sin_join
+
+            # Ejemplos: 5 cédulas activas que SI matchean pero tienen telefono vacío
+            cur.execute("""
+                SELECT s.cedula, s.nombre_completo, w.telefono
+                FROM vista_consulta_saldo s
+                INNER JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
+                WHERE s.saldo_actual > 0
+                  AND (w.telefono IS NULL OR w.telefono = '')
+                LIMIT 5
+            """)
+            sin_tel = [{"cedula": str(r[0]), "nombre": r[1] or "", "telefono": str(r[2]) if r[2] is not None else None} for r in cur.fetchall()]
+            diag["7_ejemplos_con_match_pero_sin_telefono"] = sin_tel
+
+            cur.close()
+            conn.close()
+            return jsonify({"diagnostico": diag}), 200
 
         elif tipo == "activos":
             # Clientes con préstamo vigente (saldo > 0). El teléfono lo traemos
