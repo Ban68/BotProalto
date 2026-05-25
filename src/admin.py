@@ -763,6 +763,38 @@ def api_trigger_bulk_denegado():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/pending-actualizacion-datos')
+@requires_auth
+def api_pending_actualizacion_datos():
+    """Get list of clients eligible for the yearly contact-data update campaign,
+    plus excluded clients with reasons."""
+    from src.automation import get_pending_contact_update_notifications
+    try:
+        result = get_pending_contact_update_notifications()
+        return jsonify({"status": "ok", "pending": result["eligible"], "excluded": result["excluded"]})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/trigger-bulk-actualizacion-datos', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_actualizacion_datos():
+    """Execute bulk send of the actualizacion_datos template to active clients
+    who haven't updated their contact info in the last 12 months."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_contact_update_notifications
+    try:
+        results = execute_bulk_contact_update_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/captured-cuentas')
 @requires_auth
 def api_captured_cuentas():
