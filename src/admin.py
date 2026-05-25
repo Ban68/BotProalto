@@ -991,3 +991,29 @@ def api_test_end():
     test_phone = (body.get("test_phone") or "").strip()
     test_mode.unregister_session(test_phone)
     return jsonify({"status": "ok"})
+
+
+_VALID_CATEGORIAS = ("aprobados", "falta_documento", "listo_en_docusign", "denegado", "activos")
+
+
+@admin_bp.route('/admin/api/test/random-cedula', methods=['GET'])
+@requires_auth
+def api_test_random_cedula():
+    """Devuelve una cédula aleatoria de la base de datos por categoría.
+
+    Query param: categoria ∈ aprobados | falta_documento | listo_en_docusign | denegado | activos.
+    """
+    categoria = (request.args.get("categoria") or "").strip()
+    if categoria not in _VALID_CATEGORIAS:
+        return jsonify({"status": "error", "message": f"Categoría inválida. Usa una de: {', '.join(_VALID_CATEGORIAS)}"}), 400
+
+    from src.database import get_random_cedula_by_categoria
+    try:
+        pick = get_random_cedula_by_categoria(categoria)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error consultando Cloud Run: {e}"}), 500
+
+    if not pick:
+        return jsonify({"status": "empty", "message": f"No hay clientes en la categoría '{categoria}'"}), 404
+
+    return jsonify({"status": "ok", "pick": pick})

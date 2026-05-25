@@ -264,6 +264,43 @@
             padding: 4px 8px;
         }
 
+        .cedula-bar {
+            padding: 10px 14px;
+            border-top: 1px solid var(--border);
+            background: #fcfcfd;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .cedula-bar label {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .cedula-bar select {
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            font-family: inherit;
+        }
+
+        .cedula-bar .cedula-result {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            flex-basis: 100%;
+            margin-top: 2px;
+        }
+
+        .cedula-bar .cedula-result strong {
+            color: var(--primary-dark);
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        }
+
         .side-card .side-header {
             padding: 14px 18px;
             border-bottom: 1px solid var(--border);
@@ -343,6 +380,18 @@
                 </div>
             </div>
             <div class="typing" id="typing-indicator" style="display: none;">El bot está pensando…</div>
+            <div class="cedula-bar">
+                <label for="cedula-categoria">Cédula aleatoria:</label>
+                <select id="cedula-categoria">
+                    <option value="aprobados">Aprobado por el cliente</option>
+                    <option value="falta_documento">Falta documento</option>
+                    <option value="listo_en_docusign">Listo en DocuSign</option>
+                    <option value="denegado">Denegado / Cancelado</option>
+                    <option value="activos">Cliente con saldo activo</option>
+                </select>
+                <button type="button" id="btn-random-cedula">Generar y pegar</button>
+                <div class="cedula-result" id="cedula-result"></div>
+            </div>
             <div class="chat-input">
                 <input type="text" id="msg-input" placeholder="Escribe un mensaje (ej. 'Hola', una cédula, 'hablar con asesor')…" autocomplete="off">
                 <button type="button" class="primary" id="btn-send">Enviar</button>
@@ -629,12 +678,46 @@
             elPhoneLabel.textContent = '—';
         }
 
+        const elCedulaBtn = document.getElementById('btn-random-cedula');
+        const elCedulaSelect = document.getElementById('cedula-categoria');
+        const elCedulaResult = document.getElementById('cedula-result');
+
+        async function pickRandomCedula() {
+            const categoria = elCedulaSelect.value;
+            elCedulaBtn.disabled = true;
+            elCedulaResult.textContent = 'Buscando cédula…';
+            try {
+                const res = await fetch('/admin/api/test/random-cedula?categoria=' + encodeURIComponent(categoria));
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    const p = data.pick;
+                    elInput.value = p.cedula;
+                    elInput.focus();
+                    const parts = [`Cédula: ${p.cedula}`];
+                    if (p.nombre) parts.push(p.nombre);
+                    if (p.empresa) parts.push(p.empresa);
+                    if (p.estado_interno) parts.push(`Estado: ${p.estado_interno}`);
+                    elCedulaResult.innerHTML = '<strong>' + parts.shift() + '</strong> · ' + parts.join(' · ');
+                } else if (data.status === 'empty') {
+                    elCedulaResult.textContent = data.message || 'No hay clientes en esa categoría';
+                } else {
+                    elCedulaResult.textContent = data.message || 'Error generando cédula';
+                }
+            } catch (e) {
+                console.error(e);
+                elCedulaResult.textContent = 'Error de red';
+            } finally {
+                elCedulaBtn.disabled = false;
+            }
+        }
+
         elSend.addEventListener('click', () => sendMessage(elInput.value.trim()));
         elInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendMessage(elInput.value.trim());
         });
         elReset.addEventListener('click', resetSession);
         elEnd.addEventListener('click', endSession);
+        elCedulaBtn.addEventListener('click', pickRandomCedula);
 
         window.addEventListener('beforeunload', () => {
             if (state.testPhone) {

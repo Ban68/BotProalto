@@ -374,6 +374,56 @@ def test_cloud_run_connection():
         return False, str(e)
 
 
+def get_random_cedula_by_categoria(categoria: str) -> dict | None:
+    """Return a random cédula from a given category, for the admin test panel.
+
+    categoria ∈ {aprobados, falta_documento, listo_en_docusign, denegado, activos}.
+
+    Returns {"cedula", "nombre", "empresa", "estado_interno", "telefono"} or
+    None if the category has no matches / error.
+    """
+    import random
+
+    fetchers = {
+        "aprobados": get_aprobados_por_el_cliente,
+        "falta_documento": get_falta_documento,
+        "listo_en_docusign": get_listo_en_docusign,
+        "denegado": get_denegado,
+        "activos": get_clientes_activos,
+    }
+    fetcher = fetchers.get(categoria)
+    if not fetcher:
+        return None
+
+    items = fetcher()
+    if not items:
+        return None
+
+    pick = random.choice(items)
+    cedula = (pick.get("cedula") or "").strip() if isinstance(pick.get("cedula"), str) else str(pick.get("cedula") or "")
+
+    # Para categorías que no devuelven cédula, derivarla del teléfono.
+    if not cedula:
+        telefono = pick.get("telefono") or ""
+        if telefono:
+            ctx = get_client_context_by_phone(telefono)
+            if ctx:
+                cedula = str(ctx.get("cedula") or "")
+                if not pick.get("estado_interno"):
+                    pick["estado_interno"] = ctx.get("estado_interno", "")
+
+    if not cedula:
+        return None
+
+    return {
+        "cedula": cedula,
+        "nombre": pick.get("nombre_completo", ""),
+        "empresa": pick.get("empresa", ""),
+        "estado_interno": pick.get("estado_interno", ""),
+        "telefono": pick.get("telefono", ""),
+    }
+
+
 def get_saldo(cedula):
     """
     Queries the Cloud Run API bridge to get all active loans
