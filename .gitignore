@@ -13,3 +13,8 @@ old_reqs.txt
 
 # Datos privados de clientes — no subir al repo
 context/conversaciones_bot.md
+chats_*.md
+
+# Scripts temporales de un solo uso
+tmp_*.py
+extract_chats_*.py

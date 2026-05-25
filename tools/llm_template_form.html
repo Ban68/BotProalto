@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulario — Contexto del Asistente Virtual de WhatsApp | ProAlto</title>
+<style>
+  :root {
+    --azul: #1a4480;
+    --azul-claro: #e8f0fb;
+    --verde: #2d7a4f;
+    --verde-claro: #e6f4ec;
+    --naranja: #c5651a;
+    --naranja-claro: #fcf0e0;
+    --gris: #f5f5f7;
+    --texto: #1f2937;
+    --borde: #d1d5db;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: var(--texto);
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    background: #fff;
+  }
+  header {
+    border-bottom: 3px solid var(--azul);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  h1 { color: var(--azul); margin: 0 0 8px; font-size: 26px; }
+  .subtitulo { color: #6b7280; font-size: 15px; margin: 0; }
+  .intro {
+    background: var(--azul-claro);
+    border-left: 4px solid var(--azul);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .intro p { margin: 6px 0; font-size: 14px; }
+  section.bloque {
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 28px;
+    background: #fff;
+  }
+  section.bloque h2 {
+    color: var(--azul);
+    margin: 0 0 6px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .num-seccion {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    background: var(--azul);
+    color: white;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .descripcion-seccion {
+    color: #6b7280;
+    font-size: 14px;
+    margin: 0 0 18px;
+    padding-left: 44px;
+  }
+  .campo { margin-bottom: 16px; }
+  .campo label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .campo .ayuda {
+    font-weight: 400;
+    color: #6b7280;
+    font-size: 13px;
+    display: block;
+    margin-top: 2px;
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  textarea { min-height: 70px; resize: vertical; line-height: 1.5; }
+  textarea.grande { min-height: 100px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .ejemplo {
+    background: var(--verde-claro);
+    border-left: 3px solid var(--verde);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-top: 6px;
+    font-style: italic;
+    color: #374151;
+  }
+  .ejemplo b { color: var(--verde); font-style: normal; }
+  .opciones-radio { display: flex; gap: 16px; flex-wrap: wrap; padding: 4px 0; }
+  .opciones-radio label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+    cursor: pointer;
+    margin: 0;
+  }
+  .acciones {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    border-top: 2px solid var(--borde);
+    padding: 16px 0;
+    margin-top: 32px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button {
+    background: var(--azul);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #143666; }
+  button.secundario {
+    background: white;
+    color: var(--azul);
+    border: 2px solid var(--azul);
+  }
+  button.secundario:hover { background: var(--azul-claro); }
+  .estado-guardado {
+    color: var(--verde);
+    font-size: 13px;
+    margin-left: auto;
+  }
+  .lista-dinamica { display: flex; flex-direction: column; gap: 10px; }
+  .item-dinamico {
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 12px;
+    background: var(--gris);
+    position: relative;
+  }
+  .item-dinamico .borrar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    color: #b91c1c;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0 6px;
+    font-weight: 700;
+  }
+  button.agregar {
+    background: white;
+    color: var(--verde);
+    border: 1.5px dashed var(--verde);
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 6px;
+    margin-top: 8px;
+    align-self: flex-start;
+  }
+  button.agregar:hover { background: var(--verde-claro); }
+  .nota {
+    background: #fff7d6;
+    border-left: 4px solid #c8a020;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin: 12px 0;
+  }
+  details { margin-top: 12px; }
+  details summary {
+    cursor: pointer;
+    color: var(--azul);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  details > div { padding: 10px 0 0; font-size: 13px; color: #4b5563; }
+  @media (max-width: 700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Contexto del Asistente Virtual de WhatsApp</h1>
+  <p class="subtitulo">Formulario para el equipo comercial — alimenta las respuestas, tiempos y políticas que usará el asistente</p>
+</header>
+
+<div class="intro">
+  <p><strong>¿Para qué sirve este formulario?</strong></p>
+  <p>El asistente virtual de WhatsApp necesita información oficial del equipo comercial para responder con precisión. Hoy improvisa porque no tiene fuente de verdad. Ustedes la van a definir aquí.</p>
+  <p><strong>Cómo llenarlo:</strong> respondan en lenguaje natural, como le hablarían al cliente. No usen viñetas, ni formatos raros, ni emojis. Pueden guardar el progreso en cualquier momento (botón al final) y retomarlo después en el mismo navegador.</p>
+  <p><strong>Al final:</strong> exporten dos archivos (.md) y envíenlos al equipo técnico para cargarlos al asistente.</p>
+</div>
+
+<form id="formulario">
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">1</span> Tiempos reales (SLAs)</h2>
+  <p class="descripcion-seccion">Necesitamos los tiempos reales de cada etapa del proceso. El asistente JAMÁS dará un día específico, solo rangos. Pongan los rangos que pueden cumplir el 80% de los casos.</p>
+
+  <div class="grid-2">
+    <div class="campo">
+      <label>Tiempo desde radicación hasta respuesta de pre-estudio
+        <span class="ayuda">Ejemplo: "1 a 3 días hábiles"</span>
+      </label>
+      <input type="text" name="sla_preestudio">
+    </div>
+    <div class="campo">
+      <label>Tiempo desde aprobación hasta visto bueno de la empresa
+        <span class="ayuda">Lo más preguntado por los clientes</span>
+      </label>
+      <input type="text" name="sla_vb_empresa">
+    </div>
+    <div class="campo">
+      <label>Tiempo desde visto bueno empresa hasta desembolso
+        <span class="ayuda">Ejemplo: "24 a 48 horas hábiles"</span>
+      </label>
+      <input type="text" name="sla_desembolso">
+    </div>
+    <div class="campo">
+      <label>Tiempo de generación de paz y salvo
+      </label>
+      <input type="text" name="sla_paz_salvo">
+    </div>
+    <div class="campo">
+      <label>Tiempo de respuesta a un reclamo formal
+      </label>
+      <input type="text" name="sla_reclamo">
+    </div>
+    <div class="campo">
+      <label>Tiempo para procesar un cambio de cuenta bancaria
+      </label>
+      <input type="text" name="sla_cambio_cuenta">
+    </div>
+  </div>
+
+  <div class="campo">
+    <label>Aclaraciones sobre los tiempos
+      <span class="ayuda">¿En qué casos los tiempos pueden ser mayores? ¿Qué deberíamos advertirle al cliente para manejar expectativas?</span>
+    </label>
+    <textarea name="sla_aclaraciones"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">2</span> Top-5 respuestas oficiales</h2>
+  <p class="descripcion-seccion">Estas son las 5 preguntas más repetidas en los chats reales. Redacten la respuesta oficial como si la estuvieran escribiendo ustedes por WhatsApp. Tono cercano, sin emojis, máximo 2-3 frases.</p>
+
+  <div class="campo">
+    <label>2.1 — “¿Cuánto tiempo me demoro después de aprobado?”
+    </label>
+    <textarea name="r_post_aprobacion" placeholder="Después de la aprobación, tu empresa tiene que dar el visto bueno..."></textarea>
+    <div class="ejemplo"><b>Pista:</b> conecten con el SLA de visto bueno empresa que pusieron arriba.</div>
+  </div>
+
+  <div class="campo">
+    <label>2.2 — “¿Ya les llegó mi formulario / formato?”
+      <span class="ayuda">Cliente acaba de llenar el form y quiere confirmación</span>
+    </label>
+    <textarea name="r_formato_recibido"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>2.3 — “¿Qué pasos siguen después de mi solicitud?”
+      <span class="ayuda">El cliente quiere saber el roadmap completo</span>
+    </label>
+    <textarea name="r_pasos_siguientes" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>2.4 — “¿Cuánto demora el desembolso?”
+      <span class="ayuda">Una vez la empresa ya dio el visto bueno</span>
+    </label>
+    <textarea name="r_desembolso"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>2.5 — “Quedé denegado, ¿por qué?”
+      <span class="ayuda">¿Qué puede decir el asistente sin acceso al motivo real?</span>
+    </label>
+    <textarea name="r_denegado"></textarea>
+    <div class="nota">El asistente NO tendrá el motivo del rechazo. Si no debe darlo, indíquenlo. Por defecto registra el caso para que ustedes respondan.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">3</span> Criterios de elegibilidad</h2>
+  <p class="descripcion-seccion">¿Qué condiciones debe cumplir un cliente para que le aprobemos? El asistente lo usará para no dar falsas esperanzas.</p>
+
+  <div class="grid-3">
+    <div class="campo">
+      <label>Edad mínima</label>
+      <input type="text" name="elig_edad_min" placeholder="Ej: 18">
+    </div>
+    <div class="campo">
+      <label>Edad máxima</label>
+      <input type="text" name="elig_edad_max" placeholder="Ej: 70">
+    </div>
+    <div class="campo">
+      <label>Antigüedad laboral mínima</label>
+      <input type="text" name="elig_antiguedad" placeholder="Ej: 6 meses">
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="campo">
+      <label>Tipos de contrato aceptados
+        <span class="ayuda">Indefinido, fijo, prestación de servicios, etc.</span>
+      </label>
+      <textarea name="elig_contrato"></textarea>
+    </div>
+    <div class="campo">
+      <label>Monto máximo por salario
+        <span class="ayuda">Ej: "Hasta el doble del salario mensual sin codeudor"</span>
+      </label>
+      <textarea name="elig_monto"></textarea>
+    </div>
+  </div>
+
+  <div class="campo">
+    <label>¿Cómo saber si la empresa del cliente tiene convenio activo?
+      <span class="ayuda">El asistente recibe el nombre de la empresa. ¿Qué le decimos al cliente si la empresa NO tiene convenio?</span>
+    </label>
+    <textarea name="elig_convenio" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Casos automáticos de NO elegibilidad
+      <span class="ayuda">Razones que descartan al cliente sin posibilidad de excepción</span>
+    </label>
+    <textarea name="elig_no"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">4</span> Políticas operativas</h2>
+  <p class="descripcion-seccion">Procedimientos exactos para los casos más comunes que el asistente debe explicar bien (sin inventar pasos).</p>
+
+  <div class="campo">
+    <label>4.1 — Prepago / abono extraordinario
+      <span class="ayuda">¿Hay penalización? ¿Cómo se calcula el monto a pagar? ¿A qué cuenta? ¿Qué pasos sigue el cliente?</span>
+    </label>
+    <textarea name="pol_prepago" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>4.2 — Cambio de cuenta bancaria de desembolso
+      <span class="ayuda">¿Qué documento o autorización se necesita? ¿Hasta cuándo se puede cambiar? ¿Cómo lo hace el cliente?</span>
+    </label>
+    <textarea name="pol_cambio_cuenta" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>4.3 — Paz y salvo / certificado de saldo
+      <span class="ayuda">¿Tiene costo? ¿Cómo se solicita? ¿Cuánto demora?</span>
+    </label>
+    <textarea name="pol_paz_salvo" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>4.4 — Compra de cartera (cliente recibió menos plata de la aprobada)
+      <span class="ayuda">¿Cuándo aplica? ¿Cómo se le explica al cliente?</span>
+    </label>
+    <textarea name="pol_cartera" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>4.5 — Error de descuento en nómina
+      <span class="ayuda">¿Qué información debe pedir el asistente? ¿A quién se escala?</span>
+    </label>
+    <textarea name="pol_error_descuento"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>4.6 — Reclamo formal
+      <span class="ayuda">¿Cómo se radica? ¿Plazo de respuesta? ¿Qué dato es indispensable capturar?</span>
+    </label>
+    <textarea name="pol_reclamo"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">5</span> Criterios de escalación</h2>
+  <p class="descripcion-seccion">¿Cuándo SÍ debe pasar al asesor humano y cuándo puede el asistente manejarlo solo? Sean lo más específicos posible.</p>
+
+  <div class="campo">
+    <label>Casos que SIEMPRE deben escalar a asesor humano (sin excepción)
+      <span class="ayuda">Listen los escenarios que nunca debe intentar resolver solo el asistente</span>
+    </label>
+    <textarea name="esc_siempre" class="grande" placeholder="- Cliente molesto que exige hablar con persona&#10;- Disputas sobre montos cobrados&#10;- ..."></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Casos que el asistente PUEDE manejar solo (con la info de este formulario)
+      <span class="ayuda">Casos que hoy mandamos al asesor pero que con plantillas oficiales el asistente podría cerrar</span>
+    </label>
+    <textarea name="esc_puede" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Señales tempranas de cliente molesto / urgente
+      <span class="ayuda">Frases o patrones que el asistente debería detectar para escalar antes</span>
+    </label>
+    <textarea name="esc_senales" placeholder="- 'Ya les he escrito varias veces'&#10;- 'Voy a poner queja en Superfinanciera'&#10;- ..."></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Datos mínimos que el asistente debe capturar antes de pasar al asesor
+      <span class="ayuda">¿Qué necesita siempre el asesor para arrancar?</span>
+    </label>
+    <textarea name="esc_datos" placeholder="- Cédula&#10;- Tipo de caso&#10;- Empresa&#10;- ..."></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">6</span> Tono y vocabulario</h2>
+  <p class="descripcion-seccion">Cómo queremos que suene el asistente. Le ayudará a no sonar robótico ni demasiado formal.</p>
+
+  <div class="campo">
+    <label>Tratamiento al cliente</label>
+    <div class="opciones-radio">
+      <label><input type="radio" name="tono_tratamiento" value="tutear"> Tutear (tú)</label>
+      <label><input type="radio" name="tono_tratamiento" value="ustedear"> Ustedear (usted)</label>
+      <label><input type="radio" name="tono_tratamiento" value="depende"> Depende (explico abajo)</label>
+    </div>
+    <textarea name="tono_tratamiento_nota" placeholder="Aclaración si seleccionaste 'depende'"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Frases / expresiones que SÍ usamos
+      <span class="ayuda">Vocabulario propio de ProAlto que se siente natural para el cliente</span>
+    </label>
+    <textarea name="tono_si" placeholder="- 'Con gusto'&#10;- 'Momentico'&#10;- 'Dale'&#10;- ..."></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Frases / expresiones PROHIBIDAS
+      <span class="ayuda">Lo que el asistente nunca debe decir</span>
+    </label>
+    <textarea name="tono_no" placeholder="- 'Estimado cliente'&#10;- 'Su solicitud ha sido procesada'&#10;- ..."></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Ejemplo de respuesta que les encanta (cómo respondería el mejor asesor del equipo)
+      <span class="ayuda">Cualquier ejemplo de mensaje real bien hecho</span>
+    </label>
+    <textarea name="tono_ejemplo_bueno" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Ejemplo de respuesta que NO queremos repetir
+      <span class="ayuda">Algo que les ha pasado o que han visto y quieren evitar</span>
+    </label>
+    <textarea name="tono_ejemplo_malo" class="grande"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">7</span> Casos límite y preguntas difíciles</h2>
+  <p class="descripcion-seccion">¿Qué responder cuando el cliente pregunta algo delicado o trata de sacarle información sensible al asistente?</p>
+
+  <div class="campo">
+    <label>Si pregunta tasa de interés específica
+      <span class="ayuda">¿Damos un rango? ¿Decimos que depende? ¿Escalamos?</span>
+    </label>
+    <textarea name="lim_tasa"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Si pide aprobación inmediata o garantizada
+    </label>
+    <textarea name="lim_aprobacion"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Si menciona que tiene crédito en otra entidad y quiere comparar
+    </label>
+    <textarea name="lim_competencia"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Si amenaza con queja a Superfinanciera, Defensor del Consumidor, etc.
+    </label>
+    <textarea name="lim_queja"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Si el cliente pregunta si está hablando con una persona o un bot
+      <span class="ayuda">El asistente puede admitir que es virtual. ¿Cómo quieren que lo diga?</span>
+    </label>
+    <textarea name="lim_es_bot" placeholder="Ej: 'Soy un asistente virtual del equipo de ProAlto, aquí estoy para apoyarte. Si necesitas hablar con un asesor humano me dices.'"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Si pide datos personales de otro cliente, o pide algo que viola privacidad
+    </label>
+    <textarea name="lim_privacidad"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>Otros casos límite que han visto y quieren manejar bien
+    </label>
+    <textarea name="lim_otros" class="grande"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">8</span> Datos del responsable</h2>
+  <p class="descripcion-seccion">Para sabernos a quién escribirle si algo no quedó claro.</p>
+
+  <div class="grid-2">
+    <div class="campo">
+      <label>Nombre</label>
+      <input type="text" name="resp_nombre">
+    </div>
+    <div class="campo">
+      <label>Cargo / Rol</label>
+      <input type="text" name="resp_cargo">
+    </div>
+    <div class="campo">
+      <label>Fecha de diligenciamiento</label>
+      <input type="text" name="resp_fecha">
+    </div>
+    <div class="campo">
+      <label>Versión del documento</label>
+      <input type="text" name="resp_version" placeholder="Ej: v1.0">
+    </div>
+  </div>
+</section>
+
+<div class="acciones">
+  <button type="button" onclick="exportarMarkdown()">📥 Exportar para el asistente (.md)</button>
+  <button type="button" class="secundario" onclick="guardar()">💾 Guardar progreso</button>
+  <button type="button" class="secundario" onclick="cargar()">📂 Recargar último guardado</button>
+  <button type="button" class="secundario" onclick="limpiar()">🗑️ Limpiar todo</button>
+  <span id="estado" class="estado-guardado"></span>
+</div>
+
+</form>
+
+<script>
+const form = document.getElementById('formulario');
+const estado = document.getElementById('estado');
+const STORAGE_KEY = 'proalto_llm_form_v1';
+
+function recolectar() {
+  const data = {};
+  new FormData(form).forEach((v, k) => { data[k] = v; });
+  return data;
+}
+
+function guardar() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recolectar()));
+  mensaje("Guardado en este navegador.");
+}
+
+function cargar() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) { mensaje("No hay nada guardado todavía.", true); return; }
+  const data = JSON.parse(raw);
+  for (const k in data) {
+    const el = form.elements[k];
+    if (!el) continue;
+    if (el.type === 'radio' || (el.length && el[0] && el[0].type === 'radio')) {
+      const radios = form.querySelectorAll(`[name="${k}"]`);
+      radios.forEach(r => { r.checked = (r.value === data[k]); });
+    } else {
+      el.value = data[k];
+    }
+  }
+  mensaje("Cargado el último guardado.");
+}
+
+function limpiar() {
+  if (!confirm("¿Borrar TODO lo diligenciado? Esto no se puede deshacer.")) return;
+  form.reset();
+  localStorage.removeItem(STORAGE_KEY);
+  mensaje("Todo limpio.");
+}
+
+function mensaje(txt, error = false) {
+  estado.textContent = txt;
+  estado.style.color = error ? "#b91c1c" : "var(--verde)";
+  setTimeout(() => { estado.textContent = ""; }, 3500);
+}
+
+// Auto-guardado cada 30 segundos
+setInterval(() => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recolectar()));
+}, 30000);
+
+// Recargar al abrir si hay datos guardados
+window.addEventListener('load', () => {
+  if (localStorage.getItem(STORAGE_KEY)) cargar();
+});
+
+function md(label, value) {
+  if (!value || !value.trim()) return "";
+  return `### ${label}\n\n${value.trim()}\n\n`;
+}
+
+function exportarMarkdown() {
+  const d = recolectar();
+  const fecha = d.resp_fecha || new Date().toLocaleDateString('es-CO');
+  const responsable = [d.resp_nombre, d.resp_cargo].filter(Boolean).join(" — ") || "No especificado";
+  const version = d.resp_version || "v1.0";
+
+  // ─── Archivo 1: respuestas_calibradas.md ──────────────────────────────────
+  let respuestas = `# Respuestas Calibradas — Asistente Virtual ProAlto\n\n`;
+  respuestas += `> Diligenciado por: ${responsable}  \n> Fecha: ${fecha}  \n> Versión: ${version}\n\n`;
+  respuestas += `Este documento contiene las respuestas oficiales que el asistente virtual debe usar (textuales o casi textuales) para las preguntas más frecuentes de los clientes en WhatsApp.\n\n`;
+  respuestas += `---\n\n## 1. Tiempos oficiales (SLAs)\n\n`;
+  respuestas += md("Pre-estudio (radicación → respuesta)", d.sla_preestudio);
+  respuestas += md("Aprobación → visto bueno empresa", d.sla_vb_empresa);
+  respuestas += md("Visto bueno empresa → desembolso", d.sla_desembolso);
+  respuestas += md("Generación de paz y salvo", d.sla_paz_salvo);
+  respuestas += md("Respuesta a reclamo formal", d.sla_reclamo);
+  respuestas += md("Procesar cambio de cuenta bancaria", d.sla_cambio_cuenta);
+  respuestas += md("Aclaraciones sobre tiempos", d.sla_aclaraciones);
+
+  respuestas += `---\n\n## 2. Top-5 respuestas oficiales\n\n`;
+  respuestas += md("Cuánto se demora después de aprobado", d.r_post_aprobacion);
+  respuestas += md("Si ya llegó el formulario", d.r_formato_recibido);
+  respuestas += md("Pasos siguientes después de la solicitud", d.r_pasos_siguientes);
+  respuestas += md("Cuánto demora el desembolso", d.r_desembolso);
+  respuestas += md("Cliente denegado pregunta por qué", d.r_denegado);
+
+  respuestas += `---\n\n## 3. Tono y vocabulario\n\n`;
+  const tratMap = { tutear: "Tutear (tú)", ustedear: "Ustedear (usted)", depende: "Depende (ver nota)" };
+  respuestas += md("Tratamiento al cliente", tratMap[d.tono_tratamiento] || "");
+  respuestas += md("Aclaración sobre tratamiento", d.tono_tratamiento_nota);
+  respuestas += md("Frases que SÍ usamos", d.tono_si);
+  respuestas += md("Frases PROHIBIDAS", d.tono_no);
+  respuestas += md("Ejemplo de respuesta excelente", d.tono_ejemplo_bueno);
+  respuestas += md("Ejemplo de respuesta que NO queremos", d.tono_ejemplo_malo);
+
+  // ─── Archivo 2: politicas_operativas.md ───────────────────────────────────
+  let politicas = `# Políticas Operativas — Asistente Virtual ProAlto\n\n`;
+  politicas += `> Diligenciado por: ${responsable}  \n> Fecha: ${fecha}  \n> Versión: ${version}\n\n`;
+  politicas += `Procedimientos, criterios de elegibilidad y reglas de escalación que el asistente virtual debe conocer.\n\n`;
+  politicas += `---\n\n## 1. Criterios de elegibilidad\n\n`;
+  politicas += md("Edad mínima", d.elig_edad_min);
+  politicas += md("Edad máxima", d.elig_edad_max);
+  politicas += md("Antigüedad laboral mínima", d.elig_antiguedad);
+  politicas += md("Tipos de contrato aceptados", d.elig_contrato);
+  politicas += md("Monto máximo por salario", d.elig_monto);
+  politicas += md("Verificación de convenio con empresa", d.elig_convenio);
+  politicas += md("Casos automáticos de no elegibilidad", d.elig_no);
+
+  politicas += `---\n\n## 2. Procedimientos operativos\n\n`;
+  politicas += md("Prepago / abono extraordinario", d.pol_prepago);
+  politicas += md("Cambio de cuenta bancaria de desembolso", d.pol_cambio_cuenta);
+  politicas += md("Paz y salvo / certificado de saldo", d.pol_paz_salvo);
+  politicas += md("Compra de cartera", d.pol_cartera);
+  politicas += md("Error de descuento en nómina", d.pol_error_descuento);
+  politicas += md("Reclamo formal", d.pol_reclamo);
+
+  politicas += `---\n\n## 3. Criterios de escalación\n\n`;
+  politicas += md("Casos que SIEMPRE escalan a asesor humano", d.esc_siempre);
+  politicas += md("Casos que el asistente PUEDE manejar solo", d.esc_puede);
+  politicas += md("Señales tempranas de cliente molesto", d.esc_senales);
+  politicas += md("Datos mínimos a capturar antes de escalar", d.esc_datos);
+
+  politicas += `---\n\n## 4. Casos límite\n\n`;
+  politicas += md("Pregunta por tasa de interés específica", d.lim_tasa);
+  politicas += md("Pide aprobación inmediata o garantizada", d.lim_aprobacion);
+  politicas += md("Compara con otra entidad financiera", d.lim_competencia);
+  politicas += md("Amenaza con queja a Superfinanciera u otros", d.lim_queja);
+  politicas += md("Pregunta si es persona o bot", d.lim_es_bot);
+  politicas += md("Solicita datos sensibles / privacidad", d.lim_privacidad);
+  politicas += md("Otros casos límite", d.lim_otros);
+
+  descargar("respuestas_calibradas.md", respuestas);
+  setTimeout(() => descargar("politicas_operativas.md", politicas), 400);
+  mensaje("Dos archivos exportados. Envíenlos al equipo técnico.");
+}
+
+function descargar(nombre, contenido) {
+  const blob = new Blob([contenido], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rediseño del Asistente Virtual de WhatsApp — ProAlto</title>
+<style>
+  :root {
+    --azul: #1a4480;
+    --azul-claro: #e8f0fb;
+    --verde: #2d7a4f;
+    --verde-claro: #e6f4ec;
+    --naranja: #c5651a;
+    --naranja-claro: #fcf0e0;
+    --gris: #f5f5f7;
+    --texto: #1f2937;
+    --borde: #d1d5db;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--texto);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    background: #fff;
+  }
+  header {
+    border-bottom: 3px solid var(--azul);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  h1 { color: var(--azul); margin: 0 0 8px; font-size: 28px; }
+  .subtitulo { color: #6b7280; font-size: 16px; margin: 0; }
+  h2 {
+    color: var(--azul);
+    border-left: 4px solid var(--azul);
+    padding-left: 12px;
+    margin-top: 40px;
+    font-size: 22px;
+  }
+  h3 { color: var(--texto); font-size: 17px; margin-top: 24px; }
+  .caja {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .caja-problema { background: var(--naranja-claro); border-left: 4px solid var(--naranja); }
+  .caja-solucion { background: var(--verde-claro); border-left: 4px solid var(--verde); }
+  .caja-info { background: var(--azul-claro); border-left: 4px solid var(--azul); }
+  .caja-accion { background: #fff7d6; border-left: 4px solid #c8a020; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .tarjeta {
+    background: var(--gris);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid var(--borde);
+  }
+  .tarjeta h4 { margin: 0 0 8px; color: var(--azul); font-size: 15px; }
+  .tarjeta p { margin: 0; font-size: 14px; }
+  .antes-despues {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .antes, .despues {
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 14px;
+  }
+  .antes { background: #fff0f0; border: 1px solid #f4c2c2; }
+  .despues { background: var(--verde-claro); border: 1px solid #b8d8c4; }
+  .etiqueta { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+  .etiqueta-roja { color: #b91c1c; }
+  .etiqueta-verde { color: var(--verde); }
+  .chat {
+    background: #ece5dd;
+    border-radius: 12px;
+    padding: 14px;
+    margin: 8px 0;
+    font-family: "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  }
+  .msg-cliente, .msg-bot {
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    max-width: 85%;
+    font-size: 14px;
+  }
+  .msg-cliente { background: #fff; margin-right: auto; }
+  .msg-bot { background: #dcf8c6; margin-left: auto; text-align: right; }
+  ul.limpia { padding-left: 22px; }
+  ul.limpia li { margin: 6px 0; }
+  .numero {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    background: var(--azul);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .fase {
+    display: inline-block;
+    background: var(--azul);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .fase-2 { background: #6b7280; }
+  form {
+    background: var(--gris);
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 32px;
+    border: 1px solid var(--borde);
+  }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; }
+  textarea, input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  .opciones { display: flex; gap: 12px; flex-wrap: wrap; margin: 6px 0; }
+  .opciones label { display: inline-flex; align-items: center; font-weight: 400; cursor: pointer; gap: 6px; margin: 0; }
+  button {
+    background: var(--azul);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  button:hover { background: #143666; }
+  .stat {
+    display: inline-block;
+    background: var(--naranja-claro);
+    color: var(--naranja);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  @media (max-width: 640px) {
+    .grid, .antes-despues { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Rediseño del Asistente Virtual de WhatsApp</h1>
+  <p class="subtitulo">Propuesta de mejora basada en el análisis de 30 días de conversaciones reales — para revisión del equipo comercial</p>
+</header>
+
+<section>
+  <h2>1. Qué encontramos en los chats</h2>
+  <p>Revisamos <strong>1.000 conversaciones</strong> reales de los últimos 30 días (más de 38.000 mensajes entre clientes y el bot). Los hallazgos principales:</p>
+
+  <div class="grid">
+    <div class="tarjeta">
+      <h4>1 de cada 4 chats se queda atascado</h4>
+      <p>El bot solo entiende botones. Cuando el cliente escribe en texto libre (“asesor”, “quiero saber qué pasó con mi formato”), el bot le devuelve el menú una y otra vez.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>El asesor entra desde cero</h4>
+      <p>Cuando el bot pasa al asesor humano, no le pasa nada de contexto: ni la cédula, ni la duda, ni qué se intentó antes. El asesor tiene que arrancar la conversación desde cero.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Preguntas frecuentes sin respuesta</h4>
+      <p>Hay 5 preguntas que se repiten cientos de veces (tiempos de aprobación, de desembolso, “¿llegó mi formato?”) y el bot no las contesta — pasa al asesor humano cada vez.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Muchos casos podrían resolverse solos</h4>
+      <p>Estimamos que <strong>30–40%</strong> de los casos que llegan al asesor humano podrían resolverse sin intervención humana, si el bot tuviera respuestas oficiales y supiera capturar bien la información.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2. La idea central: cambiar el rol del asistente</h2>
+
+  <div class="caja caja-info">
+    <p><strong>Hoy:</strong> el asistente virtual está diseñado para <em>reemplazar</em> al asesor humano. Le decimos “tú eres el asesor, tú resuelves todo, no transfieras”. Resultado: inventa respuestas, promete tiempos que no controla, y cuando falla genera más fricción.</p>
+    <p><strong>Propuesta:</strong> que el asistente sea un <strong>puente</strong> entre el bot y el asesor humano. Su trabajo no es reemplazar al asesor, es <strong>preparar el terreno</strong>: entiende lo que el cliente quiere, captura los datos clave, responde lo que es seguro responder, y cuando hay que pasar al asesor humano, le entrega todo en bandeja.</p>
+  </div>
+
+  <h3>Comparación práctica</h3>
+  <div class="antes-despues">
+    <div class="antes">
+      <span class="etiqueta etiqueta-roja">ANTES (hoy)</span>
+      <div class="chat">
+        <div class="msg-cliente">No me ha llegado el desembolso</div>
+        <div class="msg-bot">Una vez ingreses al sistema recibirás un mensaje con las instrucciones para enviarnos la documentación.</div>
+        <div class="msg-cliente">Pero ya estoy aprobado</div>
+        <div class="msg-bot">Te paso con un asesor.</div>
+      </div>
+      <p><em>El asesor entra sin saber nada.</em></p>
+    </div>
+    <div class="despues">
+      <span class="etiqueta etiqueta-verde">DESPUÉS (propuesta)</span>
+      <div class="chat">
+        <div class="msg-cliente">No me ha llegado el desembolso</div>
+        <div class="msg-bot">Claro, déjame ayudarte. Me confirmas tu cédula?</div>
+        <div class="msg-cliente">12345678</div>
+        <div class="msg-bot">Veo que tu solicitud está aprobada hace 6 días. Le voy a pedir al equipo que entre, ya con tus datos a la mano.</div>
+      </div>
+      <p><em>El asesor entra con: cédula, estado real, intent (“desembolso pendiente”), días transcurridos.</em></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Qué cambia exactamente</h2>
+
+  <div class="grid">
+    <div class="tarjeta">
+      <h4>El asistente puede admitir que es virtual</h4>
+      <p>Hoy le prohibimos decirlo y eso lo lleva a inventar. Si el cliente pregunta, podrá decir “soy un asistente virtual del equipo de ProAlto” sin problema.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Captura datos antes de responder</h4>
+      <p>Pedirá la cédula, intent y monto cuando aplique, antes de aventurarse a responder.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Responde con plantillas oficiales</h4>
+      <p>Las respuestas a las preguntas más frecuentes ya no las improvisa — las toma de un documento que ustedes (equipo comercial) van a definir.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Pasa al asesor con resumen</h4>
+      <p>Cuando escala, deja un resumen estructurado: cédula, qué quiere el cliente, qué intentó, urgencia. El asesor abre el chat y ya tiene todo claro.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Escala solo cuando es necesario</h4>
+      <p>Casos que requieren persona: cliente lo exige, frustración explícita repetida, cambios sensibles (cuenta bancaria), disputas sobre datos.</p>
+    </div>
+    <div class="tarjeta">
+      <h4>Se mantienen las prohibiciones</h4>
+      <p>Sigue prohibido prometer tiempos específicos, inventar tasas, prometer seguimiento que no controlamos, y pretender ver documentos.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4. Cómo lo vamos a implementar</h2>
+
+  <p><span class="fase">Fase 1 — Piloto</span> Activación <strong>manual</strong> (como hoy)</p>
+  <div class="caja caja-solucion">
+    <p>El asistente virtual se sigue activando manualmente desde el panel admin, en chats seleccionados. Esto nos permite probar el nuevo comportamiento sin riesgo masivo. Si funciona bien en 20–30 chats reales, pasamos a la fase 2.</p>
+  </div>
+
+  <p><span class="fase fase-2">Fase 2 — Producción</span> Activación automática (después de validar)</p>
+  <div class="caja caja-info">
+    <p>Una vez probado, el asistente se vuelve la respuesta por defecto a cualquier texto libre que el bot estructurado no pueda manejar. Esta fase requiere una aprobación nueva del equipo.</p>
+  </div>
+</section>
+
+<section>
+  <h2>5. Lo que necesitamos del equipo comercial</h2>
+
+  <div class="caja caja-accion">
+    <p><strong>Para que el asistente responda con plantillas oficiales (y no las invente), necesitamos que el equipo comercial nos entregue las respuestas, los tiempos y las políticas.</strong></p>
+    <p>Vamos a entregar un formulario HTML aparte (<code>tools/llm_template_form.html</code>) con todos los campos que necesitamos llenar. Ese formulario lo abren en el navegador, lo llenan, y al final exporta dos archivos que se cargan al asistente.</p>
+  </div>
+
+  <h3>Información que pediremos en ese formulario</h3>
+  <ul class="limpia">
+    <li><strong>Tiempos reales (SLAs):</strong> aprobación, visto bueno empresa, desembolso, paz y salvo.</li>
+    <li><strong>Top-5 respuestas oficiales:</strong> redactadas como queremos que las diga el asistente.</li>
+    <li><strong>Criterios de elegibilidad:</strong> edad, antigüedad, tipo de empresa, montos por salario.</li>
+    <li><strong>Políticas operativas:</strong> prepago, cambio de cuenta, compra de cartera, paz y salvo.</li>
+    <li><strong>Criterios de escalación:</strong> qué casos exigen siempre asesor humano y cuáles puede manejar el asistente.</li>
+    <li><strong>Tono y vocabulario:</strong> frases que sí usamos, frases prohibidas, tratamiento (tú/usted).</li>
+    <li><strong>Casos límite:</strong> qué responder si preguntan tasa específica, otra entidad, queja a Superfinanciera, etc.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. Línea de tiempo propuesta</h2>
+  <ul class="limpia">
+    <li><span class="numero">1</span> Esta semana: revisión de este plan por el equipo y feedback (formulario abajo).</li>
+    <li><span class="numero">2</span> Semana siguiente: ajustamos el asistente con el nuevo rol y entregamos el formulario HTML al equipo comercial.</li>
+    <li><span class="numero">3</span> Equipo comercial llena el formulario con respuestas, SLAs y políticas.</li>
+    <li><span class="numero">4</span> Cargamos las respuestas al asistente y arrancamos piloto manual con 20–30 chats reales.</li>
+    <li><span class="numero">5</span> Auditoría a 7 días: medimos % de casos resueltos sin asesor, calidad del handoff, bucles eliminados.</li>
+    <li><span class="numero">6</span> Si los números son buenos, activación automática (fase 2).</li>
+  </ul>
+</section>
+
+<form id="feedbackForm" onsubmit="exportarFeedback(event)">
+  <h2 style="margin-top: 0;">Feedback del equipo</h2>
+  <p>Antes de proceder, queremos sus comentarios. Llenen lo que les parezca relevante y al final exporten para enviarlo.</p>
+
+  <label>Nombre y rol</label>
+  <input type="text" name="nombre" placeholder="Ej: Juan Pérez — Coordinador Comercial">
+
+  <label>1. ¿El cambio de rol propuesto les hace sentido? ¿Algo que crean que estamos malinterpretando?</label>
+  <textarea name="rol"></textarea>
+
+  <label>2. De los hallazgos en los chats (sección 1), ¿hay algo que no les cuadre o que falte resaltar?</label>
+  <textarea name="hallazgos"></textarea>
+
+  <label>3. ¿Permitir que el asistente diga “soy un asistente virtual” les genera alguna preocupación?</label>
+  <div class="opciones">
+    <label><input type="radio" name="virtual" value="ok"> Está bien, sin problema</label>
+    <label><input type="radio" name="virtual" value="dudas"> Tengo dudas (las explico abajo)</label>
+    <label><input type="radio" name="virtual" value="no"> Prefiero que no lo admita</label>
+  </div>
+  <textarea name="virtual_comentario" placeholder="Comentarios sobre este punto"></textarea>
+
+  <label>4. ¿Qué casos creen ustedes que el asistente NUNCA debería intentar resolver y siempre debería pasar a asesor humano?</label>
+  <textarea name="escalar_siempre"></textarea>
+
+  <label>5. ¿Qué casos creen que el asistente SÍ podría resolver solo (con respuestas calibradas), que hoy mandamos al asesor?</label>
+  <textarea name="resolver_solo"></textarea>
+
+  <label>6. Sobre el formulario que vamos a entregar al equipo comercial: ¿quién lo llenaría? ¿Qué tiempos manejarían?</label>
+  <textarea name="formulario"></textarea>
+
+  <label>7. Otros comentarios, riesgos o sugerencias</label>
+  <textarea name="otros"></textarea>
+
+  <button type="submit">Exportar feedback (descarga un archivo .txt)</button>
+</form>
+
+<script>
+function exportarFeedback(e) {
+  e.preventDefault();
+  const f = e.target;
+  const data = new FormData(f);
+  const fecha = new Date().toLocaleString('es-CO');
+  let texto = "FEEDBACK — Rediseño Asistente Virtual ProAlto\n";
+  texto += "Fecha: " + fecha + "\n";
+  texto += "============================================\n\n";
+  const labels = {
+    nombre: "Nombre y rol",
+    rol: "1. Cambio de rol",
+    hallazgos: "2. Hallazgos",
+    virtual: "3. Admitir asistente virtual",
+    virtual_comentario: "   Comentarios",
+    escalar_siempre: "4. Casos que siempre escalan",
+    resolver_solo: "5. Casos que el asistente puede resolver",
+    formulario: "6. Formulario equipo comercial",
+    otros: "7. Otros"
+  };
+  for (const k in labels) {
+    const v = data.get(k);
+    if (v) texto += labels[k] + ":\n" + v + "\n\n";
+  }
+  const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const nombre = (data.get("nombre") || "anonimo").replace(/[^a-zA-Z0-9]/g, "_");
+  a.href = url;
+  a.download = "feedback_" + nombre + ".txt";
+  a.click();
+  URL.revokeObjectURL(url);
+  alert("Feedback exportado. Por favor envíalo al equipo de implementación.");
+}
+</script>
+
+</body>
+</html>
