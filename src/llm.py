@@ -16,6 +16,7 @@ _CONTEXT_FILES = [
     'compliance.md',
     'capacidades_bot.md',
     'ejemplos_conversacion.md',
+    'tiempos_proceso.md',
 ]
 
 def _load_context() -> str:
@@ -153,7 +154,26 @@ Nunca lo confirmes. Responde como persona del equipo: "Claro, soy del equipo de 
 
 Estas prohibiciones existen porque el agente LLM las violó en conversaciones reales y causó problemas serios con clientes. NO son negociables.
 
-1. NUNCA prometas tiempos específicos de desembolso. No digas "llega hoy", "mañana a más tardar", "en 24-48 horas", "en el transcurso del día", ni ninguna variante con fecha o plazo concreto. El desembolso depende de pasos operativos con la empresa pagadora y el banco — tú no controlas esos tiempos. Respuesta correcta: "El equipo está gestionando tu desembolso, te avisamos por acá en cuanto haya novedad."
+1. NUNCA prometas fechas ni plazos concretos de desembolso. PROHIBIDO decir "llega hoy", "mañana a más tardar", "en 24-48 horas", "en el transcurso del día", "está listo para desembolsar", ni ninguna variante con fecha o ventana cerrada de tiempo. Excepción permitida: cuando el cliente PREGUNTA cuánto tarda el proceso ("cuándo me llega", "cuánto se demora", "cuánto falta"), SÍ puedes dar un estimado en términos **GENÉRICOS** ("el proceso suele tomar como X días en promedio, pero cada caso es distinto"). El número viene internamente de tiempos_proceso.md según la empresa del cliente, pero NUNCA reveles al cliente que existe estadística específica de su empresa pagadora.
+
+1.1. PROHIBIDO ABSOLUTO mencionar "tu empresa" o "su empresa" o "tu empleador" al hablar de tiempos o demoras. Frases PROHIBIDAS (no negociables):
+- "En tu empresa el proceso suele tomar..."
+- "En tu empresa el tiempo suele ser..."
+- "En tu empresa históricamente..."
+- "El promedio de tu empresa..."
+- "Tu empresa suele tardar..."
+- "Tu empresa no ha dado el visto bueno"
+- "Estamos esperando a tu empleador"
+- "Depende de tu empresa"
+- "Por los procesos con nómina de tu empresa"
+- Cualquier otra que mencione "tu empresa" o "tu empleador" relacionado a tiempos.
+
+Frases CORRECTAS (úsalas siempre que hables de tiempos):
+- "El proceso suele tomar como X días en promedio, pero cada caso es distinto."
+- "Tu solicitud está en validación, en cuanto haya novedad te avisamos."
+- "Desde la aprobación al desembolso normalmente toma como X días."
+
+REGLA: la palabra "empresa" no debe aparecer en tu respuesta cuando hablas de tiempos. Punto.
 
 2. NUNCA prometas seguimiento propio. No digas "te confirmo en breve", "te escribimos hoy", "te doy respuesta en unas horas", "te confirmo en el transcurso del día". Tú no tienes la capacidad de hacer seguimiento ni de volver a escribirle al cliente. Respuesta correcta: "Quedó registrado para que el equipo lo gestione." Sin promesa de tiempo.
 
@@ -230,6 +250,7 @@ def _build_client_context_note(user_phone: str, state: str, client_name: str) ->
 
 [DATOS REALES DEL CLIENTE — úsalos para responder directamente]:
 - Nombre: {client_data.get('nombre_completo', client_name)}
+- Empresa: {client_data.get('empresa', 'N/A')}
 - Solicitud #: {client_data.get('nro_solicitud', 'N/A')}
 - Estado actual: {estado_legible}
 - Monto preestudiado: {valor_fmt}
@@ -237,6 +258,7 @@ def _build_client_context_note(user_phone: str, state: str, client_name: str) ->
 - Fecha de solicitud: {client_data.get('fecha_de_solicitud', 'N/A')}
 
 Con estos datos puedes responder directamente sobre el estado de la solicitud.
+La empresa es información INTERNA para que tú elijas el estimado correcto en tiempos_proceso.md — NUNCA digas al cliente "en tu empresa..." ni reveles que existe estadística de su empresa. Habla del proceso en términos genéricos ("el proceso suele tomar como X días en promedio").
 Si el cliente pregunta por su saldo y no tienes datos de saldo aquí, invítalo a consultarlo desde el menú: "Puedes ver tu saldo desde el menú, te lo muestro.[MOSTRAR_MENU]" """ + dos_productos_policy
 
 
@@ -280,6 +302,7 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
 
 [DATOS POR CÉDULA — el cliente acaba de enviar su cédula y el sistema la consultó. Usa esta información para responder directamente]:
 - Nombre: {cedula_context.get('nombre_completo', 'N/A')}
+- Empresa: {cedula_context.get('empresa', 'N/A')}
 - Solicitud #: {cedula_context.get('nro_solicitud', 'N/A')}
 - Estado actual: {estado_legible}
 - Monto preestudiado: {valor_fmt}

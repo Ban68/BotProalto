@@ -16,10 +16,10 @@ Puedes acceder a hasta el doble de tu salario mensual sin necesidad de codeudor,
 La tasa y las condiciones del crédito dependen del estudio realizado y de las políticas vigentes al momento de la solicitud. Para conocer la tasa exacta de tu caso, un asesor te la confirma una vez revisemos tu información.
 
 **¿En cuánto tiempo me aprueban?**
-El proceso varía según la empresa, pero generalmente toma entre 2 y 5 días hábiles una vez se tenga toda la documentación completa.
+Da un estimado GENÉRICO ("el proceso suele tomar como X días en promedio"). Internamente el asistente usa el promedio histórico de los últimos 12 meses según la empresa del cliente (ver tiempos_proceso.md), pero NUNCA debe revelar que existe estadística específica de su empresa. En promedio general, desde la solicitud al desembolso son como 20 días. Siempre como referencia, no como promesa, y siempre aclarar "cada caso es distinto".
 
 **¿Cuánto tarda el desembolso?**
-Una vez firmado el contrato por firma electrónica y registrada tu cuenta bancaria, ProAlto realiza el desembolso en un máximo de 24 horas. Después, el tiempo que tarda en reflejarse depende del banco: si es el mismo banco de ProAlto, menos de 24 horas; si es otro banco o billetera digital (Nequi, Daviplata), puede tomar hasta 48 horas.
+Después de la firma del contrato, ProAlto hace el desembolso en máximo 24 horas. Puede tardar más en llegar a la cuenta del cliente por tiempos internos de los bancos (mismo banco de ProAlto = menos de 24 horas, otro banco o billetera digital = hasta 48 horas). Si el cliente pregunta antes de la firma, da un estimado genérico del proceso completo (~20 días promedio, o el número que corresponda internamente según la empresa, pero sin revelar que es por empresa).
 
 **¿No me ha llegado el desembolso, qué hago?**
 Si ya firmaste el contrato y han pasado más de 48 horas sin que se refleje el dinero, escríbenos por acá para que revisemos tu caso.
@@ -103,7 +103,7 @@ Tienes derecho a conocer, actualizar, rectificar y suprimir tus datos, así como
 ## Sobre el desembolso (preguntas frecuentes reales)
 
 **"Me dijeron que el desembolso era ayer y no me ha llegado"**
-ProAlto realiza el desembolso máximo 24 horas después de la firma. Después, depende del banco: mismo banco = menos de 24h, otro banco o billetera digital = hasta 48h. Si llevas más de 48 horas esperando después de la firma, escríbenos por acá para que revisemos tu caso. IMPORTANTE: el bot NO debe prometer tiempos específicos ("hoy", "mañana") porque no controla los tiempos bancarios.
+Después de la firma del contrato, ProAlto hace el desembolso en máximo 24 horas. Puede tardar más en llegar a la cuenta del cliente por tiempos internos de los bancos (mismo banco de ProAlto = menos de 24h, otro banco o billetera digital = hasta 48h). Si el cliente todavía no ha firmado, decir que la solicitud está en validación (NUNCA decir "tu empresa no ha respondido" — usar términos neutros). Si el cliente está angustiado o lleva muchos días esperando, registrar con [REGISTRAR_SOLICITUD:desembolso_pendiente]. IMPORTANTE: el bot NO debe prometer fechas concretas ("hoy", "mañana"), pero sí puede dar un estimado genérico del tiempo del proceso ("suele tomar como X días en promedio") cuando el cliente pregunta.
 
 **"Me llegó menos dinero del que me aprobaron"**
 Puede haber ocurrido una compra de cartera: ProAlto pagó directamente el saldo que tenías con otra entidad financiera y solo desembolsó la diferencia. El cliente debería haber sido informado de esto antes del desembolso. Lo que se descuenta es el saldo del crédito anterior a la fecha del desembolso. La entidad a la que se le compró la cartera debe emitir un paz y salvo al cliente. Si el cliente dice que no debía nada, escalar a un asesor para revisar el caso puntualmente.
@@ -131,10 +131,10 @@ El contrato se firma de manera digital por firma electrónica — enviaremos el 
 Sí. Escríbenos por el chat y lo tramitamos.
 
 **"¿Cuándo me dan respuesta?"**
-El proceso generalmente toma entre 2 y 5 días hábiles una vez tengamos todos los documentos completos. Puedes consultar el estado en cualquier momento en el bot seleccionando "Estado Solicitud".
+Decir que el proceso suele tomar como X días en promedio (el bot usa internamente el dato por empresa, pero al cliente NO se lo dice así — solo "el proceso suele tomar"). Aclarar que cada caso es distinto. Invitar a consultar el estado desde el menú.
 
 **"Ya envié los documentos pero el estado sigue igual"**
-Los documentos pueden tardar 1-2 días hábiles en ser procesados por el equipo de validación. Si llevas más tiempo, escríbenos por acá para confirmar que los recibimos correctamente.
+Los documentos pueden tardar varios días hábiles en procesarse. Si llevas tiempo esperando, escríbenos por acá para confirmar que los recibimos correctamente. NO decir "depende de tu empresa", "tu empleador está validando" — usar "está en validación".
 
 **"¿Hasta qué hora atienden?"**
 Nuestros asesores atienden de lunes a viernes de 7:30 a.m. a 5:30 p.m. (hora Colombia). El bot está disponible las 24 horas para consultas de saldo y estado.
@@ -186,7 +186,7 @@ Escríbenos por acá para que revisemos tu caso puntualmente. No debería haber 
 ## Sobre rechazo de solicitudes
 
 **¿Por qué no me aprobaron el crédito?**
-El crédito puede no ser aprobado por diversos motivos: capacidad de endeudamiento insuficiente, no cumplir requisitos mínimos, entre otros. Para más detalle sobre tu caso específico, escríbenos por acá.
+Respuesta oficial al cliente: "No cumple con las políticas de aprobación." (Frase corta, neutra, sin detallar motivos específicos). El asistente NO tiene acceso al motivo real del rechazo y no debe especularlo. Si el cliente insiste en saber más, registrar con [REGISTRAR_SOLICITUD:general] para que el equipo le responda.
 
 **¿Puedo volver a aplicar si me rechazaron?**
 Sí, puede ser que después de un tiempo cumplas las condiciones de aprobación. Puedes volver a intentar.
@@ -203,7 +203,7 @@ Normalmente se descuenta el saldo de la liquidación, según lo permitido por la
 ## Sobre paz y salvo
 
 **¿Puedo pedir un paz y salvo?**
-Sí. Escríbenos por acá y lo gestionamos. Se genera manualmente y se entrega generalmente por WhatsApp o por email.
+Sí. Escríbenos por acá y lo gestionamos. Se genera manualmente y se entrega generalmente por WhatsApp o por email. El tiempo de generación es de 24 horas. Para registrar la solicitud usar [REGISTRAR_SOLICITUD:paz_salvo].
 
 ---
 
