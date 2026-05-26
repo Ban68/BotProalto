@@ -92,38 +92,6 @@ def _is_advisor_request(text: str) -> bool:
     return any(p in norm for p in patterns)
 
 
-def _is_affirmative_consent(text: str) -> bool:
-    """True si en estado pending_consent el texto es una aceptación clara.
-    Solo se usa cuando el bot está esperando consentimiento — no es un
-    detector de afirmativos genérico."""
-    if not text:
-        return False
-    norm = text.lower().strip()
-    for char in ".,!?¿¡;:":
-        norm = norm.replace(char, "")
-    patterns = [
-        "acepto", "si acepto", "sí acepto", "claro acepto",
-        "dale", "ok", "okay", "vale", "listo",
-        "de acuerdo", "está bien", "esta bien",
-        "claro", "sí", "si", "yes", "yep", "yeah",
-    ]
-    return norm in patterns or any(norm.startswith(p + " ") for p in patterns)
-
-
-def _is_negative_consent(text: str) -> bool:
-    """True si en estado pending_consent el texto es un rechazo claro."""
-    if not text:
-        return False
-    norm = text.lower().strip()
-    for char in ".,!?¿¡;:":
-        norm = norm.replace(char, "")
-    patterns = [
-        "no acepto", "no", "no gracias", "rechazo", "nope",
-        "no quiero", "no me interesa",
-    ]
-    return norm in patterns or any(norm.startswith(p + " ") for p in patterns)
-
-
 # msg_type value used to tag LLM-generated outbound messages in the DB
 # The admin panel reads this to show the 🤖 indicator — clients never see it
 _LLM_MSG_TYPE = "llm"
@@ -909,12 +877,6 @@ class FlowHandler:
 
         # 1. Check Consent Flow
         if state == "pending_consent":
-            if _is_affirmative_consent(text):
-                FlowHandler.process_button_click(user_phone, "accept_terms", state)
-                return
-            if _is_negative_consent(text):
-                FlowHandler.process_button_click(user_phone, "decline_terms", state)
-                return
             FlowHandler.send_habeas_data_prompt(user_phone)
             return
         

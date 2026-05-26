@@ -1132,6 +1132,11 @@ def api_test_auto_start():
     test_phone = test_mode.register_session()
     if client_name:
         test_mode.set_client_name(test_phone, client_name)
+    # En modo auto saltamos el consentimiento: el flujo de habeas data
+    # solo acepta button_reply en producción (correcto por compliance) y
+    # no es lo que queremos probar aquí. La sesión arranca en 'active',
+    # equivalente a un cliente que YA acepto el consent.
+    test_mode.set_state(test_phone, "active")
 
     session_id = test_runner.create_session(
         mode="auto",
