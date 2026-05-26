@@ -184,16 +184,23 @@ def persist_outbound(
             text = item.get('body') or ''
             btns = item.get('buttons') or []
             if btns:
-                text += '\n' + ' | '.join(b.get('title', b.get('id', '')) for b in btns)
+                # Formato legible: [Botones: id1="Title 1" | id2="Title 2"]
+                # El cliente-LLM lo parsea para emitir [BUTTON:id].
+                btn_pairs = ' | '.join(
+                    f'{b.get("id", "")}="{b.get("title", "")}"' for b in btns
+                )
+                text += f'\n\n[Botones disponibles: {btn_pairs}]'
             role = 'assistant'
         elif item_type == 'list':
             text = item.get('body') or ''
-            rows_titles = []
+            list_rows = []
             for s in item.get('sections') or []:
                 for r in s.get('rows') or []:
-                    rows_titles.append(r.get('title') or r.get('id') or '')
-            if rows_titles:
-                text += '\n' + ' | '.join(rows_titles)
+                    rid = r.get('id') or ''
+                    title = r.get('title') or rid
+                    list_rows.append(f'{rid}="{title}"')
+            if list_rows:
+                text += f'\n\n[Opciones disponibles: {" | ".join(list_rows)}]'
             role = 'assistant'
         elif item_type == 'image':
             text = f"[Imagen] {item.get('url', '')} {item.get('caption', '') or ''}".strip()
@@ -300,10 +307,33 @@ REGLAS:
 - Si el asesor pide datos que tu persona razonablemente tendría (email, cuenta,
   empresa, salario), invéntalos coherentes y compártelos.
 - NUNCA reveles que eres una IA, ni siquiera si el asesor te lo pregunta.
+
+BOTONES (importante):
+- Cuando el bot te ofrezca botones (verás un bloque como
+  "[Botones disponibles: id1=\"Texto 1\" | id2=\"Texto 2\"]"), elige UN botón
+  respondiendo EXACTAMENTE con el formato: [BUTTON:id]
+  Ejemplo: si ves "[Botones disponibles: accept_terms=\"Acepto\" | decline_terms=\"No Acepto\"]"
+  y quieres aceptar, responde solo: [BUTTON:accept_terms]
+- Lo mismo aplica a "[Opciones disponibles: ...]" (menús de lista).
+- NO escribas el texto del botón como mensaje normal — usa [BUTTON:id] para
+  que cuente como un clic real.
+
+CUÁNDO TERMINAR:
 - Cuando consideres que tu objetivo se cumplió, o sientas que la conversación
   está en bucle, o el asesor te haya pedido hablar con un humano (o dicho que
   un asesor te va a contactar), responde EXACTAMENTE con: [FIN]
 """
+
+
+_BUTTON_PATTERN = re.compile(r'\[BUTTON:([^\]]+)\]')
+
+
+def parse_client_button(text: str) -> Optional[str]:
+    """Si el cliente-LLM respondió [BUTTON:xxx], devuelve 'xxx'. Si no, None."""
+    if not text:
+        return None
+    m = _BUTTON_PATTERN.search(text)
+    return m.group(1).strip() if m else None
 
 
 def _build_client_system_prompt(persona: dict, objetivo: str, cedula_used: Optional[str]) -> str:
@@ -442,26 +472,43 @@ def run_auto_turn(session_id: str, test_phone: str, llm_wait_timeout: float = 8.
             'signals': [],
         }
 
-    # 2) Persistir inbound del cliente-LLM
-    persist_inbound(session_id, client_text, role='client_llm')
+    # 2) Detectar si el cliente-LLM "clickeó" un botón
+    button_id = parse_client_button(client_text)
+    inbound_for_db = client_text
+    if button_id:
+        # Normalizamos el texto persistido para que en la UI de revisión
+        # se vea claramente cuál botón eligió.
+        inbound_for_db = f'▶ [BUTTON:{button_id}]'
 
-    # 3) Inyectar al bot via webhook simulado
+    # 3) Persistir inbound del cliente-LLM
+    persist_inbound(
+        session_id,
+        inbound_for_db,
+        role='client_llm',
+        msg_type='button' if button_id else 'text',
+    )
+
+    # 4) Inyectar al bot via webhook simulado (texto o button_reply)
     test_mode.drain_outbound(test_phone)  # limpiar buffer previo por seguridad
     msg_id = f"test_msg_{int(time.time() * 1000)}"
-    payload = {
-        'entry': [{
-            'changes': [{
-                'value': {
-                    'messages': [{
-                        'from': test_phone,
-                        'id': msg_id,
-                        'type': 'text',
-                        'text': {'body': client_text},
-                    }]
-                }
-            }]
-        }]
-    }
+    if button_id:
+        message = {
+            'from': test_phone,
+            'id': msg_id,
+            'type': 'interactive',
+            'interactive': {
+                'type': 'button_reply',
+                'button_reply': {'id': button_id, 'title': button_id},
+            },
+        }
+    else:
+        message = {
+            'from': test_phone,
+            'id': msg_id,
+            'type': 'text',
+            'text': {'body': client_text},
+        }
+    payload = {'entry': [{'changes': [{'value': {'messages': [message]}}]}]}
     t_start = time.time()
     try:
         from src.flows import FlowHandler
