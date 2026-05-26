@@ -9,6 +9,8 @@ myenv/
 data/
 test_*.py
 !src/test_mode.py
+!src/test_personas.py
+!src/test_runner.py
 old_reqs.txt
 .claude/
 

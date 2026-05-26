@@ -19,6 +19,7 @@
             --border: #e2e8f0;
             --bot-bubble: #ffffff;
             --user-bubble: #e6f4ea;
+            --client-llm-bubble: #dbeafe;
             --notice-bubble: #fff8e1;
             --danger: #ef4444;
             --success: #22c55e;
@@ -57,6 +58,26 @@
             letter-spacing: 0.3px;
         }
 
+        header .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header a.review-link {
+            color: var(--primary);
+            font-size: 13px;
+            text-decoration: none;
+            border: 1px solid rgba(254, 192, 92, 0.45);
+            padding: 5px 12px;
+            border-radius: 999px;
+            transition: background 0.15s;
+        }
+
+        header a.review-link:hover {
+            background: rgba(254, 192, 92, 0.15);
+        }
+
         header .badge {
             background: rgba(254, 192, 92, 0.18);
             color: var(--primary);
@@ -65,6 +86,32 @@
             border-radius: 999px;
             font-size: 12px;
             font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            background: white;
+        }
+
+        .tab {
+            padding: 12px 22px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-bottom: 3px solid transparent;
+            transition: color 0.12s, border-color 0.12s;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+        }
+
+        .tab.active {
+            color: var(--primary-dark);
+            border-bottom-color: var(--primary);
         }
 
         main {
@@ -99,6 +146,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .chat-header .title {
@@ -115,6 +163,21 @@
         .chat-header .actions {
             display: flex;
             gap: 8px;
+            align-items: center;
+        }
+
+        .save-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+        }
+
+        .save-toggle input {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
         }
 
         button {
@@ -184,6 +247,10 @@
             align-self: flex-end;
             background: var(--user-bubble);
             border-bottom-right-radius: 4px;
+        }
+
+        .bubble.inbound.client-llm {
+            background: var(--client-llm-bubble);
         }
 
         .bubble.outbound {
@@ -347,6 +414,80 @@
             color: var(--primary-dark);
         }
 
+        /* Modo automático */
+        .auto-setup {
+            padding: 22px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .auto-setup .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .auto-setup label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .auto-setup .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .auto-setup select,
+        .auto-setup input[type="text"],
+        .auto-setup input[type="number"],
+        .auto-setup textarea {
+            padding: 9px 11px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.12s;
+        }
+
+        .auto-setup textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .auto-setup select:focus,
+        .auto-setup input:focus,
+        .auto-setup textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .auto-setup .actions-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .auto-runbar {
+            padding: 10px 14px;
+            border-top: 1px solid var(--border);
+            background: #fcfcfd;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+
+        .auto-runbar .progress {
+            color: var(--text-muted);
+        }
+
+        .auto-runbar strong {
+            color: var(--primary-dark);
+        }
+
         @media (max-width: 900px) {
             main {
                 grid-template-columns: 1fr;
@@ -358,29 +499,90 @@
 <body>
     <header>
         <h1>ProAlto · Modo Test del bot</h1>
-        <span class="badge" id="badge-status">Iniciando sesión…</span>
+        <div class="header-actions">
+            <a class="review-link" href="/admin/test/review">📋 Revisión</a>
+            <span class="badge" id="badge-status">Iniciando…</span>
+        </div>
     </header>
+
+    <nav class="tabs">
+        <div class="tab active" id="tab-manual" data-mode="manual">Manual</div>
+        <div class="tab" id="tab-auto" data-mode="auto">Automático (LLM-vs-LLM)</div>
+    </nav>
 
     <main>
         <section class="chat-card">
             <div class="chat-header">
                 <div>
-                    <div class="title">Conversación de prueba</div>
+                    <div class="title" id="chat-title">Conversación de prueba</div>
                     <div class="test-phone" id="test-phone-label">—</div>
                 </div>
                 <div class="actions">
+                    <label class="save-toggle" id="save-toggle-wrap">
+                        <input type="checkbox" id="save-for-review">
+                        Guardar para revisión
+                    </label>
                     <button id="btn-reset" type="button">Reiniciar</button>
                     <button id="btn-end" type="button">Cerrar sesión</button>
                 </div>
             </div>
+
+            <!-- Formulario de inicio modo automático (oculto en modo manual) -->
+            <div class="auto-setup" id="auto-setup" style="display: none;">
+                <div class="help-block">
+                    <strong>Automático LLM-vs-LLM:</strong> un Claude juega el rol de cliente colombiano siguiendo la persona y objetivo que elijas. Conversa con el bot por hasta N turnos. Todo queda persistido para revisión.
+                </div>
+                <div class="form-row">
+                    <label for="auto-persona">Persona</label>
+                    <select id="auto-persona"></select>
+                    <div class="hint" id="auto-persona-desc"></div>
+                </div>
+                <div class="form-row">
+                    <label for="auto-objetivo">Objetivo de la conversación</label>
+                    <textarea id="auto-objetivo" placeholder="Ej: Quiere saber cuándo le desembolsan su crédito aprobado, y por qué se demora"></textarea>
+                </div>
+                <div class="form-row">
+                    <label for="auto-categoria">Categoría de cédula (opcional)</label>
+                    <select id="auto-categoria">
+                        <option value="">— Sin cédula —</option>
+                        <option value="aprobados">Aprobado por el cliente</option>
+                        <option value="falta_documento">Falta documento</option>
+                        <option value="listo_en_docusign">Listo en DocuSign</option>
+                        <option value="denegado">Denegado / Cancelado</option>
+                        <option value="activos">Cliente con saldo activo</option>
+                    </select>
+                    <div class="hint">Si eliges una categoría, el cliente-LLM recibirá una cédula real de esa categoría.</div>
+                </div>
+                <div class="form-row">
+                    <label for="auto-max-turnos">Máximo de turnos</label>
+                    <input type="number" id="auto-max-turnos" min="3" max="25" value="12">
+                </div>
+                <div class="actions-row">
+                    <button id="btn-auto-start" type="button" class="primary">Iniciar test automático</button>
+                </div>
+            </div>
+
             <div class="chat-body" id="chat-body">
                 <div class="empty-state">
                     Escribe abajo como si fueras el cliente.<br>
-                    Nada de lo que pase aquí se guarda en Supabase ni se envía a WhatsApp.
+                    Marca "Guardar para revisión" si quieres que esta conversación quede en Supabase.
                 </div>
             </div>
             <div class="typing" id="typing-indicator" style="display: none;">El bot está pensando…</div>
-            <div class="cedula-bar">
+
+            <!-- Barra de control modo automático (visible solo durante run) -->
+            <div class="auto-runbar" id="auto-runbar" style="display: none;">
+                <div class="progress">
+                    Turno <strong id="auto-turn-counter">0</strong> de <strong id="auto-turn-max">12</strong>
+                    <span id="auto-status-label" style="margin-left: 10px;"></span>
+                </div>
+                <div>
+                    <button id="btn-auto-pause" type="button">Pausar</button>
+                    <button id="btn-auto-stop" type="button">Detener</button>
+                </div>
+            </div>
+
+            <div class="cedula-bar" id="cedula-bar">
                 <label for="cedula-categoria">Cédula aleatoria:</label>
                 <select id="cedula-categoria">
                     <option value="aprobados">Aprobado por el cliente</option>
@@ -392,7 +594,7 @@
                 <button type="button" id="btn-random-cedula">Generar y pegar</button>
                 <div class="cedula-result" id="cedula-result"></div>
             </div>
-            <div class="chat-input">
+            <div class="chat-input" id="chat-input">
                 <input type="text" id="msg-input" placeholder="Escribe un mensaje (ej. 'Hola', una cédula, 'hablar con asesor')…" autocomplete="off">
                 <button type="button" class="primary" id="btn-send">Enviar</button>
             </div>
@@ -401,11 +603,18 @@
         <aside class="side-card">
             <div class="side-header">Estado de la sesión</div>
             <div class="side-body" id="state-panel">
-                <div class="help-block">
-                    <strong>Cómo funciona:</strong> el bot corre exactamente igual que en producción (incluyendo Cloud Run y el LLM), pero todas las escrituras a Supabase y las notificaciones al admin se interceptan en memoria. Puedes usar cédulas reales con seguridad.
+                <div class="help-block" id="help-block-manual">
+                    <strong>Cómo funciona:</strong> el bot corre igual que en producción (incluyendo Cloud Run y el LLM), pero las escrituras a Supabase y las notificaciones al admin se interceptan en memoria. Si marcas "Guardar para revisión", la conversación SÍ se persiste en tablas dedicadas de testing (no contamina datos reales).
                 </div>
+                <div class="help-block" id="help-block-auto" style="display: none;">
+                    <strong>Modo automático:</strong> el cliente-LLM conversa con el bot solo. Puedes "pausar" para revisar antes de avanzar, o dejar que corra hasta el final.
+                </div>
+                <div class="info-row"><span class="k">Modo</span><span class="v" id="info-mode">manual</span></div>
+                <div class="info-row"><span class="k">Persistencia</span><span class="v" id="info-persist">—</span></div>
                 <div class="info-row"><span class="k">Estado interno</span><span class="v" id="info-state">—</span></div>
                 <div class="info-row"><span class="k">Nombre cliente</span><span class="v" id="info-name">—</span></div>
+                <div class="info-row" id="row-persona" style="display: none;"><span class="k">Persona</span><span class="v" id="info-persona">—</span></div>
+                <div class="info-row" id="row-cedula-used" style="display: none;"><span class="k">Cédula usada</span><span class="v" id="info-cedula-used">—</span></div>
                 <div class="info-row"><span class="k">Email capturado</span><span class="v" id="info-email">—</span></div>
                 <div class="info-row"><span class="k">Cuentas guardadas</span><span class="v" id="info-cuentas">0</span></div>
                 <div class="info-row"><span class="k">Docs recibidos</span><span class="v" id="info-docs">0</span></div>
@@ -417,9 +626,21 @@
 
     <script>
         const state = {
+            mode: 'manual',         // 'manual' | 'auto'
             testPhone: null,
+            sessionId: null,
             sending: false,
             pollTimer: null,
+            // auto state
+            auto: {
+                running: false,
+                paused: false,
+                turn: 0,
+                maxTurns: 12,
+                personaSlug: null,
+                personaName: null,
+                cedulaUsed: null,
+            },
         };
 
         const elBody = document.getElementById('chat-body');
@@ -430,6 +651,16 @@
         const elTyping = document.getElementById('typing-indicator');
         const elBadge = document.getElementById('badge-status');
         const elPhoneLabel = document.getElementById('test-phone-label');
+        const elSaveCheckbox = document.getElementById('save-for-review');
+        const elSaveToggleWrap = document.getElementById('save-toggle-wrap');
+        const elAutoSetup = document.getElementById('auto-setup');
+        const elAutoRunbar = document.getElementById('auto-runbar');
+        const elChatInput = document.getElementById('chat-input');
+        const elCedulaBar = document.getElementById('cedula-bar');
+        const elChatTitle = document.getElementById('chat-title');
+        const elTurnCounter = document.getElementById('auto-turn-counter');
+        const elTurnMax = document.getElementById('auto-turn-max');
+        const elStatusLabel = document.getElementById('auto-status-label');
 
         function setBadge(text, color) {
             elBadge.textContent = text;
@@ -437,17 +668,17 @@
         }
 
         function clearChat() {
-            elBody.innerHTML = '<div class="empty-state">Conversación reiniciada. Escribe un mensaje para empezar.</div>';
+            elBody.innerHTML = '';
         }
 
         function appendBubble({ direction, text, kind, buttons }) {
-            // Remove empty state on first message
             const empty = elBody.querySelector('.empty-state');
             if (empty) empty.remove();
 
             const bubble = document.createElement('div');
             bubble.className = 'bubble ' + direction;
             if (kind === 'llm') bubble.classList.add('llm');
+            if (kind === 'client-llm') bubble.classList.add('client-llm');
             if (kind === 'notice') {
                 bubble.classList.remove('inbound', 'outbound');
                 bubble.classList.add('notice');
@@ -518,20 +749,36 @@
             document.getElementById('info-hist').textContent = snap.history_length || 0;
         }
 
-        async function startSession() {
+        function updatePersistenceLabel() {
+            const el = document.getElementById('info-persist');
+            if (state.sessionId) {
+                el.textContent = '✔ guardando';
+                el.style.color = '#22c55e';
+            } else {
+                el.textContent = 'solo memoria';
+                el.style.color = '';
+            }
+        }
+
+        // ── MANUAL ─────────────────────────────────────────────────────
+
+        async function startManualSession() {
             setBadge('Iniciando sesión…');
+            const save = elSaveCheckbox.checked;
             try {
                 const res = await fetch('/admin/api/test/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
+                    body: JSON.stringify({ save_for_review: save }),
                 });
                 const data = await res.json();
                 if (data.status === 'ok') {
                     state.testPhone = data.test_phone;
+                    state.sessionId = data.session_id || null;
                     elPhoneLabel.textContent = data.test_phone;
                     renderSnapshot(data.snapshot);
-                    setBadge('Sesión activa', '#22c55e');
+                    updatePersistenceLabel();
+                    setBadge(state.sessionId ? 'Sesión activa · guardando' : 'Sesión activa', '#22c55e');
                 } else {
                     setBadge('Error', '#ef4444');
                 }
@@ -583,6 +830,7 @@
         }
 
         async function sendButtonReply(btn) {
+            if (state.mode === 'auto') return;
             if (!state.testPhone || state.sending) return;
             state.sending = true;
             elSend.disabled = true;
@@ -644,6 +892,11 @@
         }
 
         async function resetSession() {
+            if (state.mode === 'auto') {
+                // En auto, "Reiniciar" termina la run y vuelve al setup
+                await stopAutoRun();
+                return;
+            }
             if (!state.testPhone) return;
             try {
                 const res = await fetch('/admin/api/test/reset', {
@@ -661,8 +914,12 @@
         }
 
         async function endSession() {
-            if (!state.testPhone) return;
             stopPolling();
+            if (state.mode === 'auto') {
+                await stopAutoRun();
+                return;
+            }
+            if (!state.testPhone) return;
             try {
                 await fetch('/admin/api/test/end', {
                     method: 'POST',
@@ -673,10 +930,259 @@
             setBadge('Sesión cerrada', '#94a3b8');
             elInput.disabled = true;
             elSend.disabled = true;
-            elReset.disabled = true;
-            elEnd.disabled = true;
             elPhoneLabel.textContent = '—';
+            state.testPhone = null;
+            state.sessionId = null;
+            updatePersistenceLabel();
         }
+
+        // ── AUTOMÁTICO ─────────────────────────────────────────────────
+
+        async function loadPersonas() {
+            try {
+                const res = await fetch('/admin/api/test/personas');
+                const data = await res.json();
+                if (data.status !== 'ok') return;
+                const select = document.getElementById('auto-persona');
+                select.innerHTML = '';
+                (data.personas || []).forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.slug;
+                    opt.textContent = p.nombre;
+                    opt.dataset.descripcion = p.descripcion || '';
+                    select.appendChild(opt);
+                });
+                select.addEventListener('change', updatePersonaDesc);
+                updatePersonaDesc();
+            } catch (e) { console.error(e); }
+        }
+
+        function updatePersonaDesc() {
+            const select = document.getElementById('auto-persona');
+            const desc = document.getElementById('auto-persona-desc');
+            const opt = select.options[select.selectedIndex];
+            desc.textContent = opt ? opt.dataset.descripcion : '';
+        }
+
+        async function startAutoRun() {
+            const personaSlug = document.getElementById('auto-persona').value;
+            const personaName = document.getElementById('auto-persona').options[document.getElementById('auto-persona').selectedIndex].textContent;
+            const objetivo = document.getElementById('auto-objetivo').value.trim();
+            const categoria = document.getElementById('auto-categoria').value;
+            const maxTurnos = parseInt(document.getElementById('auto-max-turnos').value, 10) || 12;
+
+            if (!objetivo) {
+                alert('El objetivo es obligatorio.');
+                return;
+            }
+
+            setBadge('Iniciando run automática…');
+            try {
+                const res = await fetch('/admin/api/test/auto/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        persona_slug: personaSlug,
+                        objetivo,
+                        categoria_cedula: categoria || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.status !== 'ok') {
+                    alert(data.message || 'Error iniciando');
+                    setBadge('Error', '#ef4444');
+                    return;
+                }
+                state.testPhone = data.test_phone;
+                state.sessionId = data.session_id;
+                state.auto.running = true;
+                state.auto.paused = false;
+                state.auto.turn = 0;
+                state.auto.maxTurns = maxTurnos;
+                state.auto.personaSlug = personaSlug;
+                state.auto.personaName = personaName;
+                state.auto.cedulaUsed = data.cedula_used;
+
+                elPhoneLabel.textContent = data.test_phone;
+                document.getElementById('info-persona').textContent = personaName;
+                document.getElementById('row-persona').style.display = 'flex';
+                if (data.cedula_used) {
+                    document.getElementById('info-cedula-used').textContent = data.cedula_used;
+                    document.getElementById('row-cedula-used').style.display = 'flex';
+                }
+                renderSnapshot(data.snapshot);
+                updatePersistenceLabel();
+
+                elAutoSetup.style.display = 'none';
+                elAutoRunbar.style.display = 'flex';
+                elTurnMax.textContent = maxTurnos;
+                elTurnCounter.textContent = 0;
+                elStatusLabel.textContent = '· corriendo';
+                clearChat();
+                setBadge('Run automática activa', '#22c55e');
+
+                // Arranca el loop
+                runAutoLoop();
+            } catch (e) {
+                console.error(e);
+                setBadge('Error de red', '#ef4444');
+            }
+        }
+
+        async function runAutoLoop() {
+            while (state.auto.running && !state.auto.paused && state.auto.turn < state.auto.maxTurns) {
+                elTyping.style.display = 'block';
+                let result;
+                try {
+                    const res = await fetch('/admin/api/test/auto/next', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            test_phone: state.testPhone,
+                        }),
+                    });
+                    result = await res.json();
+                } catch (e) {
+                    console.error(e);
+                    elStatusLabel.textContent = '· error de red';
+                    state.auto.running = false;
+                    break;
+                }
+                elTyping.style.display = 'none';
+
+                if (result.status !== 'ok') {
+                    elStatusLabel.textContent = '· ' + (result.message || 'error');
+                    state.auto.running = false;
+                    break;
+                }
+
+                if (result.client_text) {
+                    appendBubble({ direction: 'inbound', text: result.client_text, kind: 'client-llm' });
+                }
+                renderOutbound(result.bot_messages || []);
+                renderSnapshot(result.snapshot);
+
+                state.auto.turn += 1;
+                elTurnCounter.textContent = state.auto.turn;
+
+                if (result.finished) {
+                    elStatusLabel.textContent = '· finalizado (' + (result.reason || 'fin') + ')';
+                    state.auto.running = false;
+                    setBadge('Run finalizada', '#94a3b8');
+                    break;
+                }
+                // Pequeño respiro entre turnos para no saturar
+                await new Promise(r => setTimeout(r, 400));
+            }
+
+            if (state.auto.running && state.auto.turn >= state.auto.maxTurns) {
+                elStatusLabel.textContent = '· tope de turnos alcanzado';
+                state.auto.running = false;
+                setBadge('Tope de turnos alcanzado', '#f59e0b');
+            }
+        }
+
+        function pauseAutoRun() {
+            if (!state.auto.running) return;
+            state.auto.paused = !state.auto.paused;
+            const btn = document.getElementById('btn-auto-pause');
+            if (state.auto.paused) {
+                elStatusLabel.textContent = '· en pausa';
+                btn.textContent = 'Reanudar';
+                setBadge('Run en pausa', '#f59e0b');
+            } else {
+                elStatusLabel.textContent = '· corriendo';
+                btn.textContent = 'Pausar';
+                setBadge('Run automática activa', '#22c55e');
+                runAutoLoop();
+            }
+        }
+
+        async function stopAutoRun() {
+            const wasRunning = state.auto.running;
+            state.auto.running = false;
+            state.auto.paused = false;
+            elTyping.style.display = 'none';
+            elAutoRunbar.style.display = 'none';
+            elAutoSetup.style.display = state.mode === 'auto' ? 'grid' : 'none';
+            elStatusLabel.textContent = '';
+            try {
+                if (state.testPhone && state.sessionId) {
+                    await fetch('/admin/api/test/auto/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            test_phone: state.testPhone,
+                        }),
+                    });
+                }
+            } catch (e) { console.error(e); }
+            state.testPhone = null;
+            state.sessionId = null;
+            elPhoneLabel.textContent = '—';
+            updatePersistenceLabel();
+            if (wasRunning) setBadge('Run detenida', '#94a3b8');
+        }
+
+        // ── Cambio de tab ──────────────────────────────────────────────
+
+        async function switchMode(newMode) {
+            if (newMode === state.mode) return;
+            // Limpia la sesión actual
+            if (state.mode === 'manual' && state.testPhone) {
+                try {
+                    await fetch('/admin/api/test/end', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ test_phone: state.testPhone }),
+                    });
+                } catch (e) { console.error(e); }
+            } else if (state.mode === 'auto' && state.auto.running) {
+                await stopAutoRun();
+            }
+            state.testPhone = null;
+            state.sessionId = null;
+            elPhoneLabel.textContent = '—';
+
+            state.mode = newMode;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.mode === newMode);
+            });
+            document.getElementById('info-mode').textContent = newMode;
+            clearChat();
+
+            if (newMode === 'manual') {
+                elChatTitle.textContent = 'Conversación de prueba (manual)';
+                elAutoSetup.style.display = 'none';
+                elAutoRunbar.style.display = 'none';
+                elChatInput.style.display = 'flex';
+                elCedulaBar.style.display = 'flex';
+                elSaveToggleWrap.style.display = 'flex';
+                document.getElementById('help-block-manual').style.display = 'block';
+                document.getElementById('help-block-auto').style.display = 'none';
+                document.getElementById('row-persona').style.display = 'none';
+                document.getElementById('row-cedula-used').style.display = 'none';
+                elBody.innerHTML = '<div class="empty-state">Escribe abajo como si fueras el cliente.<br>Marca "Guardar para revisión" si quieres que esta conversación quede en Supabase.</div>';
+                await startManualSession();
+            } else {
+                elChatTitle.textContent = 'Conversación de prueba (automática · LLM-vs-LLM)';
+                elAutoSetup.style.display = 'grid';
+                elAutoRunbar.style.display = 'none';
+                elChatInput.style.display = 'none';
+                elCedulaBar.style.display = 'none';
+                elSaveToggleWrap.style.display = 'none';
+                document.getElementById('help-block-manual').style.display = 'none';
+                document.getElementById('help-block-auto').style.display = 'block';
+                elBody.innerHTML = '<div class="empty-state">Configura la persona y el objetivo arriba, luego presiona "Iniciar test automático".</div>';
+                setBadge('Configura el test', '#64748b');
+                await loadPersonas();
+            }
+            updatePersistenceLabel();
+        }
+
+        // ── Cédula aleatoria (modo manual) ─────────────────────────────
 
         const elCedulaBtn = document.getElementById('btn-random-cedula');
         const elCedulaSelect = document.getElementById('cedula-categoria');
@@ -711,6 +1217,8 @@
             }
         }
 
+        // ── Wire up ────────────────────────────────────────────────────
+
         elSend.addEventListener('click', () => sendMessage(elInput.value.trim()));
         elInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendMessage(elInput.value.trim());
@@ -718,17 +1226,46 @@
         elReset.addEventListener('click', resetSession);
         elEnd.addEventListener('click', endSession);
         elCedulaBtn.addEventListener('click', pickRandomCedula);
+        document.getElementById('btn-auto-start').addEventListener('click', startAutoRun);
+        document.getElementById('btn-auto-pause').addEventListener('click', pauseAutoRun);
+        document.getElementById('btn-auto-stop').addEventListener('click', stopAutoRun);
+
+        document.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', () => switchMode(t.dataset.mode));
+        });
+
+        elSaveCheckbox.addEventListener('change', async () => {
+            // Si cambia, reinicia sesión manual con nueva preferencia
+            if (state.mode !== 'manual') return;
+            if (state.testPhone) {
+                try {
+                    await fetch('/admin/api/test/end', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ test_phone: state.testPhone }),
+                    });
+                } catch (e) { console.error(e); }
+            }
+            state.testPhone = null;
+            state.sessionId = null;
+            clearChat();
+            elBody.innerHTML = '<div class="empty-state">Escribe abajo como si fueras el cliente.<br>' + (elSaveCheckbox.checked ? 'Esta sesión se guardará en Supabase.' : 'Esta sesión NO se guardará.') + '</div>';
+            await startManualSession();
+        });
 
         window.addEventListener('beforeunload', () => {
             if (state.testPhone) {
-                navigator.sendBeacon(
-                    '/admin/api/test/end',
-                    new Blob([JSON.stringify({ test_phone: state.testPhone })], { type: 'application/json' })
-                );
+                const url = state.mode === 'auto' ? '/admin/api/test/auto/stop' : '/admin/api/test/end';
+                const body = state.mode === 'auto'
+                    ? { session_id: state.sessionId, test_phone: state.testPhone }
+                    : { test_phone: state.testPhone };
+                navigator.sendBeacon(url, new Blob([JSON.stringify(body)], { type: 'application/json' }));
             }
         });
 
-        startSession();
+        // Arranque
+        startManualSession();
     </script>
 </body>
+
 </html>

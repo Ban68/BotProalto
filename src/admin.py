@@ -857,6 +857,14 @@ def api_mark_docs_completos():
 
 import time as _time
 from src import test_mode
+from src import test_runner
+from src.test_personas import list_personas, get_persona
+
+
+def _current_admin_user() -> str:
+    """Best-effort: extrae el usuario de basic auth para 'started_by' / 'author'."""
+    auth = request.authorization
+    return (auth.username if auth and auth.username else "admin")
 
 
 @admin_bp.route('/admin/test')
@@ -866,18 +874,43 @@ def test_dashboard():
     return render_template('admin_test.html')
 
 
+@admin_bp.route('/admin/test/review')
+@requires_auth
+def test_review_dashboard():
+    """Panel de revisión de sesiones de prueba guardadas."""
+    return render_template('admin_test_review.html')
+
+
 @admin_bp.route('/admin/api/test/start', methods=['POST'])
 @requires_auth
 def api_test_start():
-    """Crea una sesión de prueba y devuelve su test_phone."""
+    """Crea una sesión de prueba y devuelve su test_phone.
+
+    Body opcional:
+      - client_name: str
+      - save_for_review: bool — si true, persiste la sesión en Supabase
+    """
     body = request.get_json(silent=True) or {}
     client_name = (body.get("client_name") or "").strip()
+    save_for_review = bool(body.get("save_for_review"))
+
     test_phone = test_mode.register_session()
     if client_name:
         test_mode.set_client_name(test_phone, client_name)
+
+    session_id = None
+    if save_for_review:
+        session_id = test_runner.create_session(
+            mode="manual",
+            client_name=client_name or None,
+            started_by=_current_admin_user(),
+            test_phone=test_phone,
+        )
+
     return jsonify({
         "status": "ok",
         "test_phone": test_phone,
+        "session_id": session_id,
         "snapshot": test_mode.snapshot(test_phone),
     })
 
@@ -915,6 +948,18 @@ def api_test_send():
     # respuestas generadas por este mensaje.
     test_mode.drain_outbound(test_phone)
 
+    # Si la sesión tiene persistencia activa, registrar el inbound antes
+    # de procesar (para preservar el orden con seq).
+    session_id = test_runner.session_id_for(test_phone)
+    if session_id:
+        inbound_text = text if kind != "button_reply" else f"▶ {text or button_id}"
+        test_runner.persist_inbound(
+            session_id,
+            inbound_text,
+            role="user",
+            msg_type=("button" if kind == "button_reply" else "text"),
+        )
+
     msg_id = f"test_msg_{int(_time.time() * 1000)}"
     if kind == "button_reply":
         message = {
@@ -936,6 +981,7 @@ def api_test_send():
 
     payload = {"entry": [{"changes": [{"value": {"messages": [message]}}]}]}
 
+    t_start = _time.time()
     from src.flows import FlowHandler
     try:
         FlowHandler.handle_incoming_message(payload)
@@ -946,11 +992,17 @@ def api_test_send():
     llm_done = _wait_for_llm(test_phone, timeout_s=6.0)
     outbound = test_mode.drain_outbound(test_phone)
 
+    if session_id:
+        latency_ms = int((_time.time() - t_start) * 1000)
+        test_runner.persist_outbound(session_id, outbound, total_latency_ms=latency_ms)
+        test_runner.increment_turns(session_id)
+
     return jsonify({
         "status": "ok",
         "outbound": outbound,
         "llm_pending": not llm_done,
         "snapshot": test_mode.snapshot(test_phone),
+        "session_id": session_id,
     })
 
 
@@ -964,11 +1016,19 @@ def api_test_poll():
         return jsonify({"status": "error", "message": "Sesión de prueba inválida o expirada"}), 400
 
     outbound = test_mode.drain_outbound(test_phone)
+
+    # Si la sesión está siendo persistida, registrar los outbound que llegaron
+    # asincrónicamente (típicamente respuestas del LLM en background).
+    session_id = test_runner.session_id_for(test_phone)
+    if session_id and outbound:
+        test_runner.persist_outbound(session_id, outbound)
+
     return jsonify({
         "status": "ok",
         "outbound": outbound,
         "llm_pending": test_mode.is_llm_pending(test_phone),
         "snapshot": test_mode.snapshot(test_phone),
+        "session_id": session_id,
     })
 
 
@@ -986,9 +1046,13 @@ def api_test_reset():
 @admin_bp.route('/admin/api/test/end', methods=['POST'])
 @requires_auth
 def api_test_end():
-    """Cierra la sesión y libera memoria."""
+    """Cierra la sesión y libera memoria. Si tenía persistencia, marca ended_at."""
     body = request.get_json(silent=True) or {}
     test_phone = (body.get("test_phone") or "").strip()
+    session_id = test_runner.session_id_for(test_phone)
+    if session_id:
+        test_runner.end_session(session_id)
+    test_runner.unbind(test_phone)
     test_mode.unregister_session(test_phone)
     return jsonify({"status": "ok"})
 
@@ -1017,3 +1081,216 @@ def api_test_random_cedula():
         return jsonify({"status": "empty", "message": f"No hay clientes en la categoría '{categoria}'"}), 404
 
     return jsonify({"status": "ok", "pick": pick})
+
+
+# ─────────────────────────────────────────────────────────────────────
+# MODO TEST — AUTOMÁTICO (LLM-vs-LLM con personas curadas)
+# ─────────────────────────────────────────────────────────────────────
+
+
+@admin_bp.route('/admin/api/test/personas', methods=['GET'])
+@requires_auth
+def api_test_personas():
+    """Lista de personas curadas disponibles para el modo automático."""
+    return jsonify({"status": "ok", "personas": list_personas()})
+
+
+@admin_bp.route('/admin/api/test/auto/start', methods=['POST'])
+@requires_auth
+def api_test_auto_start():
+    """Crea una sesión de prueba en modo automático.
+
+    Body: { persona_slug, objetivo, categoria_cedula?, client_name? }
+    """
+    body = request.get_json(silent=True) or {}
+    persona_slug = (body.get("persona_slug") or "").strip()
+    objetivo = (body.get("objetivo") or "").strip()
+    categoria_cedula = (body.get("categoria_cedula") or "").strip() or None
+    client_name = (body.get("client_name") or "").strip() or None
+
+    persona = get_persona(persona_slug) if persona_slug else None
+    if not persona:
+        return jsonify({"status": "error", "message": "Persona inválida o no encontrada"}), 400
+    if not objetivo:
+        return jsonify({"status": "error", "message": "El objetivo es obligatorio"}), 400
+    if categoria_cedula and categoria_cedula not in _VALID_CATEGORIAS:
+        return jsonify({"status": "error", "message": f"Categoría inválida. Usa una de: {', '.join(_VALID_CATEGORIAS)}"}), 400
+
+    # Pick cédula real si aplica
+    cedula_used = None
+    if categoria_cedula:
+        from src.database import get_random_cedula_by_categoria
+        try:
+            pick = get_random_cedula_by_categoria(categoria_cedula)
+            if pick and pick.get("cedula"):
+                cedula_used = str(pick["cedula"])
+                if not client_name and pick.get("nombre"):
+                    client_name = pick["nombre"].split()[0].title()
+        except Exception as e:
+            print(f"[test_auto_start] cédula lookup error: {e}")
+
+    test_phone = test_mode.register_session()
+    if client_name:
+        test_mode.set_client_name(test_phone, client_name)
+
+    session_id = test_runner.create_session(
+        mode="auto",
+        persona_slug=persona_slug,
+        objetivo=objetivo,
+        categoria_cedula=categoria_cedula,
+        cedula_used=cedula_used,
+        client_name=client_name,
+        started_by=_current_admin_user(),
+        test_phone=test_phone,
+    )
+    if not session_id:
+        test_mode.unregister_session(test_phone)
+        return jsonify({"status": "error", "message": "No se pudo crear la sesión (Supabase). Verifica configuración."}), 500
+
+    return jsonify({
+        "status": "ok",
+        "session_id": session_id,
+        "test_phone": test_phone,
+        "persona": {"slug": persona["slug"], "nombre": persona["nombre"]},
+        "objetivo": objetivo,
+        "cedula_used": cedula_used,
+        "snapshot": test_mode.snapshot(test_phone),
+    })
+
+
+@admin_bp.route('/admin/api/test/auto/next', methods=['POST'])
+@requires_auth
+def api_test_auto_next():
+    """Ejecuta un turno completo en modo automático.
+
+    Body: { session_id, test_phone }
+    """
+    body = request.get_json(silent=True) or {}
+    session_id = (body.get("session_id") or "").strip()
+    test_phone = (body.get("test_phone") or "").strip()
+    if not session_id or not test_phone:
+        return jsonify({"status": "error", "message": "session_id y test_phone requeridos"}), 400
+    if not test_mode.session_exists(test_phone):
+        return jsonify({"status": "error", "message": "Sesión de prueba expirada"}), 400
+
+    result = test_runner.run_auto_turn(session_id, test_phone)
+    return jsonify({
+        "status": "ok",
+        "client_text": result.get("client_text"),
+        "bot_messages": result.get("bot_messages") or [],
+        "signals": result.get("signals") or [],
+        "finished": bool(result.get("finished")),
+        "reason": result.get("reason"),
+        "latency_ms": result.get("latency_ms"),
+        "snapshot": test_mode.snapshot(test_phone),
+    })
+
+
+@admin_bp.route('/admin/api/test/auto/stop', methods=['POST'])
+@requires_auth
+def api_test_auto_stop():
+    """Detiene una sesión automática y libera memoria."""
+    body = request.get_json(silent=True) or {}
+    session_id = (body.get("session_id") or "").strip()
+    test_phone = (body.get("test_phone") or "").strip()
+    if session_id:
+        test_runner.end_session(session_id)
+    if test_phone:
+        test_runner.unbind(test_phone)
+        test_mode.unregister_session(test_phone)
+    return jsonify({"status": "ok"})
+
+
+# ─────────────────────────────────────────────────────────────────────
+# MODO TEST — PANEL DE REVISIÓN (lectura, anotación, comparación)
+# ─────────────────────────────────────────────────────────────────────
+
+
+@admin_bp.route('/admin/api/test/sessions', methods=['GET'])
+@requires_auth
+def api_test_list_sessions():
+    """Lista paginada de sesiones de prueba persistidas."""
+    mode = (request.args.get("mode") or "").strip() or None
+    persona = (request.args.get("persona") or "").strip() or None
+    tag = (request.args.get("tag") or "").strip() or None
+    try:
+        limit = max(1, min(int(request.args.get("limit") or 50), 200))
+        offset = max(0, int(request.args.get("offset") or 0))
+    except ValueError:
+        return jsonify({"status": "error", "message": "limit/offset inválidos"}), 400
+
+    sessions = test_runner.list_sessions(
+        mode=mode, persona=persona, tag=tag, limit=limit, offset=offset,
+    )
+    return jsonify({"status": "ok", "sessions": sessions})
+
+
+@admin_bp.route('/admin/api/test/sessions/<session_id>', methods=['GET'])
+@requires_auth
+def api_test_session_detail(session_id):
+    detail = test_runner.get_session_detail(session_id)
+    if not detail or not detail.get("session"):
+        return jsonify({"status": "error", "message": "Sesión no encontrada"}), 404
+    return jsonify({"status": "ok", **detail})
+
+
+@admin_bp.route('/admin/api/test/sessions/<session_id>/tag', methods=['POST'])
+@requires_auth
+def api_test_session_tag(session_id):
+    body = request.get_json(silent=True) or {}
+    tag = body.get("tag")
+    if tag is not None and tag not in ("ok", "fail", "review"):
+        return jsonify({"status": "error", "message": "tag inválido (ok|fail|review|null)"}), 400
+    ok = test_runner.update_session_tag(session_id, tag)
+    if not ok:
+        return jsonify({"status": "error", "message": "No se pudo actualizar"}), 500
+    return jsonify({"status": "ok"})
+
+
+@admin_bp.route('/admin/api/test/sessions/<session_id>/note', methods=['POST'])
+@requires_auth
+def api_test_session_note(session_id):
+    body = request.get_json(silent=True) or {}
+    note = body.get("note")
+    ok = test_runner.update_session_notes(session_id, note)
+    if not ok:
+        return jsonify({"status": "error", "message": "No se pudo actualizar"}), 500
+    return jsonify({"status": "ok"})
+
+
+@admin_bp.route('/admin/api/test/sessions/<session_id>/annotate', methods=['POST'])
+@requires_auth
+def api_test_session_annotate(session_id):
+    """Crea una anotación a nivel sesión o a nivel mensaje (si message_id viene)."""
+    body = request.get_json(silent=True) or {}
+    note = (body.get("note") or "").strip()
+    severity = body.get("severity") or "info"
+    message_id = body.get("message_id") or None
+    if not note:
+        return jsonify({"status": "error", "message": "note requerido"}), 400
+    ann = test_runner.add_annotation(
+        session_id=session_id,
+        note=note,
+        severity=severity,
+        message_id=message_id,
+        author=_current_admin_user(),
+    )
+    if not ann:
+        return jsonify({"status": "error", "message": "No se pudo crear la anotación"}), 500
+    return jsonify({"status": "ok", "annotation": ann})
+
+
+@admin_bp.route('/admin/api/test/compare', methods=['GET'])
+@requires_auth
+def api_test_compare():
+    """Devuelve hasta 3 sesiones con sus mensajes para comparación lado a lado."""
+    raw = (request.args.get("ids") or "").strip()
+    if not raw:
+        return jsonify({"status": "error", "message": "ids requerido"}), 400
+    ids = [x.strip() for x in raw.split(",") if x.strip()][:3]
+    sessions = []
+    for sid in ids:
+        detail = test_runner.get_session_detail(sid)
+        if detail and detail.get("session"):
+            sessions.append(detail)
+    return jsonify({"status": "ok", "sessions": sessions})
