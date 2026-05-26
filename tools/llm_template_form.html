@@ -221,34 +221,29 @@
   <p><strong>Al final:</strong> exporten dos archivos (.md) y envíenlos al equipo técnico para cargarlos al asistente.</p>
 </div>
 
+<div class="intro" style="background:#e6f4ec; border-left-color:#2d7a4f;">
+  <p><strong>Lo que YA está cargado al asistente (no hace falta diligenciarlo de nuevo):</strong></p>
+  <p>· <strong>Tiempos del proceso de crédito por empresa</strong> — el asistente conoce el promedio histórico de los últimos 12 meses, tanto de solicitud → aprobación como de aprobación → desembolso. Para empresas con pocos casos usa un promedio general (~20 días total / ~11 días aprob→desembolso).</p>
+  <p>· <strong>Reglas anti-promesa</strong> — el asistente nunca dirá "te llega hoy", "mañana", "24-48 horas" ni fechas concretas. Solo dará la referencia histórica cuando el cliente pregunte, siempre aclarando "cada caso es distinto".</p>
+  <p>· <strong>Reglas de aceleración</strong> — cuando el cliente tiene algo pendiente de su parte (docs faltantes, confirmar correo, firmar contrato), el asistente se lo menciona para que pueda acelerar su propio proceso.</p>
+  <p><strong>Lo que necesitamos de ustedes en este formulario es lo que el asistente todavía NO sabe:</strong> los mensajes de aceleración oficiales, las políticas operativas, los criterios de elegibilidad, las respuestas a las preguntas frecuentes que no son sobre tiempos, y el tono.</p>
+</div>
+
 <form id="formulario">
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">1</span> Tiempos reales (SLAs)</h2>
-  <p class="descripcion-seccion">Necesitamos los tiempos reales de cada etapa del proceso. El asistente JAMÁS dará un día específico, solo rangos. Pongan los rangos que pueden cumplir el 80% de los casos.</p>
+  <h2><span class="num-seccion">1</span> Tiempos operativos (los que NO están en la tabla histórica)</h2>
+  <p class="descripcion-seccion">Los tiempos del proceso de crédito (solicitud → desembolso) ya los tiene el asistente, calculados de los últimos 12 meses por empresa. Aquí solo necesitamos los tiempos operativos paralelos o posteriores al desembolso.</p>
+
+  <div class="nota">
+    <strong>No diligencien tiempos de aprobación / visto bueno / desembolso aquí</strong> — el asistente ya da esos como promedio histórico por empresa. Si necesitan revisar o ajustar la tabla, díganlo abajo en "aclaraciones".
+  </div>
 
   <div class="grid-2">
     <div class="campo">
-      <label>Tiempo desde radicación hasta respuesta de pre-estudio
-        <span class="ayuda">Ejemplo: "1 a 3 días hábiles"</span>
-      </label>
-      <input type="text" name="sla_preestudio">
-    </div>
-    <div class="campo">
-      <label>Tiempo desde aprobación hasta visto bueno de la empresa
-        <span class="ayuda">Lo más preguntado por los clientes</span>
-      </label>
-      <input type="text" name="sla_vb_empresa">
-    </div>
-    <div class="campo">
-      <label>Tiempo desde visto bueno empresa hasta desembolso
-        <span class="ayuda">Ejemplo: "24 a 48 horas hábiles"</span>
-      </label>
-      <input type="text" name="sla_desembolso">
-    </div>
-    <div class="campo">
       <label>Tiempo de generación de paz y salvo
+        <span class="ayuda">Desde que el cliente lo solicita hasta entrega</span>
       </label>
       <input type="text" name="sla_paz_salvo">
     </div>
@@ -262,11 +257,17 @@
       </label>
       <input type="text" name="sla_cambio_cuenta">
     </div>
+    <div class="campo">
+      <label>Tiempo para procesar actualización de datos de contacto
+        <span class="ayuda">Cuando el cliente actualiza teléfono, dirección, correo, etc.</span>
+      </label>
+      <input type="text" name="sla_cambio_datos">
+    </div>
   </div>
 
   <div class="campo">
-    <label>Aclaraciones sobre los tiempos
-      <span class="ayuda">¿En qué casos los tiempos pueden ser mayores? ¿Qué deberíamos advertirle al cliente para manejar expectativas?</span>
+    <label>Aclaraciones sobre tiempos
+      <span class="ayuda">¿Hay empresas en la tabla histórica donde el dato no refleja lo que ven en la operación? ¿Algún caso que merezca un mensaje distinto?</span>
     </label>
     <textarea name="sla_aclaraciones"></textarea>
   </div>
@@ -274,49 +275,89 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">2</span> Top-5 respuestas oficiales</h2>
-  <p class="descripcion-seccion">Estas son las 5 preguntas más repetidas en los chats reales. Redacten la respuesta oficial como si la estuvieran escribiendo ustedes por WhatsApp. Tono cercano, sin emojis, máximo 2-3 frases.</p>
+  <h2><span class="num-seccion">2</span> Respuestas oficiales a preguntas frecuentes</h2>
+  <p class="descripcion-seccion">Preguntas repetidas en los chats reales que NO son sobre tiempos (los tiempos ya están cubiertos). Redacten la respuesta como si la escribieran ustedes por WhatsApp — cercano, sin emojis, 2-3 frases.</p>
 
   <div class="campo">
-    <label>2.1 — “¿Cuánto tiempo me demoro después de aprobado?”
-    </label>
-    <textarea name="r_post_aprobacion" placeholder="Después de la aprobación, tu empresa tiene que dar el visto bueno..."></textarea>
-    <div class="ejemplo"><b>Pista:</b> conecten con el SLA de visto bueno empresa que pusieron arriba.</div>
-  </div>
-
-  <div class="campo">
-    <label>2.2 — “¿Ya les llegó mi formulario / formato?”
+    <label>2.1 — “¿Ya les llegó mi formulario / formato?”
       <span class="ayuda">Cliente acaba de llenar el form y quiere confirmación</span>
     </label>
     <textarea name="r_formato_recibido"></textarea>
   </div>
 
   <div class="campo">
-    <label>2.3 — “¿Qué pasos siguen después de mi solicitud?”
-      <span class="ayuda">El cliente quiere saber el roadmap completo</span>
+    <label>2.2 — “¿Qué pasos siguen después de mi solicitud?”
+      <span class="ayuda">El cliente quiere saber el roadmap completo del proceso</span>
     </label>
     <textarea name="r_pasos_siguientes" class="grande"></textarea>
   </div>
 
   <div class="campo">
-    <label>2.4 — “¿Cuánto demora el desembolso?”
-      <span class="ayuda">Una vez la empresa ya dio el visto bueno</span>
+    <label>2.3 — “Diferencia entre 'ProAlto ya desembolsó' y 'reflejo en mi banco'”
+      <span class="ayuda">El cliente firmó, ProAlto envió la plata, pero aún no se refleja en su cuenta. ¿Cómo se lo explican?</span>
     </label>
-    <textarea name="r_desembolso"></textarea>
+    <textarea name="r_banco_vs_proalto"></textarea>
   </div>
 
   <div class="campo">
-    <label>2.5 — “Quedé denegado, ¿por qué?”
+    <label>2.4 — “Quedé denegado, ¿por qué?”
       <span class="ayuda">¿Qué puede decir el asistente sin acceso al motivo real?</span>
     </label>
     <textarea name="r_denegado"></textarea>
     <div class="nota">El asistente NO tendrá el motivo del rechazo. Si no debe darlo, indíquenlo. Por defecto registra el caso para que ustedes respondan.</div>
   </div>
+
+  <div class="campo">
+    <label>2.5 — “Llevo más días que el promedio de mi empresa, ¿qué pasa?”
+      <span class="ayuda">El cliente lleva visiblemente más días que el histórico que el bot le mencionó. ¿Qué responde oficialmente antes de registrar el caso?</span>
+    </label>
+    <textarea name="r_demora_extra"></textarea>
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">3</span> Criterios de elegibilidad</h2>
+  <h2><span class="num-seccion">3</span> Mensajes de aceleración (cliente con algo pendiente)</h2>
+  <p class="descripcion-seccion">El asistente ya sabe identificar tres estados donde la pelota está del lado del cliente. Necesitamos el mensaje oficial que debe enviar en cada uno para que el cliente entienda exactamente qué tiene que hacer para acelerar su propio proceso.</p>
+
+  <div class="campo">
+    <label>3.1 — Estado: <code>FALTA ALGÚN DOCUMENTO</code>
+      <span class="ayuda">Cliente tiene la solicitud pausada porque le faltan documentos. ¿Cómo se lo decimos para que actúe?</span>
+    </label>
+    <textarea name="acel_docs" class="grande" placeholder="Ej: 'Hola Juan, tu proceso está pausado porque nos faltan estos documentos: ... Apenas los envíes por acá, retomamos.'"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>3.2 — Estado: <code>APROBADO POR EL CLIENTE</code> / <code>LISTO PARA HACERLE DOCUMENTACIÓN</code>
+      <span class="ayuda">Aprobado, pero faltan datos del cliente (típicamente correo) para enviarle el contrato de firma. ¿Cómo se lo decimos?</span>
+    </label>
+    <textarea name="acel_correo" class="grande" placeholder="Ej: 'Tu crédito ya está aprobado por $X. Para enviarte el contrato, confírmame tu correo electrónico.'"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>3.3 — Estado: <code>LISTO EN PANDADOC</code> (o LISTO EN DOCUSIGN)
+      <span class="ayuda">El contrato ya está en el correo del cliente esperando firma. ¿Cómo se lo recordamos?</span>
+    </label>
+    <textarea name="acel_firma" class="grande" placeholder="Ej: 'Te enviamos el contrato a tu correo. En cuanto lo firmes pasamos al desembolso.'"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>3.4 — Mensaje para clientes con cuenta bancaria pendiente o rechazada
+      <span class="ayuda">Si la cuenta bancaria no fue suministrada o fue rechazada por el banco. ¿Cómo se lo decimos para que la corrija?</span>
+    </label>
+    <textarea name="acel_cuenta" class="grande"></textarea>
+  </div>
+
+  <div class="campo">
+    <label>3.5 — ¿Hay otros estados o situaciones donde el cliente puede acelerar y no estamos contemplando?
+    </label>
+    <textarea name="acel_otros"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<section class="bloque">
+  <h2><span class="num-seccion">4</span> Criterios de elegibilidad</h2>
   <p class="descripcion-seccion">¿Qué condiciones debe cumplir un cliente para que le aprobemos? El asistente lo usará para no dar falsas esperanzas.</p>
 
   <div class="grid-3">
@@ -366,7 +407,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">4</span> Políticas operativas</h2>
+  <h2><span class="num-seccion">5</span> Políticas operativas</h2>
   <p class="descripcion-seccion">Procedimientos exactos para los casos más comunes que el asistente debe explicar bien (sin inventar pasos).</p>
 
   <div class="campo">
@@ -414,7 +455,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">5</span> Criterios de escalación</h2>
+  <h2><span class="num-seccion">6</span> Criterios de escalación</h2>
   <p class="descripcion-seccion">¿Cuándo SÍ debe pasar al asesor humano y cuándo puede el asistente manejarlo solo? Sean lo más específicos posible.</p>
 
   <div class="campo">
@@ -448,7 +489,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">6</span> Tono y vocabulario</h2>
+  <h2><span class="num-seccion">7</span> Tono y vocabulario</h2>
   <p class="descripcion-seccion">Cómo queremos que suene el asistente. Le ayudará a no sonar robótico ni demasiado formal.</p>
 
   <div class="campo">
@@ -492,7 +533,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">7</span> Casos límite y preguntas difíciles</h2>
+  <h2><span class="num-seccion">8</span> Casos límite y preguntas difíciles</h2>
   <p class="descripcion-seccion">¿Qué responder cuando el cliente pregunta algo delicado o trata de sacarle información sensible al asistente?</p>
 
   <div class="campo">
@@ -522,9 +563,9 @@
 
   <div class="campo">
     <label>Si el cliente pregunta si está hablando con una persona o un bot
-      <span class="ayuda">El asistente puede admitir que es virtual. ¿Cómo quieren que lo diga?</span>
+      <span class="ayuda">REGLA ACTUAL: el bot nunca admite ser IA. Si quieren mantenerla, dejen vacío; si quieren cambiarla, propongan aquí la nueva frase oficial.</span>
     </label>
-    <textarea name="lim_es_bot" placeholder="Ej: 'Soy un asistente virtual del equipo de ProAlto, aquí estoy para apoyarte. Si necesitas hablar con un asesor humano me dices.'"></textarea>
+    <textarea name="lim_es_bot" placeholder="Vacío = mantenemos la regla actual (el bot dice 'soy del equipo de ProAlto, aquí estoy' y sigue la conversación sin admitir ser IA)."></textarea>
   </div>
 
   <div class="campo">
@@ -542,7 +583,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <section class="bloque">
-  <h2><span class="num-seccion">8</span> Datos del responsable</h2>
+  <h2><span class="num-seccion">9</span> Datos del responsable</h2>
   <p class="descripcion-seccion">Para sabernos a quién escribirle si algo no quedó claro.</p>
 
   <div class="grid-2">
@@ -646,23 +687,29 @@ function exportarMarkdown() {
   let respuestas = `# Respuestas Calibradas — Asistente Virtual ProAlto\n\n`;
   respuestas += `> Diligenciado por: ${responsable}  \n> Fecha: ${fecha}  \n> Versión: ${version}\n\n`;
   respuestas += `Este documento contiene las respuestas oficiales que el asistente virtual debe usar (textuales o casi textuales) para las preguntas más frecuentes de los clientes en WhatsApp.\n\n`;
-  respuestas += `---\n\n## 1. Tiempos oficiales (SLAs)\n\n`;
-  respuestas += md("Pre-estudio (radicación → respuesta)", d.sla_preestudio);
-  respuestas += md("Aprobación → visto bueno empresa", d.sla_vb_empresa);
-  respuestas += md("Visto bueno empresa → desembolso", d.sla_desembolso);
+  respuestas += `> NOTA: los tiempos del proceso de crédito (solicitud → aprobación → desembolso) NO están en este documento — el asistente ya los maneja con el promedio histórico por empresa de los últimos 12 meses.\n\n`;
+  respuestas += `---\n\n## 1. Tiempos operativos (no relacionados con desembolso)\n\n`;
   respuestas += md("Generación de paz y salvo", d.sla_paz_salvo);
   respuestas += md("Respuesta a reclamo formal", d.sla_reclamo);
   respuestas += md("Procesar cambio de cuenta bancaria", d.sla_cambio_cuenta);
+  respuestas += md("Procesar actualización de datos de contacto", d.sla_cambio_datos);
   respuestas += md("Aclaraciones sobre tiempos", d.sla_aclaraciones);
 
-  respuestas += `---\n\n## 2. Top-5 respuestas oficiales\n\n`;
-  respuestas += md("Cuánto se demora después de aprobado", d.r_post_aprobacion);
+  respuestas += `---\n\n## 2. Respuestas oficiales a preguntas frecuentes\n\n`;
   respuestas += md("Si ya llegó el formulario", d.r_formato_recibido);
   respuestas += md("Pasos siguientes después de la solicitud", d.r_pasos_siguientes);
-  respuestas += md("Cuánto demora el desembolso", d.r_desembolso);
+  respuestas += md("Diferencia entre desembolso de ProAlto y reflejo en banco", d.r_banco_vs_proalto);
   respuestas += md("Cliente denegado pregunta por qué", d.r_denegado);
+  respuestas += md("Cliente lleva más días que el promedio de su empresa", d.r_demora_extra);
 
-  respuestas += `---\n\n## 3. Tono y vocabulario\n\n`;
+  respuestas += `---\n\n## 3. Mensajes de aceleración (cliente con algo pendiente)\n\n`;
+  respuestas += md("Estado FALTA ALGÚN DOCUMENTO", d.acel_docs);
+  respuestas += md("Estado APROBADO POR EL CLIENTE / LISTO PARA HACERLE DOCUMENTACIÓN (pendiente correo)", d.acel_correo);
+  respuestas += md("Estado LISTO EN PANDADOC (pendiente firma)", d.acel_firma);
+  respuestas += md("Cuenta bancaria pendiente o rechazada", d.acel_cuenta);
+  respuestas += md("Otros estados/situaciones de aceleración", d.acel_otros);
+
+  respuestas += `---\n\n## 4. Tono y vocabulario\n\n`;
   const tratMap = { tutear: "Tutear (tú)", ustedear: "Ustedear (usted)", depende: "Depende (ver nota)" };
   respuestas += md("Tratamiento al cliente", tratMap[d.tono_tratamiento] || "");
   respuestas += md("Aclaración sobre tratamiento", d.tono_tratamiento_nota);
