@@ -1100,13 +1100,24 @@ def api_test_personas():
 def api_test_auto_start():
     """Crea una sesión de prueba en modo automático.
 
-    Body: { persona_slug, objetivo, categoria_cedula?, client_name? }
+    Body: { persona_slug, objetivo, categoria_cedula?, client_name?, start_mode? }
+
+    start_mode:
+      - 'flujos'      → la sesión arranca en 'active': el cliente-LLM recorre
+                        los menús/flujos deterministas (NO toca el Agente LLM).
+      - 'agente_llm'  → la sesión arranca en 'agent_llm': el cliente-LLM
+                        conversa contra el Agente LLM real (LLM vs LLM).
+    En AMBOS casos el estado se escribe solo en test_mode (memoria); producción
+    sigue activando el Agente LLM 100% manual desde el panel.
     """
     body = request.get_json(silent=True) or {}
     persona_slug = (body.get("persona_slug") or "").strip()
     objetivo = (body.get("objetivo") or "").strip()
     categoria_cedula = (body.get("categoria_cedula") or "").strip() or None
     client_name = (body.get("client_name") or "").strip() or None
+    start_mode = (body.get("start_mode") or "flujos").strip()
+    if start_mode not in ("flujos", "agente_llm"):
+        start_mode = "flujos"
 
     persona = get_persona(persona_slug) if persona_slug else None
     if not persona:
@@ -1132,14 +1143,20 @@ def api_test_auto_start():
     test_phone = test_mode.register_session()
     if client_name:
         test_mode.set_client_name(test_phone, client_name)
-    # En modo auto saltamos el consentimiento: el flujo de habeas data
-    # solo acepta button_reply en producción (correcto por compliance) y
-    # no es lo que queremos probar aquí. La sesión arranca en 'active',
-    # equivalente a un cliente que YA acepto el consent.
-    test_mode.set_state(test_phone, "active")
+    # Estado inicial según el tipo de prueba. IMPORTANTE: set_state aquí escribe
+    # SOLO en test_mode._sessions (memoria, aislado por __test_XXX); nunca toca
+    # el estado real de un cliente en Supabase. Producción sigue 100% manual.
+    if start_mode == "agente_llm":
+        # Prueba del Agente LLM: equivale a que un admin lo activó manualmente.
+        test_mode.set_state(test_phone, "agent_llm")
+        session_mode = "auto_llm"
+    else:
+        # Prueba de flujos: cliente que ya aceptó consent y recorre los menús.
+        test_mode.set_state(test_phone, "active")
+        session_mode = "auto_flujos"
 
     session_id = test_runner.create_session(
-        mode="auto",
+        mode=session_mode,
         persona_slug=persona_slug,
         objetivo=objetivo,
         categoria_cedula=categoria_cedula,
@@ -1159,6 +1176,8 @@ def api_test_auto_start():
         "persona": {"slug": persona["slug"], "nombre": persona["nombre"]},
         "objetivo": objetivo,
         "cedula_used": cedula_used,
+        "start_mode": start_mode,
+        "session_mode": session_mode,
         "snapshot": test_mode.snapshot(test_phone),
     })
 

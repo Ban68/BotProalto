@@ -180,6 +180,27 @@
             cursor: pointer;
         }
 
+        .manual-kind {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            border-right: 1px solid var(--border);
+            padding-right: 12px;
+        }
+
+        .manual-kind label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .manual-kind input {
+            cursor: pointer;
+        }
+
         button {
             font-size: 13px;
             padding: 7px 12px;
@@ -506,8 +527,8 @@
     </header>
 
     <nav class="tabs">
-        <div class="tab active" id="tab-manual" data-mode="manual">Manual</div>
-        <div class="tab" id="tab-auto" data-mode="auto">Automático (LLM-vs-LLM)</div>
+        <div class="tab active" id="tab-manual" data-mode="manual">Manual / Flujos</div>
+        <div class="tab" id="tab-auto" data-mode="llm">LLM vs LLM (Agente)</div>
     </nav>
 
     <main>
@@ -518,6 +539,10 @@
                     <div class="test-phone" id="test-phone-label">—</div>
                 </div>
                 <div class="actions">
+                    <div class="manual-kind" id="manual-kind-wrap">
+                        <label><input type="radio" name="manual-kind" value="human" checked> Yo escribo</label>
+                        <label><input type="radio" name="manual-kind" value="auto"> Automático</label>
+                    </div>
                     <label class="save-toggle" id="save-toggle-wrap">
                         <input type="checkbox" id="save-for-review">
                         Guardar para revisión
@@ -529,8 +554,8 @@
 
             <!-- Formulario de inicio modo automático (oculto en modo manual) -->
             <div class="auto-setup" id="auto-setup" style="display: none;">
-                <div class="help-block">
-                    <strong>Automático LLM-vs-LLM:</strong> un Claude juega el rol de cliente colombiano siguiendo la persona y objetivo que elijas. Conversa con el bot por hasta N turnos. Todo queda persistido para revisión.
+                <div class="help-block" id="auto-setup-help">
+                    <strong>Automático:</strong> un Claude juega el rol de cliente colombiano siguiendo la persona y objetivo que elijas. Conversa con el bot por hasta N turnos. Todo queda persistido para revisión.
                 </div>
                 <div class="form-row">
                     <label for="auto-persona">Persona</label>
@@ -626,7 +651,8 @@
 
     <script>
         const state = {
-            mode: 'manual',         // 'manual' | 'auto'
+            mode: 'manual',         // 'manual' (tab Manual/Flujos) | 'llm' (tab LLM vs LLM)
+            manualAuto: false,      // dentro del tab Manual: false = yo escribo, true = automático (flujos)
             testPhone: null,
             sessionId: null,
             sending: false,
@@ -642,6 +668,16 @@
                 cedulaUsed: null,
             },
         };
+
+        // ¿La vista actual corre un test automático (LLM-cliente)?
+        function isAutoView() {
+            return state.mode === 'llm' || (state.mode === 'manual' && state.manualAuto);
+        }
+
+        // start_mode que se envía al backend cuando se inicia un test automático.
+        function autoStartMode() {
+            return state.mode === 'llm' ? 'agente_llm' : 'flujos';
+        }
 
         const elBody = document.getElementById('chat-body');
         const elInput = document.getElementById('msg-input');
@@ -830,7 +866,7 @@
         }
 
         async function sendButtonReply(btn) {
-            if (state.mode === 'auto') return;
+            if (isAutoView()) return;
             if (!state.testPhone || state.sending) return;
             state.sending = true;
             elSend.disabled = true;
@@ -892,7 +928,7 @@
         }
 
         async function resetSession() {
-            if (state.mode === 'auto') {
+            if (isAutoView()) {
                 // En auto, "Reiniciar" termina la run y vuelve al setup
                 await stopAutoRun();
                 return;
@@ -915,7 +951,7 @@
 
         async function endSession() {
             stopPolling();
-            if (state.mode === 'auto') {
+            if (isAutoView()) {
                 await stopAutoRun();
                 return;
             }
@@ -985,6 +1021,7 @@
                         persona_slug: personaSlug,
                         objetivo,
                         categoria_cedula: categoria || null,
+                        start_mode: autoStartMode(),
                     }),
                 });
                 const data = await res.json();
@@ -1105,7 +1142,7 @@
             state.auto.paused = false;
             elTyping.style.display = 'none';
             elAutoRunbar.style.display = 'none';
-            elAutoSetup.style.display = state.mode === 'auto' ? 'grid' : 'none';
+            elAutoSetup.style.display = isAutoView() ? 'grid' : 'none';
             elStatusLabel.textContent = '';
             try {
                 if (state.testPhone && state.sessionId) {
@@ -1126,12 +1163,25 @@
             if (wasRunning) setBadge('Run detenida', '#94a3b8');
         }
 
-        // ── Cambio de tab ──────────────────────────────────────────────
+        // ── Cambio de tab / sub-modo ──────────────────────────────────
 
-        async function switchMode(newMode) {
-            if (newMode === state.mode) return;
-            // Limpia la sesión actual
-            if (state.mode === 'manual' && state.testPhone) {
+        // Cierra/limpia la sesión activa (manual humana o run automática) antes
+        // de cambiar de vista.
+        async function teardownCurrent() {
+            stopPolling();
+            if (isAutoView()) {
+                if (state.auto.running) {
+                    await stopAutoRun();
+                } else if (state.testPhone && state.sessionId) {
+                    try {
+                        await fetch('/admin/api/test/auto/stop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ session_id: state.sessionId, test_phone: state.testPhone }),
+                        });
+                    } catch (e) { console.error(e); }
+                }
+            } else if (state.testPhone) {
                 try {
                     await fetch('/admin/api/test/end', {
                         method: 'POST',
@@ -1139,47 +1189,76 @@
                         body: JSON.stringify({ test_phone: state.testPhone }),
                     });
                 } catch (e) { console.error(e); }
-            } else if (state.mode === 'auto' && state.auto.running) {
-                await stopAutoRun();
             }
+            state.auto.running = false;
+            state.auto.paused = false;
             state.testPhone = null;
             state.sessionId = null;
             elPhoneLabel.textContent = '—';
+        }
 
-            state.mode = newMode;
-            document.querySelectorAll('.tab').forEach(t => {
-                t.classList.toggle('active', t.dataset.mode === newMode);
-            });
-            document.getElementById('info-mode').textContent = newMode;
+        // Pinta la UI según state.mode + state.manualAuto y arranca lo que toque.
+        function applyView() {
+            const auto = isAutoView();
             clearChat();
+            elAutoRunbar.style.display = 'none';
 
-            if (newMode === 'manual') {
-                elChatTitle.textContent = 'Conversación de prueba (manual)';
-                elAutoSetup.style.display = 'none';
-                elAutoRunbar.style.display = 'none';
-                elChatInput.style.display = 'flex';
-                elCedulaBar.style.display = 'flex';
-                elSaveToggleWrap.style.display = 'flex';
-                document.getElementById('help-block-manual').style.display = 'block';
-                document.getElementById('help-block-auto').style.display = 'none';
-                document.getElementById('row-persona').style.display = 'none';
-                document.getElementById('row-cedula-used').style.display = 'none';
-                elBody.innerHTML = '<div class="empty-state">Escribe abajo como si fueras el cliente.<br>Marca "Guardar para revisión" si quieres que esta conversación quede en Supabase.</div>';
-                await startManualSession();
-            } else {
-                elChatTitle.textContent = 'Conversación de prueba (automática · LLM-vs-LLM)';
+            // Sub-toggle (Yo escribo / Automático) solo en el tab Manual.
+            document.getElementById('manual-kind-wrap').style.display =
+                state.mode === 'manual' ? 'flex' : 'none';
+
+            document.getElementById('info-mode').textContent =
+                state.mode === 'llm' ? 'LLM vs LLM' : (state.manualAuto ? 'auto · flujos' : 'manual');
+
+            document.getElementById('row-persona').style.display = 'none';
+            document.getElementById('row-cedula-used').style.display = 'none';
+
+            if (auto) {
+                elChatTitle.textContent = state.mode === 'llm'
+                    ? 'LLM vs LLM · contra el Agente LLM'
+                    : 'Automático · recorrido de flujos';
                 elAutoSetup.style.display = 'grid';
-                elAutoRunbar.style.display = 'none';
                 elChatInput.style.display = 'none';
                 elCedulaBar.style.display = 'none';
                 elSaveToggleWrap.style.display = 'none';
                 document.getElementById('help-block-manual').style.display = 'none';
                 document.getElementById('help-block-auto').style.display = 'block';
+                document.getElementById('auto-setup-help').innerHTML = state.mode === 'llm'
+                    ? '<strong>LLM vs LLM (Agente):</strong> el cliente-LLM conversa contra el <em>Agente LLM real</em> (respuestas por texto, sin menús). Sirve para validar el prompt y el conocimiento del bot antes de salir a clientes. Solo afecta el modo test; producción sigue activando el agente 100% manual.'
+                    : '<strong>Automático · Flujos:</strong> el cliente-LLM recorre los menús/flujos deterministas (consulta de saldo, estado, etc.). No toca el Agente LLM. Útil para probar los flujos sin escribir a mano.';
                 elBody.innerHTML = '<div class="empty-state">Configura la persona y el objetivo arriba, luego presiona "Iniciar test automático".</div>';
                 setBadge('Configura el test', '#64748b');
-                await loadPersonas();
+                loadPersonas();
+            } else {
+                elChatTitle.textContent = 'Conversación de prueba (manual)';
+                elAutoSetup.style.display = 'none';
+                elChatInput.style.display = 'flex';
+                elCedulaBar.style.display = 'flex';
+                elSaveToggleWrap.style.display = 'flex';
+                document.getElementById('help-block-manual').style.display = 'block';
+                document.getElementById('help-block-auto').style.display = 'none';
+                elBody.innerHTML = '<div class="empty-state">Escribe abajo como si fueras el cliente.<br>Marca "Guardar para revisión" si quieres que esta conversación quede en Supabase.</div>';
+                startManualSession();
             }
             updatePersistenceLabel();
+        }
+
+        async function switchMode(newMode) {
+            if (newMode === state.mode) return;
+            await teardownCurrent();
+            state.mode = newMode;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.mode === newMode);
+            });
+            applyView();
+        }
+
+        // Cambio de sub-modo dentro del tab Manual (Yo escribo / Automático).
+        async function switchManualKind(newAuto) {
+            if (state.mode !== 'manual' || newAuto === state.manualAuto) return;
+            await teardownCurrent();
+            state.manualAuto = newAuto;
+            applyView();
         }
 
         // ── Cédula aleatoria (modo manual) ─────────────────────────────
@@ -1234,9 +1313,16 @@
             t.addEventListener('click', () => switchMode(t.dataset.mode));
         });
 
+        document.querySelectorAll('input[name="manual-kind"]').forEach(r => {
+            r.addEventListener('change', () => {
+                const isAuto = document.querySelector('input[name="manual-kind"]:checked').value === 'auto';
+                switchManualKind(isAuto);
+            });
+        });
+
         elSaveCheckbox.addEventListener('change', async () => {
-            // Si cambia, reinicia sesión manual con nueva preferencia
-            if (state.mode !== 'manual') return;
+            // Solo aplica al modo manual humano (en automático no se muestra).
+            if (state.mode !== 'manual' || state.manualAuto) return;
             if (state.testPhone) {
                 try {
                     await fetch('/admin/api/test/end', {
@@ -1255,16 +1341,17 @@
 
         window.addEventListener('beforeunload', () => {
             if (state.testPhone) {
-                const url = state.mode === 'auto' ? '/admin/api/test/auto/stop' : '/admin/api/test/end';
-                const body = state.mode === 'auto'
+                const auto = isAutoView();
+                const url = auto ? '/admin/api/test/auto/stop' : '/admin/api/test/end';
+                const body = auto
                     ? { session_id: state.sessionId, test_phone: state.testPhone }
                     : { test_phone: state.testPhone };
                 navigator.sendBeacon(url, new Blob([JSON.stringify(body)], { type: 'application/json' }));
             }
         });
 
-        // Arranque
-        startManualSession();
+        // Arranque: tab Manual, sub-modo "yo escribo".
+        applyView();
     </script>
 </body>
 

@@ -194,7 +194,9 @@
                 <select id="filter-mode">
                     <option value="">Todos</option>
                     <option value="manual">Manual</option>
-                    <option value="auto">Automático</option>
+                    <option value="auto_flujos">Flujos (auto)</option>
+                    <option value="auto_llm">LLM vs LLM</option>
+                    <option value="auto">Auto (legacy)</option>
                 </select>
             </label>
             <label>Persona:
@@ -377,7 +379,7 @@
 
                 tr.insertAdjacentHTML('beforeend', `
                     <td>${fecha}</td>
-                    <td>${s.mode}</td>
+                    <td>${modeLabel(s.mode)}</td>
                     <td>${personaNombre}</td>
                     <td class="truncate" title="${escapeHtml(objetivo)}">${escapeHtml(objetivo)}</td>
                     <td>${s.num_turns || 0}</td>
@@ -402,6 +404,21 @@
             return String(s ?? '').replace(/[&<>"]/g, c => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'
             })[c]);
+        }
+
+        // Etiqueta legible del modo de la sesión.
+        function modeLabel(m) {
+            switch (m) {
+                case 'auto_llm': return 'LLM vs LLM';
+                case 'auto_flujos': return 'Flujos (auto)';
+                case 'auto': return 'Auto';
+                case 'manual': return 'Manual';
+                default: return m || '—';
+            }
+        }
+
+        function isAutoMode(m) {
+            return typeof m === 'string' && m.startsWith('auto');
         }
 
         // ── Drawer ─────────────────────────────────────────────────────
@@ -447,7 +464,7 @@
                 ? (state.personas.find(p => p.slug === s.persona_slug)?.nombre || s.persona_slug)
                 : '—';
             document.getElementById('drawer-title').textContent =
-                `${s.mode === 'auto' ? 'Auto · ' + personaName : 'Manual · ' + (s.client_name || s.test_phone)}`;
+                `${isAutoMode(s.mode) ? modeLabel(s.mode) + ' · ' + personaName : 'Manual · ' + (s.client_name || s.test_phone)}`;
             const fecha = s.created_at ? new Date(s.created_at).toLocaleString('es-CO') : '—';
             const objetivo = s.objetivo ? ` · ${s.objetivo}` : '';
             const ced = s.cedula_used ? ` · Cédula: ${s.cedula_used}` : '';
@@ -608,7 +625,7 @@
                     : '—';
                 col.innerHTML = `
                     <div class="compare-col-head">
-                        <strong>${escapeHtml(s.mode)} · ${escapeHtml(personaName)}</strong><br>
+                        <strong>${escapeHtml(modeLabel(s.mode))} · ${escapeHtml(personaName)}</strong><br>
                         <small>${fecha} · ${s.num_turns || 0} turnos</small>
                     </div>
                     <div class="compare-col-body"></div>

@@ -299,7 +299,7 @@ def end_session(session_id: Optional[str]) -> None:
 
 # ── LLM-cliente ─────────────────────────────────────────────────────
 
-_CLIENT_REGLAS = """
+_CLIENT_REGLAS_BASE = """
 REGLAS:
 - Responde en mensajes cortos (1-3 frases), tono informal, español colombiano.
 - Sin emojis. Sin signos de apertura (¿ ¡).
@@ -307,7 +307,9 @@ REGLAS:
 - Si el asesor pide datos que tu persona razonablemente tendría (email, cuenta,
   empresa, salario), invéntalos coherentes y compártelos.
 - NUNCA reveles que eres una IA, ni siquiera si el asesor te lo pregunta.
+"""
 
+_CLIENT_REGLAS_BOTONES = """
 BOTONES (importante):
 - Cuando el bot te ofrezca botones (verás un bloque como
   "[Botones disponibles: id1=\"Texto 1\" | id2=\"Texto 2\"]"), elige UN botón
@@ -317,7 +319,9 @@ BOTONES (importante):
 - Lo mismo aplica a "[Opciones disponibles: ...]" (menús de lista).
 - NO escribas el texto del botón como mensaje normal — usa [BUTTON:id] para
   que cuente como un clic real.
+"""
 
+_CLIENT_REGLAS_FIN = """
 CUÁNDO TERMINAR:
 - Cuando consideres que tu objetivo se cumplió, o sientas que la conversación
   está en bucle, o el asesor te haya pedido hablar con un humano (o dicho que
@@ -336,30 +340,53 @@ def parse_client_button(text: str) -> Optional[str]:
     return m.group(1).strip() if m else None
 
 
-def _build_client_system_prompt(persona: dict, objetivo: str, cedula_used: Optional[str]) -> str:
+def _build_client_system_prompt(
+    persona: dict,
+    objetivo: str,
+    cedula_used: Optional[str],
+    mode: str = 'auto_flujos',
+) -> str:
     cedula_block = ''
     if cedula_used:
         cedula_block = (
             f"\nTIENES LA SIGUIENTE CÉDULA: {cedula_used}\n"
             "Cuando el asesor te la pida, dásela tal cual, sin más.\n"
         )
+
+    if mode == 'auto_llm':
+        # El bot responde con el Agente LLM: conversación por texto, sin menús.
+        contexto = (
+            "CONTEXTO DE LA CONVERSACIÓN:\n"
+            "- Estás chateando con un asesor de ProAlto que responde por texto "
+            "(conversación normal de WhatsApp, sin menús ni botones).\n"
+            "- Tu primer mensaje debe ir directo a tu objetivo; pregunta con "
+            "naturalidad y repregunta si algo no te queda claro.\n\n"
+        )
+        reglas = _CLIENT_REGLAS_BASE + _CLIENT_REGLAS_FIN
+    else:
+        # El bot recorre flujos deterministas con menús de botones.
+        contexto = (
+            "CONTEXTO DE LA CONVERSACIÓN:\n"
+            "- Ya aceptaste el tratamiento de datos (consentimiento) en un paso "
+            "previo. NO menciones el consentimiento; tu primer mensaje debe ir "
+            "directo a tu objetivo.\n"
+            "- El bot probablemente te recibirá con el menú principal "
+            "(opciones como Soy Cliente, Estado Solicitud, Solicitar Crédito). "
+            "Si te ofrece botones, elígelos con [BUTTON:id].\n\n"
+        )
+        reglas = _CLIENT_REGLAS_BASE + _CLIENT_REGLAS_BOTONES + _CLIENT_REGLAS_FIN
+
     return (
         "Eres un cliente colombiano interactuando por WhatsApp con un asesor "
         "de ProAlto (una financiera de créditos de libranza). NO eres una IA "
         "y NO debes revelarlo nunca, ni siquiera si el asesor te lo pregunta "
         "directamente.\n\n"
-        "CONTEXTO DE LA CONVERSACIÓN:\n"
-        "- Ya aceptaste el tratamiento de datos (consentimiento) en un paso "
-        "previo. NO menciones el consentimiento; tu primer mensaje debe ir "
-        "directo a tu objetivo.\n"
-        "- El bot probablemente te recibirá con el menú principal "
-        "(opciones como Soy Cliente, Estado Solicitud, Solicitar Crédito). "
-        "Si te ofrece botones, elígelos con [BUTTON:id].\n\n"
+        f"{contexto}"
         "PERSONA:\n"
         f"{persona['prompt_body']}\n\n"
         f"OBJETIVO de esta conversación:\n{objetivo}\n"
         f"{cedula_block}"
-        f"{_CLIENT_REGLAS}"
+        f"{reglas}"
     )
 
 
@@ -432,6 +459,7 @@ def next_client_llm_turn(session_id: str) -> Optional[str]:
         persona,
         meta.get('objetivo') or '',
         meta.get('cedula_used'),
+        mode=meta.get('mode') or 'auto_flujos',
     )
 
     try:
