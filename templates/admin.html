@@ -1292,6 +1292,11 @@
 
             <textarea id="anticiposInputArea" rows="10" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-family: monospace; font-size: 0.9rem; resize: vertical; margin-bottom: 10px;" placeholder="573001234567, Carlos García&#10;573109876543, Maria Lopez"></textarea>
 
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #666; margin-bottom: 12px; cursor: pointer;">
+                <input type="checkbox" id="anticiposForceSend" style="width: 16px; height: 16px; cursor: pointer;">
+                Reenviar también a quienes indicaron que no estaban interesados
+            </label>
+
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span id="anticiposStatusText" style="font-size: 0.9rem; color: #666;">Listo para procesar.</span>
                 <button id="btnExecuteAnticipos" class="btn" style="background: #7c3aed; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkAnticipos()">💰 Enviar Anticipos</button>
@@ -4511,7 +4516,12 @@
                 return;
             }
 
-            if (!confirm(`¿Estás seguro de enviar la campaña Anticipos a ${allUsers.length} personas?`)) return;
+            const forceSend = document.getElementById('anticiposForceSend').checked;
+
+            const confirmMsg = forceSend
+                ? `¿Estás seguro de enviar la campaña Anticipos a ${allUsers.length} personas, incluyendo a quienes ya indicaron que no estaban interesados?`
+                : `¿Estás seguro de enviar la campaña Anticipos a ${allUsers.length} personas?`;
+            if (!confirm(confirmMsg)) return;
 
             const btn = document.getElementById('btnExecuteAnticipos');
             const statusText = document.getElementById('anticiposStatusText');
@@ -4534,7 +4544,7 @@
                     const res = await fetch('/admin/api/trigger-bulk-anticipos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ users: chunk })
+                        body: JSON.stringify({ users: chunk, force: forceSend })
                     });
 
                     const data = await res.json();

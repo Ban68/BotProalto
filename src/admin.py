@@ -538,13 +538,14 @@ def api_trigger_bulk_anticipos():
     """Execute bulk send of anticipo_nomina template for payroll advance leads."""
     body = request.get_json() or {}
     users_list = body.get("users", [])
+    force = bool(body.get("force", False))
 
     if not users_list:
         return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
 
     from src.automation import execute_bulk_anticipos_notifications
     try:
-        results = execute_bulk_anticipos_notifications(users_list)
+        results = execute_bulk_anticipos_notifications(users_list, force=force)
         return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

@@ -237,10 +237,12 @@ def execute_bulk_leads_notifications(users_list):
             
     return results
 
-def execute_bulk_anticipos_notifications(users_list):
+def execute_bulk_anticipos_notifications(users_list, force=False):
     """
     Sends the 'anticipo_salario' template to a list of payroll advance leads.
-    Skips phones that previously clicked 'Ahora no, gracias'.
+    Skips phones that previously clicked 'Ahora no, gracias', unless force=True,
+    in which case the template is sent to everyone (including those who already
+    indicated they were not interested).
     Returns summary of results.
     """
     from src.conversation_log import set_client_name, log_anticipo_sent, get_anticipo_no_gracias_phones
@@ -260,7 +262,8 @@ def execute_bulk_anticipos_notifications(users_list):
         all_phones.append(phone_str)
         cleaned_users.append({**user, "_phone": phone_str})
 
-    no_gracias_phones = get_anticipo_no_gracias_phones(all_phones)
+    # When force=True the admin chose to re-send to everyone, so skip the lookup.
+    no_gracias_phones = set() if force else get_anticipo_no_gracias_phones(all_phones)
 
     for user in cleaned_users:
         phone_str = user["_phone"]
