@@ -368,14 +368,22 @@ def get_anticipo_metrics() -> dict:
         except Exception:
             pass
 
-        # Source C: free-text responses (typed instead of clicking)
+        # Source C: free-text responses (typed instead of clicking).
+        # Scope per-phone to text sent AFTER the template went out, so prior
+        # unrelated conversations aren't attributed to this campaign. (Button
+        # sources A/B don't need this: their text is specific to this template.)
         text_res = supabase_client.table('bot_messages')\
-            .select("phone")\
+            .select("phone, created_at")\
             .in_("phone", all_phones)\
             .eq("direction", "inbound")\
             .eq("msg_type", "text")\
             .execute()
-        phones_with_text = set(r["phone"] for r in (text_res.data or []))
+        phones_with_text = set()
+        for row in (text_res.data or []):
+            phone = row["phone"]
+            sent_at = phone_sent_at.get(phone)
+            if sent_at and (row.get("created_at") or "") >= sent_at:
+                phones_with_text.add(phone)
 
         name_res = supabase_client.table('bot_conversations')\
             .select("phone, client_name")\
