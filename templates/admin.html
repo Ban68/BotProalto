@@ -4735,6 +4735,7 @@
         }
 
         async function fetchList() {
+            const tabAtFetch = currentTab; // recordar la pestaña que pidió la lista
             try {
                 const endpoint = currentTab === 'prospectos'
                     ? '/admin/api/lead-conversations'
@@ -4745,6 +4746,7 @@
                     : '/admin/api/conversations';
                 const res = await fetch(endpoint);
                 const data = await res.json();
+                if (currentTab !== tabAtFetch) return; // cambió de pestaña mientras llegaba: descartar resultado obsoleto
                 renderList(data);
             } catch (err) {
                 console.error("Error fetching list:", err);
