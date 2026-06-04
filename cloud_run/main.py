@@ -284,7 +284,7 @@ def get_solicitud(request):
             cur.execute("""
                 SELECT nombre_completo, telefono, empresa
                 FROM v_solicitudes_whatsapp
-                WHERE UPPER(estado_interno) IN ('LISTO EN DOCUSIGN', 'LISTO EN PANDADOC')
+                WHERE UPPER(estado_interno) IN ('LISTO EN DOCUSIGN', 'LISTO EN PANDADOC', 'LISTO PARA DESEMBOLSO')
                   AND telefono IS NOT NULL
                   AND telefono != ''
             """)
