@@ -1,0 +1,3 @@
+# Normalizar archivos de texto a LF en el repositorio (convencion existente).
+# El working tree usa el fin de linea nativo segun la configuracion de cada maquina.
+* text=auto

@@ -11,6 +11,22 @@ def _fake_meta_response() -> dict:
     return {"messages": [{"id": "test_message"}]}
 
 
+def _staging_blocks_send(to_number, kind: str, summary) -> bool:
+    """Guard global de staging (cinturón y tirantes).
+
+    Cuando ENVIRONMENT == "staging", bloquea CUALQUIER envío real saliente a
+    Meta/WhatsApp y lo registra en log en lugar de enviarlo. Es adicional e
+    independiente del test_mode: aunque un teléfono real (no de prueba) se cuele
+    en el entorno de staging, nunca recibirá un mensaje. Se invoca en cada método
+    de envío DESPUÉS del check de test_mode (para que el panel /admin/test siga
+    funcionando con teléfonos de prueba). Devuelve True si bloqueó el envío.
+    """
+    if Config.IS_STAGING:
+        print(f"[STAGING] Envío real bloqueado → {to_number} | {kind}: {str(summary)[:140]}")
+        return True
+    return False
+
+
 class WhatsAppService:
     @staticmethod
     def send_message(to_number, message_body, msg_type="text"):
@@ -24,6 +40,9 @@ class WhatsAppService:
                 "body": message_body,
                 "msg_type": msg_type,
             })
+            return _fake_meta_response()
+
+        if _staging_blocks_send(to_number, "text", message_body):
             return _fake_meta_response()
 
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
@@ -70,6 +89,9 @@ class WhatsAppService:
             })
             return _fake_meta_response()
 
+        if _staging_blocks_send(to_number, "image", image_url):
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -109,6 +131,9 @@ class WhatsAppService:
                 "filename": filename or "",
                 "caption": caption or "",
             })
+            return _fake_meta_response()
+
+        if _staging_blocks_send(to_number, "document", doc_url):
             return _fake_meta_response()
 
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
@@ -152,6 +177,9 @@ class WhatsAppService:
                 "body": body_text,
                 "buttons": [{"id": b.get("id"), "title": b.get("title")} for b in (buttons or [])],
             })
+            return _fake_meta_response()
+
+        if _staging_blocks_send(to_number, "interactive", body_text):
             return _fake_meta_response()
 
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
@@ -215,6 +243,9 @@ class WhatsAppService:
             })
             return _fake_meta_response()
 
+        if _staging_blocks_send(to_number, "list", body_text):
+            return _fake_meta_response()
+
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {
             "Authorization": f"Bearer {Config.API_TOKEN}",
@@ -258,6 +289,9 @@ class WhatsAppService:
                 "language_code": language_code,
                 "components": components or [],
             })
+            return _fake_meta_response()
+
+        if _staging_blocks_send(to_number, "template", template_name):
             return _fake_meta_response()
 
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
@@ -376,6 +410,9 @@ class WhatsAppService:
         """
         if isinstance(message_id, str) and message_id.startswith("test_"):
             return True, {"status": "test_skipped"}
+
+        if _staging_blocks_send(message_id, "revoke", message_id):
+            return True, {"status": "staging_skipped"}
 
         url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
         headers = {

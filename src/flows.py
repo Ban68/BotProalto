@@ -1245,7 +1245,76 @@ class FlowHandler:
         elif btn_id == "menu_cliente":
             FlowHandler.send_client_menu(user_phone)
 
-        elif btn_id == "menu_solicitud":
+        # ── Nuevo menú interactivo — Nivel 1 → submenús ──
+        elif btn_id == "menu_info":
+            # Nivel 2A — Información General: mensaje + lista de opciones.
+            FlowHandler.send_info_general_menu(user_phone)
+
+        elif btn_id == "menu_mi_credito":
+            # Nivel 2C — Mi Crédito ProAlto: mensaje + lista de gestión.
+            FlowHandler.send_mi_credito_menu(user_phone)
+
+        elif btn_id == "menu_solicitar":
+            # Nivel 2B — Solicitar Crédito: sin submenú, link directo al formulario.
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Realiza tu crédito rápido con ProAlto por DESCUENTO DE NÓMINA. "
+                "Ahora es más fácil y práctico 👇🏼 https://forms.gle/zXzrcrzVefuoVsEX6\n"
+                "Ten en cuenta estas 3 claves:\n"
+                "✅ Tu límite ágil: puedes solicitar hasta el doble de tu salario sin necesidad de codeudor.\n"
+                "🤝 Monto mayor: para más del doble de tu salario, requerimos un codeudor y sus documentos.\n"
+                "📈 Aumento de crédito: si ya tuviste un crédito con nosotros, revisamos tu capacidad para aumentarlo un 40% sobre el valor anterior.\n"
+                "🛡️ ¿Prefieres no abrir enlaces externos? Lo entendemos. Tu seguridad es nuestra prioridad. Si te sientes más tranquilo, puedes hacer tu solicitud directamente desde nuestro sitio web oficial: www.proalto.co"
+            )
+
+        # ── Nivel 2A — respuestas de la lista "Información General" ──
+        elif btn_id == "info_requisitos":
+            WhatsAppService.send_message(
+                user_phone,
+                "Para iniciar tu solicitud, solo necesitas tener a la mano estos documentos:\n"
+                "✅ 2 últimos desprendibles de pago de nómina.\n"
+                "✅ Certificado laboral.\n"
+                "✅ Foto de tu cédula.\n"
+                "✅ Recibo público (agua, luz, gas o telefonía).\n"
+                "🎯 ¡Dato importante! Tu historial crediticio no es un impedimento. Si estás reportado en Datacrédito u otras centrales, ¡en ProAlto sí te prestamos!"
+            )
+
+        elif btn_id == "info_tasas":
+            WhatsAppService.send_message(
+                user_phone,
+                "En ProAlto nos esforzamos continuamente por ofrecer tasas por debajo del mercado para que cumplas tus metas.\n"
+                "💡 Actualmente manejamos tasas desde el 1,8% mensual. (El porcentaje final puede variar según el mercado, tu antigüedad y tu capacidad de pago).\n"
+                "¡Dato importante! Todas nuestras cuotas son fijas: siempre sabrás exactamente cuánto vas a pagar desde el primer hasta el último día, sin sorpresas."
+            )
+
+        elif btn_id == "info_montos":
+            WhatsAppService.send_message(
+                user_phone,
+                "Ajustamos nuestros préstamos a tu capacidad de pago. Con nosotros cuentas con:\n"
+                "💰 Préstamos desde $500.000 hasta el doble de tu salario sin necesidad de codeudor. 🗓️ Plazos flexibles desde 3 meses en adelante.\n"
+                "🤝 ¿Buscas un monto superior al doble de tu salario?\n"
+                "¡Claro que sí! En este caso solicitaremos el respaldo de un codeudor con los siguientes documentos:\n"
+                "Foto de la cédula.\n"
+                "Certificación laboral (o de ingresos para independientes).\n"
+                "Desprendibles de pago o extractos bancarios.\n"
+                "Certificación bancaria.\n"
+                "Dirección y teléfono de contacto."
+            )
+
+        # ── Nivel 2C — "Paz y Salvo": aún no existe un flujo estructurado ──
+        # TODO: cuando exista una integración/flujo de Paz y Salvo, reemplazar
+        # este mensaje provisional por el enrutamiento al flujo real.
+        elif btn_id == "cred_paz":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Estamos generando tu paz y salvo, un asesor te lo enviará en breve."
+            )
+
+        elif btn_id in ["menu_solicitud", "cred_estado"]:
+            # "Estado Solicitud" (menú viejo) y "Estado de mi solicitud" (nuevo
+            # menú → cred_estado) comparten el MISMO flujo de consulta por cédula.
             set_user_state(user_phone, "waiting_for_cedula")
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu solicitud:")
 
@@ -1285,7 +1354,9 @@ class FlowHandler:
                     set_user_state(user_phone, "active")
                     WhatsAppService.send_message(user_phone, "No pude recuperar tu solicitud de anticipo en este momento. Intenta consultarla de nuevo desde el menú.")
 
-        elif btn_id == "menu_saldo":
+        elif btn_id in ["menu_saldo", "cred_saldo"]:
+            # "Consultar Saldo" (menú viejo) y "Consulta de saldo" (nuevo menú →
+            # cred_saldo) comparten el MISMO flujo de consulta de saldo por cédula.
             set_user_state(user_phone, "waiting_for_cedula_saldo")
             WhatsAppService.send_message(user_phone, "Por favor escribe el número de *Cédula o NIT* (sin puntos ni espacios) para consultar tu saldo:")
 
@@ -1341,7 +1412,10 @@ class FlowHandler:
             )
             set_user_state(user_phone, "active")
 
-        elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor"]:
+        elif btn_id in ["hablar_asesor_docs", "menu_support", "Hablar con un asesor", "info_asesor", "cred_asesor"]:
+            # Handler único de "Hablar con un asesor". Tanto el menú viejo
+            # (menu_support) como el nuevo (info_asesor en Información General y
+            # cred_asesor en Mi Crédito ProAlto) reutilizan esta misma lógica.
             is_lead = (state in ("lead_notified", "renovado_notified", "anticipos_notified"))
             set_agent_mode(user_phone, "agent")
 
@@ -1463,13 +1537,97 @@ class FlowHandler:
 
     @staticmethod
     def send_main_menu(user_phone):
-        menu_text = "Hola, en qué podemos ayudarte hoy?"
-        buttons = [
-            {"id": "menu_cliente", "title": "Soy Cliente"},
-            {"id": "menu_solicitud", "title": "Estado Solicitud"},
-            {"id": "menu_credito", "title": "Solicitar Crédito"}
-        ]
-        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
+        # Nivel 1 — Menú principal. Es también el menú que dispara la señal
+        # [MOSTRAR_MENU] del agente LLM. Texto verbatim de plantilla: los emojis
+        # y los signos de apertura (¡ ¿) son intencionales SOLO para estas
+        # plantillas de menú (excepción al estilo general del bot).
+        menu_text = (
+            "¡Hola! 👋 Gracias por comunicarte con Financiera ProAlto. "
+            "¿Qué trámite o consulta deseas realizar hoy?"
+        )
+        # Menú principal en formato LISTA para poder mostrar un subtítulo
+        # (description) por opción. Los ids llegan como list_reply, pero el
+        # enrutador (handle_incoming_message) extrae el id igual que para los
+        # botones y dispara los MISMOS handlers en process_button_click.
+        sections = [{
+            "title": "Opciones",
+            "rows": [
+                {"id": "menu_info", "title": "Información General",
+                 "description": "Conoce a ProAlto y nuestros servicios."},
+                {"id": "menu_solicitar", "title": "💸 Solicitar Crédito",
+                 "description": "Inicia tu trámite ahora y conoce los pasos a seguir."},
+                {"id": "menu_mi_credito", "title": "Mi Crédito ProAlto",
+                 "description": "Consulta tu saldo, estado de solicitud y certificados."},
+            ],
+        }]
+        WhatsAppService.send_interactive_list(user_phone, menu_text, "Ver opciones", sections)
+
+    @staticmethod
+    def send_info_general_menu(user_phone):
+        # Nivel 2A — "Información General": primero el mensaje y LUEGO la lista.
+        intro = (
+            "¡Hola! 👋 Somos Financiera ProAlto. Nos especializamos en brindar "
+            "créditos por descuento de nómina de manera ágil y segura.\n"
+            "¿Estás reportado en centrales de riesgo? ¡No te preocupes! Con "
+            "nosotros tienes la oportunidad de acceder a tu crédito y tener una "
+            "segunda oportunidad.\n"
+            "Te apoyamos para que cumplas tus metas con nuestras dos líneas "
+            "principales:\n"
+            "✅ Créditos para lo que necesites: Libre inversión, viajes, estudio, "
+            "remodelación o ese proyecto que tienes en mente.\n"
+            "✅ Compra de Cartera: Si tienes deudas con otras entidades, podemos "
+            "unificarlas para mejorar tus finanzas (sujeto a tu capacidad de pago).\n"
+            "🌐 ¿Quieres simular tu crédito o conocer más de nosotros? Revisa toda "
+            "nuestra información ingresando a www.proalto.co"
+        )
+        WhatsAppService.send_message(user_phone, intro)
+        sections = [{
+            "title": "Información General",
+            "rows": [
+                {"id": "info_requisitos", "title": "Requisitos",
+                 "description": "Documentos que necesitas para tu crédito."},
+                {"id": "info_tasas", "title": "Tasas",
+                 "description": "Nuestras tasas y cuotas fijas mensuales."},
+                {"id": "info_montos", "title": "Montos y plazos",
+                 "description": "Cuánto puedes solicitar y en qué condiciones."},
+                {"id": "info_asesor", "title": "Hablar con un asesor",
+                 "description": "Te atiende una persona del equipo."},
+            ],
+        }]
+        WhatsAppService.send_interactive_list(
+            user_phone,
+            "Selecciona una opción para conocer más.",
+            "Ver opciones",
+            sections,
+        )
+
+    @staticmethod
+    def send_mi_credito_menu(user_phone):
+        # Nivel 2C — "Mi Crédito ProAlto": primero el mensaje y LUEGO la lista.
+        intro = (
+            "¡Qué bueno tenerte por aquí de nuevo! 🤝 En esta sección puedes "
+            "gestionar todo lo relacionado con tu crédito actual."
+        )
+        WhatsAppService.send_message(user_phone, intro)
+        sections = [{
+            "title": "Mi Crédito ProAlto",
+            "rows": [
+                {"id": "cred_estado", "title": "Estado de mi solicitud",
+                 "description": "Revisa en qué etapa va tu crédito."},
+                {"id": "cred_saldo", "title": "Consulta de saldo",
+                 "description": "Conoce un saldo aproximado de tu deuda."},
+                {"id": "cred_paz", "title": "Paz y Salvo",
+                 "description": "Solicita tu certificado de crédito al día."},
+                {"id": "cred_asesor", "title": "Hablar con un asesor",
+                 "description": "Recibe ayuda personalizada para tu caso."},
+            ],
+        }]
+        WhatsAppService.send_interactive_list(
+            user_phone,
+            "Selecciona qué quieres gestionar.",
+            "Gestionar",
+            sections,
+        )
 
     @staticmethod
     def send_client_menu(user_phone):
