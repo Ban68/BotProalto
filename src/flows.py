@@ -1542,12 +1542,22 @@ class FlowHandler:
             "¡Hola! 👋 Gracias por comunicarte con Financiera ProAlto. "
             "¿Qué trámite o consulta deseas realizar hoy?"
         )
-        buttons = [
-            {"id": "menu_info", "title": "Información General"},
-            {"id": "menu_solicitar", "title": "Solicitar Crédito"},
-            {"id": "menu_mi_credito", "title": "Mi Crédito ProAlto"},
-        ]
-        WhatsAppService.send_interactive_button(user_phone, menu_text, buttons)
+        # Menú principal en formato LISTA para poder mostrar un subtítulo
+        # (description) por opción. Los ids llegan como list_reply, pero el
+        # enrutador (handle_incoming_message) extrae el id igual que para los
+        # botones y dispara los MISMOS handlers en process_button_click.
+        sections = [{
+            "title": "Opciones",
+            "rows": [
+                {"id": "menu_info", "title": "Información General",
+                 "description": "Conoce a ProAlto y nuestros servicios."},
+                {"id": "menu_solicitar", "title": "💸 Solicitar Crédito",
+                 "description": "Inicia tu trámite ahora y conoce los pasos a seguir."},
+                {"id": "menu_mi_credito", "title": "Mi Crédito ProAlto",
+                 "description": "Consulta tu saldo, estado de solicitud y certificados."},
+            ],
+        }]
+        WhatsAppService.send_interactive_list(user_phone, menu_text, "Ver opciones", sections)
 
     @staticmethod
     def send_info_general_menu(user_phone):
@@ -1569,10 +1579,14 @@ class FlowHandler:
         sections = [{
             "title": "Información General",
             "rows": [
-                {"id": "info_requisitos", "title": "Requisitos"},
-                {"id": "info_tasas", "title": "Tasas"},
-                {"id": "info_montos", "title": "Montos y plazos"},
-                {"id": "info_asesor", "title": "Hablar con un asesor"},
+                {"id": "info_requisitos", "title": "Requisitos",
+                 "description": "Documentos que necesitas para tu crédito."},
+                {"id": "info_tasas", "title": "Tasas",
+                 "description": "Nuestras tasas y cuotas fijas mensuales."},
+                {"id": "info_montos", "title": "Montos y plazos",
+                 "description": "Cuánto puedes solicitar y en qué condiciones."},
+                {"id": "info_asesor", "title": "Hablar con un asesor",
+                 "description": "Te atiende una persona del equipo."},
             ],
         }]
         WhatsAppService.send_interactive_list(
@@ -1593,10 +1607,14 @@ class FlowHandler:
         sections = [{
             "title": "Mi Crédito ProAlto",
             "rows": [
-                {"id": "cred_estado", "title": "Estado de mi solicitud"},
-                {"id": "cred_saldo", "title": "Consulta de saldo"},
-                {"id": "cred_paz", "title": "Paz y Salvo"},
-                {"id": "cred_asesor", "title": "Hablar con un asesor"},
+                {"id": "cred_estado", "title": "Estado de mi solicitud",
+                 "description": "Revisa en qué etapa va tu crédito."},
+                {"id": "cred_saldo", "title": "Consulta de saldo",
+                 "description": "Conoce un saldo aproximado de tu deuda."},
+                {"id": "cred_paz", "title": "Paz y Salvo",
+                 "description": "Solicita tu certificado de crédito al día."},
+                {"id": "cred_asesor", "title": "Hablar con un asesor",
+                 "description": "Recibe ayuda personalizada para tu caso."},
             ],
         }]
         WhatsAppService.send_interactive_list(
