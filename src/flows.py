@@ -1260,11 +1260,12 @@ class FlowHandler:
             WhatsAppService.send_message(
                 user_phone,
                 "Realiza tu crédito rápido con ProAlto por DESCUENTO DE NÓMINA. "
-                "Ahora más fácil y práctico 👇🏼 https://forms.gle/zXzrcrzVefuoVsEX6\n\n"
-                "⚠️ Ten en cuenta estas 3 claves:\n"
+                "Ahora es más fácil y práctico 👇🏼 https://forms.gle/zXzrcrzVefuoVsEX6\n"
+                "Ten en cuenta estas 3 claves:\n"
                 "✅ Tu límite ágil: puedes solicitar hasta el doble de tu salario sin necesidad de codeudor.\n"
-                "🤝 Para monto mayor al doble de tu salario: requerimos un codeudor y sus documentos para el estudio.\n"
-                "📈 Aumento de crédito: si ya tuviste un crédito desembolsado con nosotros, revisamos tu capacidad para aumentar un 40% sobre el crédito anterior."
+                "🤝 Monto mayor: para más del doble de tu salario, requerimos un codeudor y sus documentos.\n"
+                "📈 Aumento de crédito: si ya tuviste un crédito con nosotros, revisamos tu capacidad para aumentarlo un 40% sobre el valor anterior.\n"
+                "🛡️ ¿Prefieres no abrir enlaces externos? Lo entendemos. Tu seguridad es nuestra prioridad. Si te sientes más tranquilo, puedes hacer tu solicitud directamente desde nuestro sitio web oficial: www.proalto.co"
             )
 
         # ── Nivel 2A — respuestas de la lista "Información General" ──
@@ -1290,13 +1291,15 @@ class FlowHandler:
         elif btn_id == "info_montos":
             WhatsAppService.send_message(
                 user_phone,
-                "Con nosotros no hay montos mínimos ni máximos, todo depende de tu capacidad de pago.\n"
-                "🤝 Si solicitas un monto mayor, requerimos un codeudor para estudiar tu solicitud. Esa persona deberá enviar:\n"
-                "- Foto de su cédula\n"
-                "- Certificación laboral (o de ingresos, si es independiente)\n"
-                "- Desprendibles de pago o extractos bancarios\n"
-                "- Certificado bancario\n"
-                "- Dirección y número de teléfono"
+                "Ajustamos nuestros préstamos a tu capacidad de pago. Con nosotros cuentas con:\n"
+                "💰 Préstamos desde $500.000 hasta el doble de tu salario sin necesidad de codeudor. 🗓️ Plazos flexibles desde 3 meses en adelante.\n"
+                "🤝 ¿Buscas un monto superior al doble de tu salario?\n"
+                "¡Claro que sí! En este caso solicitaremos el respaldo de un codeudor con los siguientes documentos:\n"
+                "Foto de la cédula.\n"
+                "Certificación laboral (o de ingresos para independientes).\n"
+                "Desprendibles de pago o extractos bancarios.\n"
+                "Certificación bancaria.\n"
+                "Dirección y teléfono de contacto."
             )
 
         # ── Nivel 2C — "Paz y Salvo": aún no existe un flujo estructurado ──
@@ -1564,16 +1567,18 @@ class FlowHandler:
         # Nivel 2A — "Información General": primero el mensaje y LUEGO la lista.
         intro = (
             "¡Hola! 👋 Somos Financiera ProAlto. Nos especializamos en brindar "
-            "créditos por descuento de nómina de manera ágil y segura.\n\n"
+            "créditos por descuento de nómina de manera ágil y segura.\n"
             "¿Estás reportado en centrales de riesgo? ¡No te preocupes! Con "
             "nosotros tienes la oportunidad de acceder a tu crédito y tener una "
-            "segunda oportunidad.\n\n"
+            "segunda oportunidad.\n"
             "Te apoyamos para que cumplas tus metas con nuestras dos líneas "
             "principales:\n"
-            "✅ Créditos para lo que necesites: libre inversión, viajes, estudio, "
+            "✅ Créditos para lo que necesites: Libre inversión, viajes, estudio, "
             "remodelación o ese proyecto que tienes en mente.\n"
-            "✅ Compra de Cartera: si tienes deudas con otras entidades, podemos "
-            "unificarlas para mejorar tus finanzas (sujeto a tu capacidad de pago)."
+            "✅ Compra de Cartera: Si tienes deudas con otras entidades, podemos "
+            "unificarlas para mejorar tus finanzas (sujeto a tu capacidad de pago).\n"
+            "🌐 ¿Quieres simular tu crédito o conocer más de nosotros? Revisa toda "
+            "nuestra información ingresando a www.proalto.co"
         )
         WhatsAppService.send_message(user_phone, intro)
         sections = [{
