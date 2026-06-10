@@ -14,6 +14,14 @@ class Config:
     # App Config
     PORT = int(os.getenv("PORT", 5000))
     DEBUG = os.getenv("DEBUG", "True") == "True"
+
+    # Deployment environment: "production" | "staging".
+    # En "staging" se bloquea TODO envío real saliente a WhatsApp/Meta y las
+    # notificaciones a admins (ver guard en src/services.py). Es independiente y
+    # adicional al test_mode (cinturón y tirantes): garantiza que ningún teléfono
+    # real reciba mensajes desde el entorno de pruebas. Default seguro: production.
+    ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
+    IS_STAGING = ENVIRONMENT == "staging"
     
     # Notifications Config
     ADMIN_NOTIFY_NUMBERS = os.getenv("ADMIN_NOTIFY_NUMBERS", "").split(",")

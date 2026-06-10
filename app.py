@@ -47,12 +47,22 @@ def create_app():
 
 app = create_app()
 
-# Start background automation
-try:
-    from src.automation import start_scheduler
-    start_scheduler()
-except ImportError as e:
-    print(f"Could not start scheduler: {e}")
+print(f"[BOOT] ProAlto Bot — ENVIRONMENT={Config.ENVIRONMENT}")
+
+# Start background automation.
+# En STAGING NO arrancamos el scheduler: las tareas programadas mutan estado en
+# Supabase y disparan campañas. Como staging comparte recursos con producción,
+# dejarlo correr "tocaría" producción (marcaría registros como notificados,
+# escribiría logs) aunque los envíos a Meta ya estén bloqueados por el guard.
+# Ver docs/STAGING.md.
+if Config.IS_STAGING:
+    print("[STAGING] Scheduler de automatización DESACTIVADO (no se tocan datos de producción).")
+else:
+    try:
+        from src.automation import start_scheduler
+        start_scheduler()
+    except ImportError as e:
+        print(f"Could not start scheduler: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=Config.PORT, debug=Config.DEBUG)

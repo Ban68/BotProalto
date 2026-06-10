@@ -65,6 +65,19 @@ Variables de entorno necesarias (en `.env`):
 - `CLOUD_RUN_URL`, `API_TOKEN_SECRET`
 - `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_NOTIFY_NUMBERS`
 - `ANTHROPIC_API_KEY` (para el agente LLM)
+- `ENVIRONMENT` (`production` | `staging`, default `production`)
+
+---
+
+## Pruebas y staging
+
+Antes de pasar cualquier cambio a producción, pruébalo en el entorno de **staging**.
+El flujo oficial es: rama de trabajo → merge a `staging` (auto-despliega a la URL de
+staging) → probar vía `/admin/test` → aprobar → merge a `main` (producción). En staging,
+`ENVIRONMENT=staging` activa un guard que **bloquea todo envío real** a WhatsApp/Meta y las
+notificaciones a admins, y el scheduler de automatización no arranca.
+
+Flujo completo, variables de entorno y pasos de Render: ver **[docs/STAGING.md](docs/STAGING.md)**.
 
 ---
 
