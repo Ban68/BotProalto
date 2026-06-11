@@ -2,14 +2,18 @@
 """
 Extract all conversations from the last 30 days from Supabase with proper pagination.
 """
+import os
 import json
 import csv
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
 from supabase import create_client
 
-SUPABASE_URL = "https://pkfnzqzjpheorlbnmvoe.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrZm56cXpqcGhlb3JsYm5tdm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODc1NDEsImV4cCI6MjA4NDY2MzU0MX0.q5Ir1YwoRDpCqqXCFWmlQzPSee1PAagiEvivFnea7JY"
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 today = datetime.now()
 thirty_days_ago = today - timedelta(days=30)
