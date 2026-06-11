@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{{ static_v('css/legacy.css') }}">
     <link rel="stylesheet" href="{{ static_v('css/base.css') }}">
     <link rel="stylesheet" href="{{ static_v('css/layout.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/panels.css') }}">
 </head>
 
 <body class="chats-mode">
@@ -162,87 +163,9 @@
         </div>
     </div>
 
-    <!-- Envíos Masivos State -->
-    <div class="main-chat" id="enviosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: var(--primary-dark); margin-bottom: 20px;">Envíos Masivos: Aprobado por el cliente</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Esta herramienta te permite notificar a todos los clientes que han sido aprobados y no han recibido un mensaje hoy.
-        </p>
-        
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="enviosCount">0</span></h3>
-                    <div id="enviosStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClients()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
-                    <button id="btnRefreshEnvios" class="btn btn-outline-danger" onclick="fetchPendingEnvios()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Refrescar Lista</button>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
-                <input type="text" id="enviosSearch" oninput="applyPanelFilter('enviosSearch','enviosTableBody','enviosEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <div class="empresa-multi-wrap" data-search="enviosSearch" data-tbody="enviosTableBody" style="position:relative; min-width:180px;">
-                    <button type="button" id="enviosEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('enviosEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
-                    </button>
-                    <div id="enviosEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
-                </div>
-            </div>
-            <div id="enviosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAll" onchange="toggleAllChecks(this)" checked title="Seleccionar todos"></th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_verde">Envíos</th>
-                            <th style="padding: 10px; text-align: left;">Último Envío</th>
-                        </tr>
-                    </thead>
-                    <tbody id="enviosTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Excluded users section -->
-            <div id="enviosExcludedSection" style="display:none; margin-top:10px;">
-                <button onclick="toggleExcludedSection('envios')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
-                    <span id="enviosExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                </button>
-                <div id="enviosExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
-                            <tr>
-                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
-                            </tr>
-                        </thead>
-                        <tbody id="enviosExcludedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <p style="font-size:0.78rem; color:#9ca3af; margin: 4px 0 16px 0;">Puedes incluir excluidos marcando su casilla en "Ver excluidos". Se pedirá confirmación explícita antes de enviar.</p>
-
-        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
-            <button id="btnExecuteEnvios" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 24px;" onclick="executeBulkSend()" disabled>🚀 Ejecutar Envío a Seleccionados</button>
-        </div>
-        
-        <div id="enviosResults" style="margin-top: 20px; display: none;">
-            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
-            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
-                <strong>Éxitos:</strong> <span id="enviosSuccessCount">0</span>
-            </div>
-            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
-                <strong>Fallos:</strong> <span id="enviosFailCount">0</span>
-                <ul id="enviosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
-            </div>
-        </div>
+    <!-- Envíos Masivos: Aprobados (generado por campaign-panel.js) -->
+    <div class="main-chat" id="enviosState" style="display: none; overflow-y: auto; background: white;">
+        <div data-campaign="envios"></div>
     </div>
 
     <!-- Leads Campaña State -->
@@ -571,89 +494,12 @@
         </div>
     </div>
 
-    <!-- Envíos Masivos: Listo en PandaDoc (Amarillo) -->
-    <div class="main-chat" id="amarilloState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #d97706; margin-bottom: 20px;">Envíos Masivos: Listo en PandaDoc</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Notifica a los clientes cuya solicitud está lista en PandaDoc para solicitar su número de cuenta. Se enviará el template <strong>estado_amarillo</strong>.
-        </p>
-
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="amarilloCount">0</span></h3>
-                    <div id="amarilloStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsAmarillo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
-                    <button id="btnRefreshAmarillo" class="btn" onclick="fetchPendingAmarillo()" style="border-color: #d97706; color: #92400e; background: white; border: 1px solid #d97706;">🔄 Refrescar Lista</button>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
-                <input type="text" id="amarilloSearch" oninput="applyPanelFilter('amarilloSearch','amarilloTableBody','amarilloEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <div class="empresa-multi-wrap" data-search="amarilloSearch" data-tbody="amarilloTableBody" style="position:relative; min-width:180px;">
-                    <button type="button" id="amarilloEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('amarilloEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
-                    </button>
-                    <div id="amarilloEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
-                </div>
-            </div>
-            <div id="amarilloListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #d97706; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAllAmarillo" onchange="toggleAllChecksAmarillo(this)" checked title="Seleccionar todos"></th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_amarillo">Envíos</th>
-                            <th style="padding: 10px; text-align: left;">Último Envío</th>
-                        </tr>
-                    </thead>
-                    <tbody id="amarilloTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Excluded users section -->
-            <div id="amarilloExcludedSection" style="display:none; margin-top:10px;">
-                <button onclick="toggleExcludedSection('amarillo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
-                    <span id="amarilloExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                </button>
-                <div id="amarilloExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
-                            <tr>
-                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
-                            </tr>
-                        </thead>
-                        <tbody id="amarilloExcludedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
-            <button id="btnExecuteAmarillo" class="btn" style="background: #d97706; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkAmarillo()" disabled>🟡 Ejecutar Envío a Seleccionados</button>
-        </div>
-
-        <div id="amarilloResults" style="margin-top: 20px; display: none;">
-            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
-            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
-                <strong>Éxitos:</strong> <span id="amarilloSuccessCount">0</span>
-            </div>
-            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
-                <strong>Fallos:</strong> <span id="amarilloFailCount">0</span>
-                <ul id="amarilloErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
-            </div>
-        </div>
+    <!-- Envíos Masivos: Listo en PandaDoc (generado por campaign-panel.js) -->
+    <div class="main-chat" id="amarilloState" style="display: none; overflow-y: auto; background: white;">
+        <div data-campaign="amarillo"></div>
 
         <!-- Cuentas Capturadas -->
-        <div style="margin-top: 30px; border-top: 2px solid #fef3c7; padding-top: 20px;">
+        <div style="margin: 0 32px 30px; border-top: 2px solid #fef3c7; padding-top: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="color: #92400e; margin: 0;">Números de Cuenta Recibidos <span id="cuentasCount" style="font-size: 0.9rem; color: #d97706;"></span></h3>
                 <div style="display: flex; gap: 8px;">
@@ -686,235 +532,19 @@
         </div>
     </div>
 
-    <!-- Envíos Masivos: Créditos Negados -->
-    <div class="main-chat" id="negadosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #6b7280; margin-bottom: 20px;">Envíos Masivos: Créditos Negados</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Notifica a los clientes con solicitud en estado <strong>DENEGADO</strong> o <strong>CANCELADO POR LA EMPRESA</strong>. Se enviará el template <strong>estado_negados</strong>. Cada cliente solo recibe esta notificación <strong>una vez</strong>.
-        </p>
-        <div class="card" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="negadosCount">0</span></h3>
-                    <div id="negadosStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btnExecuteNegados" class="btn" onclick="executeBulkNegados()" disabled style="background: #6b7280; color: white;">🚫 Enviar a Seleccionados</button>
-                    <button class="btn btn-outline-secondary" onclick="fetchPendingNegados()">🔄 Actualizar</button>
-                </div>
-            </div>
-            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
-                <input type="text" id="negadosSearch" oninput="applyPanelFilter('negadosSearch','negadosTableBody','negadosEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <div class="empresa-multi-wrap" data-search="negadosSearch" data-tbody="negadosTableBody" style="position:relative; min-width:180px;">
-                    <button type="button" id="negadosEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('negadosEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
-                    </button>
-                    <div id="negadosEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
-                </div>
-            </div>
-            <div id="negadosListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #6b7280; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center;"><input type="checkbox" id="checkAllNegados" onchange="toggleAllChecksNegados(this)"></th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: left;">Fecha Solicitud</th>
-                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_negados">Envíos</th>
-                            <th style="padding: 10px; text-align: left;">Último Envío</th>
-                        </tr>
-                    </thead>
-                    <tbody id="negadosTableBody">
-                        <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="negadosExcludedSection" style="display:none; margin-top:10px;">
-                <button onclick="toggleExcludedSection('negados')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
-                    <span id="negadosExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                </button>
-                <div id="negadosExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
-                            <tr>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Reenviar</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Teléfono</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Nombre</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Razón de exclusión</th>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Envíos</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Último envío</th>
-                            </tr>
-                        </thead>
-                        <tbody id="negadosExcludedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div id="negadosResults" style="margin-top: 20px; display: none;">
-            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
-            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
-                <strong>Éxitos:</strong> <span id="negadosSuccessCount">0</span>
-            </div>
-            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
-                <strong>Fallos:</strong> <span id="negadosFailCount">0</span>
-                <ul id="negadosErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
-            </div>
-        </div>
+    <!-- Envíos Masivos: Créditos Negados (generado por campaign-panel.js) -->
+    <div class="main-chat" id="negadosState" style="display: none; overflow-y: auto; background: white;">
+        <div data-campaign="negados"></div>
     </div>
 
-    <!-- Envíos Masivos: Actualización Anual de Datos de Contacto -->
-    <div class="main-chat" id="actualizacionState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #9333ea; margin-bottom: 20px;">Envíos Masivos: Actualización Anual de Datos</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Notifica a los clientes con préstamo <strong>activo</strong> que no han actualizado sus datos de contacto en los últimos 12 meses. Se enviará el template <strong>actualizacion_datos</strong>, que abre el flujo conversacional para que el cliente confirme cédula, teléfonos, dirección, correo y referencia personal.
-        </p>
-        <div class="card" style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="actualizacionCount">0</span></h3>
-                    <div id="actualizacionStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button id="btnExecuteActualizacion" class="btn" onclick="executeBulkActualizacion()" disabled style="background: #9333ea; color: white;">📝 Enviar a Seleccionados</button>
-                    <button class="btn btn-outline-secondary" onclick="fetchPendingActualizacion()">🔄 Actualizar</button>
-                </div>
-            </div>
-            <div style="margin-bottom: 10px; margin-top: 12px;">
-                <input type="text" id="actualizacionSearch" oninput="filterActualizacionTable()" placeholder="🔍 Buscar por nombre o teléfono..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-            </div>
-            <div id="actualizacionListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #9333ea; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center;"><input type="checkbox" id="checkAllActualizacion" onchange="toggleAllChecksActualizacion(this)"></th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template actualizacion_datos">Envíos</th>
-                            <th style="padding: 10px; text-align: left;">Último Envío</th>
-                        </tr>
-                    </thead>
-                    <tbody id="actualizacionTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="actualizacionExcludedSection" style="display:none; margin-top:10px;">
-                <button onclick="toggleExcludedSection('actualizacion')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; width:100%; text-align:left;">
-                    <span id="actualizacionExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                </button>
-                <div id="actualizacionExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
-                            <tr>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Reenviar</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Teléfono</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Nombre</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Razón de exclusión</th>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280;">Envíos</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280;">Último envío</th>
-                            </tr>
-                        </thead>
-                        <tbody id="actualizacionExcludedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div id="actualizacionResults" style="margin-top: 20px; display: none;">
-            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
-            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
-                <strong>Éxitos:</strong> <span id="actualizacionSuccessCount">0</span>
-            </div>
-            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
-                <strong>Fallos:</strong> <span id="actualizacionFailCount">0</span>
-                <ul id="actualizacionErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
-            </div>
-        </div>
+    <!-- Envíos Masivos: Actualización de Datos (generado por campaign-panel.js) -->
+    <div class="main-chat" id="actualizacionState" style="display: none; overflow-y: auto; background: white;">
+        <div data-campaign="actualizacion"></div>
     </div>
 
-    <!-- Envíos Masivos: Falta Documento State -->
-    <div class="main-chat" id="rojoState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #dc2626; margin-bottom: 20px;">Envíos Masivos: Falta Algún Documento</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Notifica a los clientes cuyo proceso está detenido por documentos faltantes. Se enviará el template <strong>estado_rojo</strong> con la lista completa de documentos requeridos.
-        </p>
-
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                    <h3 style="margin: 0;">Clientes listos para notificar: <span id="rojoCount">0</span></h3>
-                    <div id="rojoStatLine" style="font-size:0.82rem; color:#6b7280; margin-top:3px;"></div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-outline-danger" onclick="selectOnlyNewClientsRojo()" style="border-color: #6b7280; color: #374151;" title="Marcar solo los que nunca han recibido el template">☑️ Solo nuevos (0 envíos)</button>
-                    <button id="btnRefreshRojo" class="btn btn-outline-danger" onclick="fetchPendingRojo()" style="border-color: #dc2626; color: #991b1b;">🔄 Refrescar Lista</button>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 10px; display: flex; gap: 8px; margin-top: 12px;">
-                <input type="text" id="rojoSearch" oninput="applyPanelFilter('rojoSearch','rojoTableBody','rojoEmpresaDrop')" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <div class="empresa-multi-wrap" data-search="rojoSearch" data-tbody="rojoTableBody" style="position:relative; min-width:180px;">
-                    <button type="button" id="rojoEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('rojoEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
-                    </button>
-                    <div id="rojoEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
-                </div>
-            </div>
-            <div id="rojoListContainer" style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #dc2626; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center; width: 40px;"><input type="checkbox" id="checkAllRojo" onchange="toggleAllChecksRojo(this)" checked title="Seleccionar todos"></th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: center;" title="Veces que se ha enviado el template estado_rojo">Envíos</th>
-                            <th style="padding: 10px; text-align: left;">Último Envío</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rojoTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando clientes...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- Excluded users section -->
-            <div id="rojoExcludedSection" style="display:none; margin-top:10px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button onclick="toggleExcludedSection('rojo')" style="background:none; border:1px solid #e5e7eb; border-radius:5px; padding:6px 12px; font-size:0.85rem; color:#6b7280; cursor:pointer; flex:1; text-align:left;">
-                        <span id="rojoExcludedToggleLabel">▶ Ver excluidos (0)</span>
-                    </button>
-                    <button onclick="copyRojoExcludedToClipboard()" style="background:none; border:1px solid #6b7280; border-radius:5px; padding:6px 12px; font-size:0.8rem; color:#374151; cursor:pointer; white-space:nowrap;" title="Copiar para pegar en Excel o Google Sheets">📋 Copiar</button>
-                    <button onclick="exportRojoExcludedCSV()" style="background:none; border:1px solid #059669; border-radius:5px; padding:6px 12px; font-size:0.8rem; color:#065f46; cursor:pointer; white-space:nowrap;" title="Descargar como archivo CSV">⬇️ Exportar CSV</button>
-                </div>
-                <div id="rojoExcludedContent" style="display:none; margin-top:6px; max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:5px;">
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead style="background:#f3f4f6; position:sticky; top:0; z-index:1;">
-                            <tr>
-                                <th style="padding:8px 10px; text-align:center; width:36px; font-size:0.8rem; color:#6b7280; font-weight:600;" title="Forzar envío (requiere confirmación)">✉️</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Teléfono</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Nombre</th>
-                                <th style="padding:8px 10px; text-align:center; font-size:0.8rem; color:#6b7280; font-weight:600;">Envíos</th>
-                                <th style="padding:8px 10px; text-align:left; font-size:0.8rem; color:#6b7280; font-weight:600;">Razón de exclusión</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rojoExcludedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
-            <button id="btnExecuteRojo" class="btn" style="background: #dc2626; color: white; font-size: 1.1rem; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer;" onclick="executeBulkRojo()" disabled>🔴 Ejecutar Envío a Seleccionados</button>
-        </div>
-
-        <div id="rojoResults" style="margin-top: 20px; display: none;">
-            <h3 style="margin-bottom: 10px;">Resultados del Envío:</h3>
-            <div style="padding: 15px; border-radius: 5px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; margin-bottom: 10px;">
-                <strong>Éxitos:</strong> <span id="rojoSuccessCount">0</span>
-            </div>
-            <div style="padding: 15px; border-radius: 5px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;">
-                <strong>Fallos:</strong> <span id="rojoFailCount">0</span>
-                <ul id="rojoErrorList" style="margin-top: 10px; font-size: 0.9rem;"></ul>
-            </div>
-        </div>
+    <!-- Envíos Masivos: Falta Documento (generado por campaign-panel.js) -->
+    <div class="main-chat" id="rojoState" style="display: none; overflow-y: auto; background: white;">
+        <div data-campaign="rojo"></div>
     </div>
 
     <!-- Modal: Confirmación de envío a contactos excluidos -->
@@ -1332,6 +962,8 @@
     </div>
 
     <script src="{{ static_v('js/nav.js') }}"></script>
+    <script src="{{ static_v('js/campaign-panel.js') }}"></script>
+    <script src="{{ static_v('js/campaigns.js') }}"></script>
     <script src="{{ static_v('js/legacy.js') }}"></script>
 </body>
 

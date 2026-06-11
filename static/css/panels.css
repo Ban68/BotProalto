@@ -1,0 +1,185 @@
+/* ── Paneles de campaña (Familia A/B) y vistas de gestión ──────────
+   Cada panel define su color con --accent (inline en el contenedor). */
+
+.cmp-panel {
+    padding: var(--sp-6) var(--sp-8);
+    max-width: 1100px;
+}
+
+.cmp-title {
+    color: var(--accent);
+    margin-bottom: var(--sp-4);
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.cmp-desc {
+    color: var(--text-muted-c);
+    margin-bottom: var(--sp-4);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.cmp-card {
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+}
+
+.cmp-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-2);
+}
+
+.cmp-count-line { margin: 0; font-size: 1.02rem; }
+.cmp-count-line span { color: var(--accent); }
+
+.cmp-statline { font-size: 0.82rem; color: var(--text-muted-c); margin-top: 3px; }
+.cmp-stat-ok { color: #16a34a; font-weight: 600; }
+.cmp-stat-excl { color: #dc2626; font-weight: 600; }
+
+.cmp-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.cmp-toolbar {
+    display: flex;
+    gap: var(--sp-2);
+    margin: var(--sp-3) 0 var(--sp-2);
+}
+.cmp-search { flex: 1; }
+.cmp-empresa { position: relative; min-width: 190px; }
+
+.empresa-btn {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+    font-family: inherit;
+    font-size: 0.88rem;
+    color: var(--text);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+.cmp-chevron { font-size: 0.75rem; color: var(--text-muted-c); }
+
+.empresa-drop {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+    z-index: 200;
+    min-width: 220px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-2);
+    padding: 4px 0;
+}
+
+.cmp-table-wrap {
+    max-height: 420px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+}
+
+.cmp-table thead { background: var(--accent); }
+.cmp-c { text-align: center !important; }
+.cmp-check-col { width: 40px; }
+.cmp-nowrap { white-space: nowrap; }
+.cmp-muted { color: var(--text-muted-c); font-size: 0.85rem; }
+.cmp-empresa-sub { font-size: 0.75rem; color: var(--text-muted-c); }
+.cmp-sends-mid { color: #d97706; }
+.cmp-sends-high { color: #dc2626; font-weight: 700; }
+
+.cmp-finca-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: var(--r-full);
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.cmp-empty { padding: 15px !important; text-align: center; color: var(--text-muted-c); }
+.cmp-empty-ok { color: var(--success); font-weight: 700; }
+.cmp-empty-err { color: var(--danger); }
+
+/* Sección de excluidos */
+.cmp-excluded { margin-top: var(--sp-3); }
+.cmp-excluded-bar { display: flex; align-items: center; gap: var(--sp-2); }
+
+.cmp-excluded-toggle {
+    flex: 1;
+    text-align: left;
+    background: none;
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text-muted-c);
+    cursor: pointer;
+}
+.cmp-excluded-toggle:hover { background: var(--bg); }
+
+.cmp-mini { padding: 5px 10px; font-size: 0.78rem; }
+
+.cmp-excluded-content {
+    margin-top: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+}
+.cmp-excl-table thead { background: #f3f4f6; }
+.cmp-excl-table th { color: var(--text-muted-c); font-size: 0.8rem; }
+
+.cmp-reason-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--r-full);
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.75rem;
+    border: 1px solid #fecaca;
+    margin-right: 4px;
+}
+
+.cmp-hint { font-size: 0.78rem; color: #9ca3af; margin: var(--sp-2) 0 0; }
+
+/* Botón de ejecución */
+.cmp-execute-bar {
+    text-align: right;
+    border-top: 1px solid var(--border-c);
+    padding-top: var(--sp-4);
+    margin-bottom: var(--sp-4);
+}
+.cmp-execute {
+    background: var(--accent);
+    color: white;
+    font-size: 1.05rem;
+    padding: 12px 24px;
+}
+.cmp-execute:hover:not(:disabled) { filter: brightness(0.92); }
+
+/* Resultados del envío */
+.cmp-results h3 { margin-bottom: var(--sp-2); }
+.cmp-result { padding: 14px; border-radius: var(--r-sm); margin-bottom: var(--sp-2); }
+.cmp-result-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.cmp-result-fail { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.cmp-result-fail ul { margin-top: var(--sp-2); font-size: 0.88rem; padding-left: 18px; }
+
+/* Etiquetas dentro del dropdown de empresas (generadas por
+   populatePanelEmpresaFilter en legacy.js con estilos inline; esta
+   regla cubre el hover una vez se migre) */
+.empresa-drop label:hover { background: var(--bg); }
