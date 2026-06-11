@@ -58,11 +58,11 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 **Qué sigue:** Igual que el estado anterior.
 
 ### `LISTO EN PANDADOC`
-**Significado interno:** El contrato ya está en la plataforma de firma electrónica esperando firma del cliente. Después de firmar, se procede al desembolso.
-**Mensaje al cliente:** "En legalización de contratos para proceder a desembolso"
-**Qué debe hacer el cliente:** Revisar su correo electrónico y firmar el contrato digitalmente.
-**Acción del bot:** Si no tiene cuenta bancaria registrada, el bot la solicita.
-**Nota:** El estado puede aparecer como "LISTO EN DOCUSIGN" en registros anteriores — es equivalente. Al cliente siempre referirse como "firma electrónica", no mencionar nombres de plataforma.
+**Significado interno:** El contrato está en la plataforma y ProAlto lo está revisando para dar el último paso antes del desembolso. El cliente no necesita firmar ni hacer nada en este estado.
+**Mensaje al cliente:** "¡Falta muy poco para tu desembolso! Estamos revisando tu contrato para dar el último paso."
+**Qué debe hacer el cliente:** Nada, solo esperar. ProAlto se encarga de revisar el contrato.
+**Acción del bot:** Si no tiene cuenta bancaria registrada, el bot la solicita para poder desembolsar.
+**Nota:** El estado puede aparecer como "LISTO EN DOCUSIGN" en registros anteriores — es equivalente. NO le pidas al cliente que firme; el enfoque es que ProAlto está revisando el contrato. No menciones nombres de plataforma.
 
 ---
 
@@ -101,6 +101,6 @@ Cada solicitud de crédito pasa por distintos estados internos. El bot los tradu
 NULL → PENDIENTE POR ENVIAR A VB → ENVIADO A VB EMPRESA
 → (si faltan docs: FALTA ALGÚN DOCUMENTO)
 → APROBADO POR EL CLIENTE
-→ LISTO EN PANDADOC (firma electrónica)
+→ LISTO EN PANDADOC (ProAlto revisa el contrato)
 → Desembolso realizado
 ```
