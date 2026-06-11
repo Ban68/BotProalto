@@ -184,41 +184,39 @@
     </div>
 
     <!-- Correos Capturados State -->
-    <div class="main-chat" id="correosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: var(--primary-dark); margin-bottom: 20px;">Correos Capturados</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Lista de correos electrónicos capturados durante el flujo de aprobación automática.
-        </p>
-        
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0;">Total Capturados: <span id="correosCount">0</span></h3>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-outline-danger" onclick="copyEmailsToClipboard()" style="border-color: #6b7280; color: #374151;" title="Copiar para pegar en Excel o Google Sheets">📋 Copiar</button>
-                    <button class="btn btn-outline-danger" onclick="exportEmailsCSV()" style="border-color: #059669; color: #065f46;" title="Descargar como archivo CSV">⬇️ Exportar CSV</button>
-                    <button class="btn btn-outline-danger" onclick="fetchCapturedEmails()" style="border-color: var(--primary); color: var(--primary-dark);">🔄 Actualizar</button>
+    <div class="main-chat" id="correosState" style="display: none; overflow-y: auto; background: white;">
+        <div class="cmp-panel" style="--accent:#3b82f6;">
+            <h2 class="cmp-title">📧 Correos Capturados</h2>
+            <p class="cmp-desc">Lista de correos electrónicos capturados durante el flujo de aprobación automática.</p>
+            <div class="cmp-card card-x">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">Total Capturados: <span id="correosCount">0</span></h3>
+                    <div class="cmp-actions">
+                        <button type="button" class="btn-x btn-x-outline" onclick="copyEmailsToClipboard()" title="Copiar para pegar en Excel o Google Sheets">📋 Copiar</button>
+                        <button type="button" class="btn-x btn-x-outline" onclick="exportEmailsCSV()" title="Descargar como archivo CSV">⬇️ Exportar CSV</button>
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchCapturedEmails()">🔄 Actualizar</button>
+                    </div>
                 </div>
-            </div>
-            
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="correosSearch" oninput="filterRows('correosSearch', 'correosTableBody')" placeholder="🔍 Buscar por nombre, teléfono o email..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-            </div>
-            <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: var(--primary-dark); color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: center; width: 44px;">Ok</th>
-                            <th style="padding: 10px; text-align: left;">Fecha</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Email</th>
-                            <th style="padding: 10px; text-align: left;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="correosTableBody">
-                        <tr><td colspan="6" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando correos...</td></tr>
-                    </tbody>
-                </table>
+                <div class="cmp-toolbar">
+                    <input type="text" id="correosSearch" class="input-x cmp-search" oninput="filterRows('correosSearch', 'correosTableBody')" placeholder="🔍 Buscar por nombre, teléfono o email...">
+                </div>
+                <div class="cmp-table-wrap" style="max-height: 500px;">
+                    <table class="table-x cmp-table">
+                        <thead>
+                            <tr>
+                                <th class="cmp-c" style="width: 44px;">Ok</th>
+                                <th>Fecha</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Email</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="correosTableBody">
+                            <tr><td colspan="6" class="cmp-empty">Cargando correos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -228,35 +226,37 @@
         <div data-campaign="amarillo"></div>
 
         <!-- Cuentas Capturadas -->
-        <div style="margin: 0 32px 30px; border-top: 2px solid #fef3c7; padding-top: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="color: #92400e; margin: 0;">Números de Cuenta Recibidos <span id="cuentasCount" style="font-size: 0.9rem; color: #d97706;"></span></h3>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="copyCuentasToClipboard()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">📋 Copiar</button>
-                    <button onclick="exportCuentasCSV()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">⬇️ CSV</button>
-                    <button onclick="fetchCapturedCuentas()" class="btn" style="background: white; border: 1px solid #d97706; color: #92400e; font-size: 0.85rem; padding: 6px 12px;">🔄 Actualizar</button>
+        <div class="cmp-panel" style="--accent:#92400e; padding-top: 0;">
+            <div class="cmp-card card-x" style="border-top: 3px solid #fde68a;">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">🏦 Números de Cuenta Recibidos <span id="cuentasCount" style="font-size: 0.9rem; color: #d97706;"></span></h3>
+                    <div class="cmp-actions">
+                        <button type="button" class="btn-x btn-x-outline" onclick="copyCuentasToClipboard()">📋 Copiar</button>
+                        <button type="button" class="btn-x btn-x-outline" onclick="exportCuentasCSV()">⬇️ CSV</button>
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchCapturedCuentas()">🔄 Actualizar</button>
+                    </div>
                 </div>
-            </div>
-            <div style="margin-bottom: 10px;">
-                <input type="text" id="cuentasSearch" oninput="filterRows('cuentasSearch','cuentasTableBody')" placeholder="🔍 Buscar por nombre, teléfono o empresa..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-            </div>
-            <div style="max-height: 400px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #92400e; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: left;">Fecha</th>
-                            <th style="padding: 10px; text-align: left;">Nombre</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Empresa</th>
-                            <th style="padding: 10px; text-align: left;">Titular</th>
-                            <th style="padding: 10px; text-align: left;">Número de Cuenta</th>
-                            <th style="padding: 10px; text-align: left;">Banco</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cuentasTableBody">
-                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando cuentas...</td></tr>
-                    </tbody>
-                </table>
+                <div class="cmp-toolbar">
+                    <input type="text" id="cuentasSearch" class="input-x cmp-search" oninput="filterRows('cuentasSearch','cuentasTableBody')" placeholder="🔍 Buscar por nombre, teléfono o empresa...">
+                </div>
+                <div class="cmp-table-wrap" style="max-height: 400px;">
+                    <table class="table-x cmp-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Empresa</th>
+                                <th>Titular</th>
+                                <th>Número de Cuenta</th>
+                                <th>Banco</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuentasTableBody">
+                            <tr><td colspan="7" class="cmp-empty">Cargando cuentas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -305,120 +305,122 @@
     </div>
 
     <!-- Documentos Recibidos State -->
-    <div class="main-chat" id="docRecibidosState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #b45309; margin-bottom: 20px;">Documentos Recibidos</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Clientes que enviaron documentos después de recibir el template <strong>estado_rojo</strong>. Haz clic en el archivo para abrirlo.
-        </p>
-
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="margin: 0;">Total recibidos: <span id="docsCount">0</span> &nbsp;|&nbsp; Pendientes de revisión: <span id="docsPendientesCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
-                <button class="btn btn-outline-danger" onclick="fetchReceivedDocuments()" style="border-color: #f59e0b; color: #92400e;">🔄 Actualizar</button>
-            </div>
-            <div style="margin-bottom: 10px; display: flex; gap: 8px;">
-                <input type="text" id="docsSearch" oninput="applyDocsFilters()" placeholder="🔍 Buscar por nombre o teléfono..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;">
-                <div class="empresa-multi-wrap" style="position:relative; min-width:180px;">
-                    <button type="button" id="docsEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('docsEmpresaDrop')" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:5px; font-size:0.9rem; color:#374151; background:white; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                        <span>🏢 Todas las empresas</span><span style="font-size:0.75rem; color:#9ca3af;">▾</span>
-                    </button>
-                    <div id="docsEmpresaDrop" class="empresa-drop" style="display:none; position:absolute; top:calc(100% + 2px); left:0; background:white; border:1px solid var(--border); border-radius:5px; z-index:200; min-width:220px; max-height:220px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:4px 0;"></div>
+    <div class="main-chat" id="docRecibidosState" style="display: none; overflow-y: auto; background: white;">
+        <div class="cmp-panel" style="--accent:#b45309;">
+            <h2 class="cmp-title">📥 Documentos Recibidos</h2>
+            <p class="cmp-desc">Clientes que enviaron documentos después de recibir el template <strong>estado_rojo</strong>. Haz clic en el archivo para abrirlo.</p>
+            <div class="cmp-card card-x">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">Total recibidos: <span id="docsCount">0</span> &nbsp;|&nbsp; Pendientes de revisión: <span id="docsPendientesCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                    <div class="cmp-actions">
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchReceivedDocuments()">🔄 Actualizar</button>
+                    </div>
                 </div>
-            </div>
-
-            <div style="max-height: 500px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #b45309; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: left;">Fecha/Hora</th>
-                            <th style="padding: 10px; text-align: left;">Archivo</th>
-                            <th style="padding: 10px; text-align: left;">Tipo</th>
-                            <th style="padding: 10px; text-align: center;">Estado</th>
-                            <th style="padding: 10px; text-align: center;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="docsTableBody">
-                        <tr><td colspan="5" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando documentos...</td></tr>
-                    </tbody>
-                </table>
+                <div class="cmp-toolbar">
+                    <input type="text" id="docsSearch" class="input-x cmp-search" oninput="applyDocsFilters()" placeholder="🔍 Buscar por nombre o teléfono...">
+                    <div class="empresa-multi-wrap cmp-empresa">
+                        <button type="button" id="docsEmpresaBtn" class="empresa-btn" onclick="toggleEmpresaDrop('docsEmpresaDrop')">
+                            <span>🏢 Todas las empresas</span><span class="cmp-chevron">▾</span>
+                        </button>
+                        <div id="docsEmpresaDrop" class="empresa-drop" style="display:none;"></div>
+                    </div>
+                </div>
+                <div class="cmp-table-wrap" style="max-height: 500px;">
+                    <table class="table-x cmp-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Archivo</th>
+                                <th>Tipo</th>
+                                <th class="cmp-c">Estado</th>
+                                <th class="cmp-c">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docsTableBody">
+                            <tr><td colspan="5" class="cmp-empty">Cargando documentos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Solicitudes LLM State -->
-    <div class="main-chat" id="llmRequestsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #7c3aed; margin-bottom: 20px;">🤖 Solicitudes del Agente LLM</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Requerimientos registrados por el agente LLM que requieren seguimiento del equipo.
-        </p>
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0;">Total: <span id="llmReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="llmReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
-                        <input type="checkbox" id="llmOnlyPending" onchange="fetchLLMRequests()" style="cursor: pointer;">
-                        Solo pendientes
-                    </label>
-                    <button class="btn btn-outline-danger" onclick="fetchLLMRequests()" style="border-color: #7c3aed; color: #7c3aed;">🔄 Actualizar</button>
+    <div class="main-chat" id="llmRequestsState" style="display: none; overflow-y: auto; background: white;">
+        <div class="cmp-panel" style="--accent:#7c3aed;">
+            <h2 class="cmp-title">🤖 Solicitudes del Agente LLM</h2>
+            <p class="cmp-desc">Requerimientos registrados por el agente LLM que requieren seguimiento del equipo.</p>
+            <div class="cmp-card card-x">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">Total: <span id="llmReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="llmReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                    <div class="cmp-actions">
+                        <label class="cmp-check-label">
+                            <input type="checkbox" id="llmOnlyPending" onchange="fetchLLMRequests()">
+                            Solo pendientes
+                        </label>
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchLLMRequests()">🔄 Actualizar</button>
+                    </div>
                 </div>
-            </div>
-            <div style="max-height: 520px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #7c3aed; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: left; white-space: nowrap;">Fecha</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Cliente</th>
-                            <th style="padding: 10px; text-align: left;">Tipo</th>
-                            <th style="padding: 10px; text-align: left;">Detalle</th>
-                            <th style="padding: 10px; text-align: center;">Estado</th>
-                            <th style="padding: 10px; text-align: center;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="llmReqTableBody">
-                        <tr><td colspan="7" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando solicitudes...</td></tr>
-                    </tbody>
-                </table>
+                <div class="cmp-table-wrap" style="max-height: 520px;">
+                    <table class="table-x cmp-table">
+                        <thead>
+                            <tr>
+                                <th class="cmp-nowrap">Fecha</th>
+                                <th>Teléfono</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Detalle</th>
+                                <th class="cmp-c">Estado</th>
+                                <th class="cmp-c">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="llmReqTableBody">
+                            <tr><td colspan="7" class="cmp-empty">Cargando solicitudes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Solicitudes de Documentos (Paz y Salvos) State -->
-    <div class="main-chat" id="docRequestsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
-        <h2 style="color: #2563eb; margin-bottom: 20px;">📄 Solicitudes de Documentos</h2>
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Clientes que solicitaron un paz y salvo u otro documento (desde el menú del bot o el agente LLM).
-            Marca cada solicitud como completada cuando el documento ya se le envió al cliente.
-        </p>
-        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0;">Total: <span id="docReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="docReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
-                        <input type="checkbox" id="docReqOnlyPending" onchange="fetchDocumentRequests()" style="cursor: pointer;">
-                        Solo pendientes
-                    </label>
-                    <button class="btn btn-outline-danger" onclick="fetchDocumentRequests()" style="border-color: #2563eb; color: #2563eb;">🔄 Actualizar</button>
+    <div class="main-chat" id="docRequestsState" style="display: none; overflow-y: auto; background: white;">
+        <div class="cmp-panel" style="--accent:#2563eb;">
+            <h2 class="cmp-title">📄 Solicitudes de Documentos</h2>
+            <p class="cmp-desc">
+                Clientes que solicitaron un paz y salvo u otro documento (desde el menú del bot o el agente LLM).
+                Marca cada solicitud como completada cuando el documento ya se le envió al cliente.
+            </p>
+            <div class="cmp-card card-x">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">Total: <span id="docReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="docReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                    <div class="cmp-actions">
+                        <label class="cmp-check-label">
+                            <input type="checkbox" id="docReqOnlyPending" onchange="fetchDocumentRequests()">
+                            Solo pendientes
+                        </label>
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchDocumentRequests()">🔄 Actualizar</button>
+                    </div>
                 </div>
-            </div>
-            <div style="max-height: 520px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: #2563eb; color: white; position: sticky; top: 0; z-index: 2;">
-                        <tr>
-                            <th style="padding: 10px; text-align: left; white-space: nowrap;">Fecha</th>
-                            <th style="padding: 10px; text-align: left;">Teléfono</th>
-                            <th style="padding: 10px; text-align: left;">Cliente</th>
-                            <th style="padding: 10px; text-align: left;">Documento</th>
-                            <th style="padding: 10px; text-align: left;">Origen</th>
-                            <th style="padding: 10px; text-align: left;">Detalle</th>
-                            <th style="padding: 10px; text-align: center;">Estado</th>
-                            <th style="padding: 10px; text-align: center;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="docReqTableBody">
-                        <tr><td colspan="8" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando solicitudes...</td></tr>
-                    </tbody>
-                </table>
+                <div class="cmp-table-wrap" style="max-height: 520px;">
+                    <table class="table-x cmp-table">
+                        <thead>
+                            <tr>
+                                <th class="cmp-nowrap">Fecha</th>
+                                <th>Teléfono</th>
+                                <th>Cliente</th>
+                                <th>Documento</th>
+                                <th>Origen</th>
+                                <th>Detalle</th>
+                                <th class="cmp-c">Estado</th>
+                                <th class="cmp-c">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="docReqTableBody">
+                            <tr><td colspan="8" class="cmp-empty">Cargando solicitudes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
