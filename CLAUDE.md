@@ -28,6 +28,18 @@ src/
   admin.py              Panel de administración web (auth básica)
   analytics_api.py      API de métricas para el dashboard
   google_sheets.py      Fallback de consulta via Google Apps Script
+templates/
+  admin.html            Panel admin: shell HTML (nav rail + paneles); CSS/JS viven en static/
+  admin_test.html       Panel de testing manual (/admin/test, independiente del panel principal)
+static/
+  css/                  tokens.css (design tokens), legacy.css (estilos del chat y restos por
+                        migrar), base.css (componentes btn-x/table-x/card-x), layout.css (shell
+                        de 3 columnas + nav rail), panels.css (paneles de campaña/gestión)
+  js/                   nav.js (nav rail + badges), campaign-panel.js (factory campañas
+                        pending-list), paste-campaign.js (factory campañas paste/Excel),
+                        campaigns.js (configs declarativas de las 8 campañas), legacy.js
+                        (chat en vivo, presencia, gestión, analytics — por modularizar)
+                        Cache busting: helper static_v() en app.py (?v=<hash>) + ETag
 context/                Archivos de conocimiento inyectados al LLM
   empresa.md            Datos generales de ProAlto
   productos.md          Tipos de crédito, montos, plazos, requisitos

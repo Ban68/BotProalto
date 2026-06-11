@@ -166,30 +166,6 @@
             }
         }
 
-        // Nav group toggle (click-based dropdowns, position: fixed to escape overflow clipping)
-        function toggleNavGroup(btn) {
-            const wrapper = btn.closest('.tool-nav-group');
-            if (!wrapper) return;
-            const dropdown = wrapper.querySelector('.tool-nav-dropdown');
-            if (!dropdown) return;
-            const isOpen = wrapper.classList.contains('open');
-            // Close all other open groups first
-            document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
-            if (!isOpen) {
-                const rect = btn.getBoundingClientRect();
-                dropdown.style.top  = rect.bottom + 'px';
-                dropdown.style.left = rect.left + 'px';
-                wrapper.classList.add('open');
-            }
-        }
-
-        // Close nav dropdowns when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.tool-nav-group')) {
-                document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
-            }
-        });
-
         // Registro de vistas: panel a mostrar, si usa la columna de chats
         // y el fetch inicial al entrar. El nav lateral (nav.js) marca el
         // item activo vía updateNavActive().
