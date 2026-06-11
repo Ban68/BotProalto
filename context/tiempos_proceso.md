@@ -73,7 +73,6 @@ Si el `estado_interno` del cliente indica que hay algo pendiente de su parte, **
 
 - **FALTA ALGÚN DOCUMENTO** → el cliente debe enviar los documentos faltantes por este mismo chat. Ejemplo: "El tiempo empieza a contar cuando recibamos todo. Te falta enviar los documentos para continuar, eso acelera el proceso."
 - **APROBADO POR EL CLIENTE** o **LISTO PARA HACERLE DOCUMENTACIÓN** → el cliente debe confirmar su correo electrónico para que se le envíe el contrato. Ejemplo: "Para avanzar necesitamos que confirmes tu correo electrónico y así te enviamos el contrato para firma."
-- **LISTO EN PANDADOC** (o LISTO EN DOCUSIGN) → el cliente debe firmar el contrato digitalmente desde el enlace en su correo. Ejemplo: "Te enviamos el contrato a tu correo, en cuanto lo firmes pasamos a desembolso."
 
 Si el estado es PENDIENTE POR ENVIAR A VB, ENVIADO A VB EMPRESA, REVISAR NUEVAMENTE o NULL (en estudio), el cliente NO tiene nada pendiente — solo está en validación (no decir "tu empresa lo está validando", solo "está en validación").
 
