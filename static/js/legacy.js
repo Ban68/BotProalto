@@ -700,7 +700,7 @@
                         ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">✓ Resuelto</span>`
                         : `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>`;
                     const actionBtn = r.resolved
-                        ? ''
+                        ? `<button onclick="reopenLLMRequest('${r.id}', this)" style="background:none;color:#6b7280;border:1px solid #d1d5db;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;">↩ Reabrir</button>`
                         : `<button onclick="resolveLLMRequest('${r.id}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Resolver</button>`;
                     return `<tr style="border-bottom:1px solid #eee;">
                         <td style="padding:10px;white-space:nowrap;font-size:0.85rem;">${fecha}</td>
@@ -733,6 +733,25 @@
                 alert('Error de conexión.');
                 btn.disabled = false;
                 btn.innerText = '✓ Resolver';
+            }
+        }
+
+        async function reopenLLMRequest(id, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch(`/admin/api/llm-requests/${id}/reopen`, { method: 'POST' });
+                if (res.ok) {
+                    fetchLLMRequests();
+                } else {
+                    alert('Error al reabrir la solicitud.');
+                    btn.disabled = false;
+                    btn.innerText = '↩ Reabrir';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '↩ Reabrir';
             }
         }
 

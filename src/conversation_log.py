@@ -1515,6 +1515,19 @@ def resolve_llm_request(request_id: str):
         print(f"Supabase resolve_llm_request error: {e}")
 
 
+def reopen_llm_request(request_id: str):
+    """Reverts an LLM request to pending (deshacer un resuelto por error)."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('llm_requests').update({
+            "resolved": False,
+            "resolved_at": None,
+        }).eq("id", request_id).execute()
+    except Exception as e:
+        print(f"Supabase reopen_llm_request error: {e}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Document requests — solicitudes de documentos (paz y salvo, futuros tipos)
 # Panel propio en admin, separado de llm_requests para que no se pierdan.

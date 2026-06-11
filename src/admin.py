@@ -832,6 +832,18 @@ def api_resolve_llm_request(request_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/llm-requests/<request_id>/reopen', methods=['POST'])
+@requires_auth
+def api_reopen_llm_request(request_id):
+    """Revert an LLM request to pending (deshacer un resuelto por error)."""
+    from src.conversation_log import reopen_llm_request
+    try:
+        reopen_llm_request(request_id)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/document-requests')
 @requires_auth
 def api_document_requests():
