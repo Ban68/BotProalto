@@ -49,6 +49,7 @@ def _new_session() -> dict:
         "captured_cuenta_count": 0,
         "received_documents_count": 0,
         "llm_requests_count": 0,
+        "document_requests_count": 0,
         "history": [],            # list of {direction, text, msg_type, created_at}
         "outbound": [],           # list pending to drain by the panel
         "created_at": _now_iso(),
@@ -221,6 +222,19 @@ def record_llm_request(phone: str, tipo: str, detalle: str) -> None:
         })
 
 
+def record_document_request(phone: str, doc_type: str, source: str, detalle: str) -> None:
+    with _lock:
+        s = _ensure_locked(phone)
+        s["document_requests_count"] += 1
+        s["outbound"].append({
+            "type": "document_request_recorded",
+            "doc_type": doc_type,
+            "source": source,
+            "detalle": (detalle or "")[:200],
+            "created_at": _now_iso(),
+        })
+
+
 # ── Contact update (yearly) ─────────────────────────────────────────
 
 def start_contact_update(phone: str, trigger_source: str) -> bool:
@@ -357,6 +371,7 @@ def snapshot(phone: str) -> dict:
             "captured_cuenta_count": s["captured_cuenta_count"],
             "received_documents_count": s["received_documents_count"],
             "llm_requests_count": s["llm_requests_count"],
+            "document_requests_count": s.get("document_requests_count", 0),
             "history_length": len(s["history"]),
         }
 

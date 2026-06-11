@@ -1516,6 +1516,73 @@ def resolve_llm_request(request_id: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Document requests — solicitudes de documentos (paz y salvo, futuros tipos)
+# Panel propio en admin, separado de llm_requests para que no se pierdan.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def save_document_request(phone: str, client_name: str, doc_type: str, source: str = "menu", detalle: str = ""):
+    """Saves a document request (paz y salvo, etc.) to document_requests table.
+    source: 'menu' (botón del menú) | 'llm' (agente LLM)."""
+    if test_mode.is_test_phone(phone):
+        test_mode.record_document_request(phone, doc_type, source, detalle)
+        return
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('document_requests').insert({
+            "phone": phone,
+            "client_name": client_name or "Cliente",
+            "doc_type": doc_type,
+            "source": source,
+            "detalle": detalle[:500] if detalle else "",
+            "created_at": datetime.now().isoformat(),
+            "completed": False,
+        }).execute()
+    except Exception as e:
+        print(f"Supabase save_document_request error: {e}")
+
+
+def get_document_requests(only_pending: bool = False) -> list:
+    """Retrieves all document requests, optionally only the pending ones."""
+    if not supabase_client:
+        return []
+    try:
+        q = supabase_client.table('document_requests').select("*").order("created_at", desc=True)
+        if only_pending:
+            q = q.eq("completed", False)
+        return q.execute().data
+    except Exception as e:
+        print(f"Supabase get_document_requests error: {e}")
+        return []
+
+
+def complete_document_request(request_id: str):
+    """Marks a document request as completed (documento enviado al cliente)."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('document_requests').update({
+            "completed": True,
+            "completed_at": datetime.now().isoformat(),
+        }).eq("id", request_id).execute()
+    except Exception as e:
+        print(f"Supabase complete_document_request error: {e}")
+
+
+def reopen_document_request(request_id: str):
+    """Reverts a document request to pending (deshacer un completado por error)."""
+    if not supabase_client:
+        return
+    try:
+        supabase_client.table('document_requests').update({
+            "completed": False,
+            "completed_at": None,
+        }).eq("id", request_id).execute()
+    except Exception as e:
+        print(f"Supabase reopen_document_request error: {e}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Contact data updates — yearly contact info refresh flow
 # ─────────────────────────────────────────────────────────────────────────────
 
