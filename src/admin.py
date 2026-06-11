@@ -869,6 +869,31 @@ def api_reopen_document_request(request_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/pending-counts')
+@requires_auth
+def api_pending_counts():
+    """Contadores agregados de pendientes para los badges del nav lateral.
+
+    Más barato que pollear las listas completas de cada vista. Cada
+    contador es independiente: si una fuente falla, las demás se devuelven.
+    """
+    from src.conversation_log import get_received_documents, get_llm_requests, get_document_requests
+    counts = {"received_docs": 0, "llm_requests": 0, "document_requests": 0}
+    try:
+        counts["received_docs"] = sum(1 for d in get_received_documents() if not d.get("reviewed"))
+    except Exception:
+        pass
+    try:
+        counts["llm_requests"] = len(get_llm_requests(only_pending=True))
+    except Exception:
+        pass
+    try:
+        counts["document_requests"] = len(get_document_requests(only_pending=True))
+    except Exception:
+        pass
+    return jsonify({"status": "ok", "counts": counts})
+
+
 @admin_bp.route('/admin/api/mark-docs-completos', methods=['POST'])
 @requires_auth
 def api_mark_docs_completos():

@@ -1,0 +1,185 @@
+/* ── Shell del panel: nav rail + columna de chats + contenido ──────
+   El body sigue siendo flex (legacy.css). Hijos: .nav-rail, .sidebar
+   (columna de conversaciones, solo en vistas de chat) y .content-wrapper. */
+
+/* ── Nav rail ── */
+.nav-rail {
+    width: var(--nav-rail-w);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color: white;
+    z-index: 20;
+    transition: width 0.18s ease;
+}
+
+.nav-rail-header {
+    padding: 16px 14px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nav-rail-logo {
+    display: block;
+    height: 38px;
+    margin: 0 auto 6px;
+    opacity: 0.92;
+    filter: brightness(0) invert(1);
+}
+
+.nav-rail-title {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.9;
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.nav-presence { position: relative; }
+
+.nav-rail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.nav-group { margin-bottom: 14px; }
+
+.nav-group-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.38);
+    padding: 0 10px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.nav-item {
+    --accent: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 7px 10px;
+    margin-bottom: 1px;
+    background: transparent;
+    border: none;
+    border-radius: var(--r-sm);
+    color: rgba(255, 255, 255, 0.82);
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+}
+
+.nav-item:hover { background: rgba(255, 255, 255, 0.07); color: white; }
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.nav-item-icon {
+    width: 20px;
+    text-align: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.nav-item-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-item .badge-count { flex-shrink: 0; }
+
+.nav-rail-collapse {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.55);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.nav-rail-collapse:hover { color: white; background: rgba(255, 255, 255, 0.05); }
+
+/* ── Rail colapsado (solo iconos) ── */
+body.nav-collapsed .nav-rail { width: var(--nav-rail-w-collapsed); }
+body.nav-collapsed .nav-rail-title,
+body.nav-collapsed .nav-group-label,
+body.nav-collapsed .nav-item-label,
+body.nav-collapsed .nav-presence,
+body.nav-collapsed .nav-rail-collapse .nav-item-label { display: none; }
+body.nav-collapsed .nav-rail-logo { height: 28px; }
+body.nav-collapsed .nav-item { justify-content: center; padding: 9px 0; }
+body.nav-collapsed .nav-item-icon { width: auto; }
+body.nav-collapsed .nav-item .badge-count {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    min-width: 15px;
+    height: 15px;
+    font-size: 0.62rem;
+}
+body.nav-collapsed .nav-rail-collapse { justify-content: center; padding: 10px 0; }
+body.nav-collapsed .nav-group { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+body.nav-collapsed .nav-group:last-child { border-bottom: none; }
+
+/* Tooltip con el nombre de la vista cuando el rail está colapsado */
+body.nav-collapsed .nav-item:hover::after {
+    content: attr(data-title);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--navy-deep);
+    color: white;
+    padding: 5px 10px;
+    border-radius: var(--r-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: var(--shadow-2);
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* ── Columna de chats: visible solo en vistas de conversaciones ── */
+body:not(.chats-mode) .sidebar { display: none; }
+
+.chatcol-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: white;
+    text-align: left;
+    margin-bottom: 10px;
+    padding: 0 10px;
+}
+
+/* ── Responsive básico ──
+   En pantallas medianas el rail arranca colapsado vía JS (nav.js). */
+@media (max-width: 900px) {
+    .nav-rail { position: fixed; left: 0; top: 0; bottom: 0; box-shadow: var(--shadow-3); }
+    body { padding-left: var(--nav-rail-w-collapsed); }
+}

@@ -10,19 +10,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="{{ static_v('css/tokens.css') }}">
     <link rel="stylesheet" href="{{ static_v('css/legacy.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/base.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/layout.css') }}">
 </head>
 
-<body>
+<body class="chats-mode">
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <!-- Logo - always visible -->
-            <img src="https://proalto.co/logo.png" alt="ProAlto" class="sidebar-logo">
-            <div class="sidebar-brand-title">Monitor Admin</div>
-            <!-- Online Presence - Collapsible -->
-            <div style="position: relative; margin-bottom: 10px;">
+    <!-- Nav rail: navegación principal por secciones -->
+    <nav class="nav-rail" id="navRail">
+        <div class="nav-rail-header">
+            <img src="https://proalto.co/logo.png" alt="ProAlto" class="nav-rail-logo">
+            <div class="nav-rail-title">Monitor Admin</div>
+            <!-- Presencia de asesores -->
+            <div class="nav-presence">
                 <button type="button" id="btnOnlineToggle" onclick="toggleOnlinePanel()" class="online-btn">
                     <span id="onlineCount">🟢 Cargando...</span>
                     <span id="onlineChevron" style="font-size: 0.65rem; opacity: 0.7;">▾</span>
@@ -32,21 +34,52 @@
                     <button type="button" style="width: 100%; padding: 4px 8px; font-size: 0.75rem; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;" onclick="showAdvisorModal(() => { sendHeartbeat(); fetchList(); toggleOnlinePanel(); })">Cambiar Mi Nombre</button>
                 </div>
             </div>
+        </div>
+        <div class="nav-rail-scroll">
+            <div class="nav-group">
+                <div class="nav-group-label">Chats</div>
+                <button type="button" class="nav-item active" data-view="activas" data-title="Clientes" style="--accent:#fec05c" onclick="switchTab('activas')"><span class="nav-item-icon">💬</span><span class="nav-item-label">Clientes</span></button>
+                <button type="button" class="nav-item" data-view="prospectos" data-title="Leads" style="--accent:#0891b2" onclick="switchTab('prospectos')"><span class="nav-item-icon">🎯</span><span class="nav-item-label">Leads</span></button>
+                <button type="button" class="nav-item" data-view="renovadoschat" data-title="Renovados" style="--accent:#0284c7" onclick="switchTab('renovadoschat')"><span class="nav-item-icon">🔄</span><span class="nav-item-label">Renovados</span></button>
+                <button type="button" class="nav-item" data-view="anticiposchat" data-title="Anticipos" style="--accent:#7c3aed" onclick="switchTab('anticiposchat')"><span class="nav-item-icon">💰</span><span class="nav-item-label">Anticipos</span></button>
+                <button type="button" class="nav-item" data-view="archivadas" data-title="Archivadas" style="--accent:#94a3b8" onclick="switchTab('archivadas')"><span class="nav-item-icon">🗂️</span><span class="nav-item-label">Archivadas</span></button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-label">Campañas</div>
+                <button type="button" class="nav-item" data-view="leads" data-title="Campaña Leads" style="--accent:#059669" onclick="switchTab('leads')"><span class="nav-item-icon">🎯</span><span class="nav-item-label">Leads</span></button>
+                <button type="button" class="nav-item" data-view="renovados" data-title="Campaña Renovados" style="--accent:#0284c7" onclick="switchTab('renovados')"><span class="nav-item-icon">🔄</span><span class="nav-item-label">Renovados</span></button>
+                <button type="button" class="nav-item" data-view="anticipos" data-title="Campaña Anticipos" style="--accent:#7c3aed" onclick="switchTab('anticipos')"><span class="nav-item-icon">💰</span><span class="nav-item-label">Anticipos</span></button>
+                <button type="button" class="nav-item" data-view="envios" data-title="Aprobados" style="--accent:#4f46e5" onclick="switchTab('envios')"><span class="nav-item-icon">⚡</span><span class="nav-item-label">Aprobados</span></button>
+                <button type="button" class="nav-item" data-view="amarillo" data-title="PandaDoc" style="--accent:#d97706" onclick="switchTab('amarillo')"><span class="nav-item-icon">🟡</span><span class="nav-item-label">PandaDoc</span></button>
+                <button type="button" class="nav-item" data-view="negados" data-title="Negados" style="--accent:#6b7280" onclick="switchTab('negados')"><span class="nav-item-icon">🚫</span><span class="nav-item-label">Negados</span></button>
+                <button type="button" class="nav-item" data-view="actualizacion" data-title="Actualizar Datos" style="--accent:#9333ea" onclick="switchTab('actualizacion')"><span class="nav-item-icon">📝</span><span class="nav-item-label">Actualizar Datos</span></button>
+                <button type="button" class="nav-item" data-view="rojo" data-title="Falta Documento" style="--accent:#dc2626" onclick="switchTab('rojo')"><span class="nav-item-icon">🔴</span><span class="nav-item-label">Falta Doc</span></button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-label">Gestión</div>
+                <button type="button" class="nav-item" data-view="llmrequests" data-title="Solicitudes LLM" style="--accent:#7c3aed" onclick="switchTab('llmrequests')"><span class="nav-item-icon">🤖</span><span class="nav-item-label">Solicitudes</span><span id="badgeLLMPendientes" class="badge-count" style="display:none;">0</span></button>
+                <button type="button" class="nav-item" data-view="docrequests" data-title="Paz y Salvos" style="--accent:#2563eb" onclick="switchTab('docrequests')"><span class="nav-item-icon">📄</span><span class="nav-item-label">Paz y Salvos</span><span id="badgeDocReqPendientes" class="badge-count" style="display:none;">0</span></button>
+                <button type="button" class="nav-item" data-view="docrecibidos" data-title="Docs Recibidos" style="--accent:#b45309" onclick="switchTab('docrecibidos')"><span class="nav-item-icon">📥</span><span class="nav-item-label">Docs Recibidos</span><span id="badgeDocsPendientes" class="badge-count" style="display:none;">0</span></button>
+                <button type="button" class="nav-item" data-view="correos" data-title="Correos" style="--accent:#3b82f6" onclick="switchTab('correos')"><span class="nav-item-icon">📧</span><span class="nav-item-label">Correos</span></button>
+            </div>
+            <div class="nav-group">
+                <div class="nav-group-label">Análisis</div>
+                <button type="button" class="nav-item" data-view="analytics" data-title="Analytics" style="--accent:#0891b2" onclick="switchTab('analytics')"><span class="nav-item-icon">📊</span><span class="nav-item-label">Analytics</span></button>
+            </div>
+        </div>
+        <button type="button" class="nav-rail-collapse" onclick="toggleNavRail()" title="Expandir/colapsar menú"><span class="nav-item-icon">⮜⮞</span><span class="nav-item-label">Colapsar</span></button>
+    </nav>
 
-            <div class="search-container" style="display: flex; gap: 8px;">
+    <!-- Columna de conversaciones (visible solo en la sección Chats) -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="chatcol-title" id="chatColTitle">Clientes</div>
+            <div class="search-container" style="display: flex; gap: 8px; padding: 0;">
                 <input type="text" id="searchInput" placeholder="Buscar teléfono..." oninput="filterList()"
                     style="flex: 1;">
                 <button class="btn btn-primary" onclick="showNewChatModal()" title="Nueva Conversación"
                     style="padding: 8px 12px; font-size: 1.2rem;">+</button>
             </div>
-        </div>
-        <!-- Chat filter: Activas / Archivadas -->
-        <div class="chat-filter-bar">
-            <button type="button" class="chat-filter-btn active-tab" id="tabActivas" onclick="switchTab('activas')">Clientes</button>
-            <button type="button" class="chat-filter-btn" id="tabProspectos" onclick="switchTab('prospectos')">🎯 Leads</button>
-            <button type="button" class="chat-filter-btn" id="tabRenovadosChat" onclick="switchTab('renovadoschat')">🔄 Renovados</button>
-            <button type="button" class="chat-filter-btn" id="tabAnticiposChat" onclick="switchTab('anticiposchat')" style="flex: 1 1 50%;">💰 Anticipos</button>
-            <button type="button" class="chat-filter-btn" id="tabArchivadas" onclick="switchTab('archivadas')" style="flex: 1 1 50%;">Archivadas</button>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->
@@ -56,40 +89,8 @@
         <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
     </div>
 
-    <!-- Content wrapper: tool nav bar + all content panels -->
+    <!-- Content wrapper: all content panels -->
     <div class="content-wrapper">
-        <div class="tool-nav">
-            <span class="tool-nav-label">Herramientas</span>
-            <button type="button" class="tool-nav-btn" id="tabLeads" onclick="switchTab('leads')">🎯 Leads</button>
-            <button type="button" class="tool-nav-btn" id="tabRenovados" onclick="switchTab('renovados')">🔄 Renovados</button>
-            <button type="button" class="tool-nav-btn" id="tabAnticipos" onclick="switchTab('anticipos')">💰 Anticipos</button>
-            <!-- Grupo: Comunicaciones -->
-            <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoComunicaciones" onclick="toggleNavGroup(this)">
-                    🟢 Comunicaciones <span class="tool-nav-group-chevron">▾</span>
-                </button>
-                <div class="tool-nav-dropdown">
-                    <button type="button" class="tool-nav-dropdown-btn" id="tabEnvios" onclick="switchTab('envios')">⚡ Envíos</button>
-                    <button type="button" class="tool-nav-dropdown-btn" id="tabCorreos" onclick="switchTab('correos')">📧 Correos</button>
-                </div>
-            </div>
-            <button type="button" class="tool-nav-btn" id="tabAmarillo" onclick="switchTab('amarillo')">🟡 PandaDoc</button>
-            <button type="button" class="tool-nav-btn" id="tabNegados" onclick="switchTab('negados')">🚫 Negados</button>
-            <button type="button" class="tool-nav-btn" id="tabActualizacion" onclick="switchTab('actualizacion')">📝 Actualizar Datos</button>
-            <!-- Grupo: Documentos -->
-            <div class="tool-nav-group">
-                <button type="button" class="tool-nav-group-btn" id="tabGrupoDocumentos" onclick="toggleNavGroup(this)">
-                    📄 Documentos <span class="tool-nav-group-chevron">▾</span>
-                </button>
-                <div class="tool-nav-dropdown">
-                    <button type="button" class="tool-nav-dropdown-btn" id="tabRojo" onclick="switchTab('rojo')">🔴 Falta Doc</button>
-                    <button type="button" class="tool-nav-dropdown-btn" id="tabDocRecibidos" onclick="switchTab('docrecibidos')">📥 Docs Recibidos <span id="badgeDocsPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
-                </div>
-            </div>
-            <button type="button" class="tool-nav-btn" id="tabLLMRequests" onclick="switchTab('llmrequests')">🤖 Solicitudes <span id="badgeLLMPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
-            <button type="button" class="tool-nav-btn" id="tabDocRequests" onclick="switchTab('docrequests')">📄 Paz y Salvos <span id="badgeDocReqPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
-            <button type="button" class="tool-nav-btn" id="tabAnalytics" onclick="switchTab('analytics')">📊 Analytics</button>
-        </div>
         <div class="content-area">
 
     <!-- Main Chat -->
@@ -1330,6 +1331,7 @@
         </div>
     </div>
 
+    <script src="{{ static_v('js/nav.js') }}"></script>
     <script src="{{ static_v('js/legacy.js') }}"></script>
 </body>
 

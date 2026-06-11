@@ -1,0 +1,47 @@
+/* ── Design tokens del panel admin ProAlto ─────────────────────────
+   Variables compartidas por todas las vistas. legacy.css aún define
+   las suyas (:root) para el código viejo; estas son la base del
+   sistema nuevo y conviven sin conflicto. */
+:root {
+    /* Identidad ProAlto */
+    --gold: #fec05c;
+    --gold-soft: #fffbeb;
+    --navy: #283e52;
+    --navy-deep: #1e3044;
+
+    /* Semánticos */
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --info: #0284c7;
+
+    /* Neutrales */
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --border-c: #e2e8f0;
+    --text: #0f172a;
+    --text-muted-c: #64748b;
+
+    /* Espaciado */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+
+    /* Radios */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-full: 999px;
+
+    /* Sombras */
+    --shadow-1: 0 1px 3px rgba(15, 23, 42, 0.08);
+    --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.10);
+    --shadow-3: 0 20px 60px rgba(15, 23, 42, 0.30);
+
+    /* Dimensiones del shell */
+    --nav-rail-w: 232px;
+    --nav-rail-w-collapsed: 64px;
+}

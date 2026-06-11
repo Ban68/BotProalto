@@ -190,201 +190,58 @@
             }
         });
 
+        // Registro de vistas: panel a mostrar, si usa la columna de chats
+        // y el fetch inicial al entrar. El nav lateral (nav.js) marca el
+        // item activo vía updateNavActive().
+        const VIEWS = {
+            activas:       { panel: 'emptyState',         chat: true,  title: 'Clientes',   onEnter: () => fetchList() },
+            prospectos:    { panel: 'emptyState',         chat: true,  title: 'Leads',      onEnter: () => fetchList() },
+            renovadoschat: { panel: 'emptyState',         chat: true,  title: 'Renovados',  onEnter: () => fetchList() },
+            anticiposchat: { panel: 'emptyState',         chat: true,  title: 'Anticipos',  onEnter: () => fetchList() },
+            archivadas:    { panel: 'emptyState',         chat: true,  title: 'Archivadas', onEnter: () => fetchArchivedList() },
+            leads:         { panel: 'leadsState',         chat: false, onEnter: () => fetchLeadMetrics() },
+            renovados:     { panel: 'renovadosState',     chat: false, onEnter: () => fetchRenovadoMetrics() },
+            anticipos:     { panel: 'anticiposState',     chat: false, onEnter: () => fetchAnticiposMetrics() },
+            envios:        { panel: 'enviosState',        chat: false, onEnter: () => fetchPendingEnvios() },
+            correos:       { panel: 'correosState',       chat: false, onEnter: () => fetchCapturedEmails() },
+            amarillo:      { panel: 'amarilloState',      chat: false, onEnter: () => { fetchPendingAmarillo(); fetchCapturedCuentas(); } },
+            negados:       { panel: 'negadosState',       chat: false, onEnter: () => fetchPendingNegados() },
+            actualizacion: { panel: 'actualizacionState', chat: false, onEnter: () => fetchPendingActualizacion() },
+            rojo:          { panel: 'rojoState',          chat: false, onEnter: () => fetchPendingRojo() },
+            docrecibidos:  { panel: 'docRecibidosState',  chat: false, onEnter: () => fetchReceivedDocuments() },
+            llmrequests:   { panel: 'llmRequestsState',   chat: false, onEnter: () => fetchLLMRequests() },
+            docrequests:   { panel: 'docRequestsState',   chat: false, onEnter: () => fetchDocumentRequests() },
+            analytics:     { panel: 'analyticsState',     chat: false, onEnter: () => { initAnalyticsDates(); fetchAnalytics(); fetchAuditReports(); } },
+        };
+
         function switchTab(tab) {
+            const view = VIEWS[tab];
+            if (!view) return;
             currentTab = tab;
             currentActivePhone = null;
-            // Close any open nav group dropdowns
-            document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
-            document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'renovadoschat' || tab === 'anticiposchat' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'renovados' || tab === 'anticipos' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'docrequests' || tab === 'analytics') {
-                document.getElementById('emptyState').style.display = 'none';
-            }
+
+            // Mostrar solo el panel de la vista. mainChat se abre al
+            // seleccionar una conversación, nunca al cambiar de vista.
             document.getElementById('mainChat').style.display = 'none';
-            
-            const enviosState = document.getElementById('enviosState');
-            if(enviosState) {
-                enviosState.style.display = tab === 'envios' ? 'flex' : 'none';
-                enviosState.style.flexDirection = 'column';
-            }
-
-            const leadsState = document.getElementById('leadsState');
-            if(leadsState) {
-                leadsState.style.display = tab === 'leads' ? 'flex' : 'none';
-                leadsState.style.flexDirection = 'column';
-            }
-
-            const renovadosState = document.getElementById('renovadosState');
-            if(renovadosState) {
-                renovadosState.style.display = tab === 'renovados' ? 'flex' : 'none';
-                renovadosState.style.flexDirection = 'column';
-            }
-
-            const anticiposState = document.getElementById('anticiposState');
-            if(anticiposState) {
-                anticiposState.style.display = tab === 'anticipos' ? 'flex' : 'none';
-                anticiposState.style.flexDirection = 'column';
-            }
-
-            const correosState = document.getElementById('correosState');
-            if(correosState) {
-                correosState.style.display = tab === 'correos' ? 'flex' : 'none';
-                correosState.style.flexDirection = 'column';
-            }
-
-            // Update tab styles
-            document.getElementById('tabActivas').classList.toggle('active-tab', tab === 'activas');
-            document.getElementById('tabProspectos').classList.toggle('active-tab', tab === 'prospectos');
-            document.getElementById('tabRenovadosChat').classList.toggle('active-tab', tab === 'renovadoschat');
-            document.getElementById('tabAnticiposChat').classList.toggle('active-tab', tab === 'anticiposchat');
-            document.getElementById('tabArchivadas').classList.toggle('active-tab', tab === 'archivadas');
-            
-            // Tool nav button active states (inactive → clear inline styles so CSS takes over)
-            const toolColors = {
-                tabEnvios:      { active: '#4f46e5', tab: 'envios',       isDropdown: true  },
-                tabLeads:       { active: '#059669', tab: 'leads',        isDropdown: false },
-                tabRenovados:   { active: '#0284c7', tab: 'renovados',    isDropdown: false },
-                tabAnticipos:   { active: '#7c3aed', tab: 'anticipos',    isDropdown: false },
-                tabCorreos:     { active: '#3b82f6', tab: 'correos',      isDropdown: true  },
-                tabAmarillo:    { active: '#d97706', tab: 'amarillo',     isDropdown: false },
-                tabNegados:     { active: '#6b7280', tab: 'negados',      isDropdown: false },
-                tabActualizacion:{ active: '#9333ea', tab: 'actualizacion', isDropdown: false },
-                tabRojo:        { active: '#dc2626', tab: 'rojo',         isDropdown: true  },
-                tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos', isDropdown: true  },
-                tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests',  isDropdown: false },
-                tabDocRequests: { active: '#2563eb', tab: 'docrequests',  isDropdown: false },
-                tabAnalytics:   { active: '#0891b2', tab: 'analytics',    isDropdown: false },
-            };
-            for (const [id, cfg] of Object.entries(toolColors)) {
-                const el = document.getElementById(id);
+            for (const cfg of Object.values(VIEWS)) {
+                const el = document.getElementById(cfg.panel);
                 if (!el) continue;
-                el.classList.toggle('active-tab', tab === cfg.tab);
-                if (tab === cfg.tab) {
-                    if (cfg.isDropdown) {
-                        el.style.background  = cfg.active + '18';
-                        el.style.borderLeft  = `3px solid ${cfg.active}`;
-                        el.style.color       = cfg.active;
-                        el.style.border      = '';
-                    } else {
-                        el.style.background  = cfg.active;
-                        el.style.border      = `1px solid ${cfg.active}`;
-                        el.style.color       = 'white';
-                    }
-                } else {
-                    el.style.background  = '';
-                    el.style.border      = '';
-                    el.style.borderLeft  = '';
-                    el.style.color       = '';
+                if (cfg.panel === view.panel) {
+                    el.style.display = 'flex';
+                    if (cfg.panel !== 'emptyState') el.style.flexDirection = 'column';
+                } else if (cfg.panel !== view.panel) {
+                    el.style.display = 'none';
                 }
             }
 
-            // Update group button active states
-            const grupoComEl = document.getElementById('tabGrupoComunicaciones');
-            if (grupoComEl) {
-                const comActive = (tab === 'envios' || tab === 'correos');
-                const comColor  = '#16a34a'; // verde estado_verde
-                grupoComEl.classList.toggle('active-group', comActive);
-                grupoComEl.style.color            = comActive ? comColor : '';
-                grupoComEl.style.borderBottomColor = comActive ? comColor : '';
-                grupoComEl.style.fontWeight        = comActive ? '700' : '';
-            }
-            const grupoDocEl = document.getElementById('tabGrupoDocumentos');
-            if (grupoDocEl) {
-                const docActive = (tab === 'rojo' || tab === 'docrecibidos');
-                const docColor  = tab === 'rojo' ? '#dc2626' : '#b45309';
-                grupoDocEl.classList.toggle('active-group', docActive);
-                grupoDocEl.style.color            = docActive ? docColor : '';
-                grupoDocEl.style.borderBottomColor = docActive ? docColor : '';
-                grupoDocEl.style.fontWeight        = docActive ? '700' : '';
-            }
+            // La columna de conversaciones solo aparece en vistas de chat
+            document.body.classList.toggle('chats-mode', !!view.chat);
+            const titleEl = document.getElementById('chatColTitle');
+            if (titleEl && view.chat) titleEl.textContent = view.title || '';
 
-            const amarilloState = document.getElementById('amarilloState');
-            if(amarilloState) {
-                amarilloState.style.display = tab === 'amarillo' ? 'flex' : 'none';
-                amarilloState.style.flexDirection = 'column';
-            }
+            if (typeof updateNavActive === 'function') updateNavActive(tab);
 
-            const negadosState = document.getElementById('negadosState');
-            if(negadosState) {
-                negadosState.style.display = tab === 'negados' ? 'flex' : 'none';
-                negadosState.style.flexDirection = 'column';
-            }
-
-            const actualizacionState = document.getElementById('actualizacionState');
-            if(actualizacionState) {
-                actualizacionState.style.display = tab === 'actualizacion' ? 'flex' : 'none';
-                actualizacionState.style.flexDirection = 'column';
-            }
-
-            const rojoState = document.getElementById('rojoState');
-            if(rojoState) {
-                rojoState.style.display = tab === 'rojo' ? 'flex' : 'none';
-                rojoState.style.flexDirection = 'column';
-            }
-
-            const docRecibidosState = document.getElementById('docRecibidosState');
-            if(docRecibidosState) {
-                docRecibidosState.style.display = tab === 'docrecibidos' ? 'flex' : 'none';
-                docRecibidosState.style.flexDirection = 'column';
-            }
-
-            const llmRequestsState = document.getElementById('llmRequestsState');
-            if(llmRequestsState) {
-                llmRequestsState.style.display = tab === 'llmrequests' ? 'flex' : 'none';
-                llmRequestsState.style.flexDirection = 'column';
-            }
-
-            const docRequestsState = document.getElementById('docRequestsState');
-            if(docRequestsState) {
-                docRequestsState.style.display = tab === 'docrequests' ? 'flex' : 'none';
-                docRequestsState.style.flexDirection = 'column';
-            }
-
-            const analyticsState = document.getElementById('analyticsState');
-            if(analyticsState) {
-                analyticsState.style.display = tab === 'analytics' ? 'flex' : 'none';
-                analyticsState.style.flexDirection = 'column';
-            }
-
-            if (tab === 'activas') {
-                fetchList();
-            } else if (tab === 'prospectos') {
-                fetchList();
-            } else if (tab === 'renovadoschat') {
-                fetchList();
-            } else if (tab === 'anticiposchat') {
-                fetchList();
-            } else if (tab === 'leads') {
-                fetchLeadMetrics();
-            } else if (tab === 'renovados') {
-                fetchRenovadoMetrics();
-            } else if (tab === 'anticipos') {
-                fetchAnticiposMetrics();
-            } else if (tab === 'archivadas') {
-                fetchArchivedList();
-            } else if (tab === 'envios') {
-                fetchPendingEnvios();
-            } else if (tab === 'correos') {
-                fetchCapturedEmails();
-            } else if (tab === 'amarillo') {
-                fetchPendingAmarillo();
-                fetchCapturedCuentas();
-            } else if (tab === 'negados') {
-                fetchPendingNegados();
-            } else if (tab === 'actualizacion') {
-                fetchPendingActualizacion();
-            } else if (tab === 'rojo') {
-                fetchPendingRojo();
-            } else if (tab === 'docrecibidos') {
-                fetchReceivedDocuments();
-            } else if (tab === 'llmrequests') {
-                fetchLLMRequests();
-            } else if (tab === 'docrequests') {
-                fetchDocumentRequests();
-            } else if (tab === 'analytics') {
-                initAnalyticsDates();
-                fetchAnalytics();
-                fetchAuditReports();
-            }
+            view.onEnter();
         }
 
         let capturedEmailsData = [];
@@ -1320,7 +1177,7 @@
 
                     const badge = document.getElementById('badgeDocsPendientes');
                     if (pendientes > 0) {
-                        badge.style.display = 'inline';
+                        badge.style.display = 'inline-flex';
                         badge.innerText = pendientes;
                     } else {
                         badge.style.display = 'none';
@@ -1537,7 +1394,7 @@
                 document.getElementById('llmReqCount').innerText = items.length;
                 document.getElementById('llmReqPendingCount').innerText = pending;
                 const badge = document.getElementById('badgeLLMPendientes');
-                if (badge) { badge.style.display = pending > 0 ? 'inline' : 'none'; badge.innerText = pending; }
+                if (badge) { badge.style.display = pending > 0 ? 'inline-flex' : 'none'; badge.innerText = pending; }
                 if (items.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" style="padding:15px;text-align:center;color:var(--text-muted);">No hay solicitudes registradas.</td></tr>';
                     return;
@@ -1646,7 +1503,7 @@
             const badge = document.getElementById('badgeDocReqPendientes');
             if (!badge) return;
             if (pendingCount === null || pendingCount === undefined) return;
-            badge.style.display = pendingCount > 0 ? 'inline' : 'none';
+            badge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
             badge.innerText = pendingCount;
         }
 
@@ -3491,7 +3348,7 @@
         setInterval(sendHeartbeat, 10000);
 
         // Initial setup
-        fetchList();
+        switchTab('activas');
 
         // Enforce advisor name on load
         if (!advisorName) {
