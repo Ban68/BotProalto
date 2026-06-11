@@ -1302,11 +1302,20 @@ class FlowHandler:
                 "Dirección y teléfono de contacto."
             )
 
-        # ── Nivel 2C — "Paz y Salvo": aún no existe un flujo estructurado ──
-        # TODO: cuando exista una integración/flujo de Paz y Salvo, reemplazar
-        # este mensaje provisional por el enrutamiento al flujo real.
+        # ── Nivel 2C — "Paz y Salvo": registro manual mientras no exista
+        # generación automática. La solicitud queda en llm_requests (tipo
+        # paz_salvo) y los asesores la gestionan desde el panel de admin
+        # (pestaña Solicitudes), igual que las capturadas por el agente LLM.
+        # TODO: cuando exista la generación automática del paz y salvo,
+        # reemplazar este registro por el envío directo del documento.
         elif btn_id == "cred_paz":
             set_user_state(user_phone, "active")
+            from src.conversation_log import save_llm_request
+            from src.notifications import notify_admin_llm_request
+            client_name = get_client_name(user_phone)
+            save_llm_request(user_phone, client_name, "paz_salvo",
+                             "Solicitado desde el menú (botón Paz y Salvo)")
+            notify_admin_llm_request(user_phone, "paz_salvo")
             WhatsAppService.send_message(
                 user_phone,
                 "Estamos generando tu paz y salvo, un asesor te lo enviará en breve."
