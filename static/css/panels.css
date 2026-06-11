@@ -183,3 +183,106 @@
    populatePanelEmpresaFilter en legacy.js con estilos inline; esta
    regla cubre el hover una vez se migre) */
 .empresa-drop label:hover { background: var(--bg); }
+
+/* ── Campañas Familia B (paste/upload + métricas) ── */
+.pcmp-metrics { overflow: hidden; margin-bottom: var(--sp-6); }
+
+.pcmp-metrics-head {
+    background: var(--accent);
+    color: white;
+    padding: 11px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+.pcmp-metrics-head button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 4px 12px;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-family: inherit;
+}
+.pcmp-metrics-head button:hover { background: rgba(255, 255, 255, 0.3); }
+
+.pcmp-cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border-c);
+}
+.pcmp-card { background: var(--surface); padding: 14px 8px; text-align: center; }
+.pcmp-card-value { font-size: 1.8rem; font-weight: 700; }
+.pcmp-card-label { font-size: 0.72rem; color: var(--text-muted-c); margin-top: 2px; }
+.pcmp-card-pct { font-size: 0.78rem; font-weight: 600; }
+
+.pcmp-table-block { background: var(--surface); padding: 14px 16px; }
+.pcmp-table-title { font-size: 0.85rem; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
+.pcmp-table-wrap {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-c);
+    border-radius: var(--r-sm);
+}
+.pcmp-table { font-size: 0.82rem; }
+.pcmp-table thead { background: var(--bg); }
+.pcmp-table th { color: var(--text); font-size: 0.8rem; }
+.pcmp-mono { font-family: monospace; font-size: 0.79rem; }
+
+.pcmp-chat-btn {
+    background: var(--bg);
+    border: 1px solid var(--border-c);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--accent);
+    font-family: inherit;
+    font-weight: 600;
+}
+.pcmp-chat-btn:hover { border-color: var(--accent); }
+
+.pcmp-form-btn {
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: inherit;
+}
+.pcmp-form-btn.is-done { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
+.pcmp-form-btn.is-pending { background: #fef3c7; border: 1px solid #fcd34d; color: #78350f; }
+
+.pcmp-textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border-c);
+    font-family: monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+    margin: var(--sp-2) 0;
+    box-sizing: border-box;
+}
+.pcmp-textarea:focus { outline: none; border-color: var(--accent); }
+
+.pcmp-force {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted-c);
+    margin-bottom: var(--sp-3);
+    cursor: pointer;
+}
+.pcmp-force input { width: 16px; height: 16px; cursor: pointer; }
+
+.pcmp-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-3);
+}
+.pcmp-status { font-size: 0.9rem; color: var(--text-muted-c); }
