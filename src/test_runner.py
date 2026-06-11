@@ -218,6 +218,14 @@ def persist_outbound(
             text = f"[REGISTRAR_SOLICITUD:{item.get('tipo', '')}] {item.get('detalle', '')}"
             role = 'notice'
             signals_acc.append(f"REGISTRAR_SOLICITUD:{item.get('tipo', '')}")
+        elif item_type == 'document_request_recorded':
+            text = (f"[SOLICITUD_DOCUMENTO:{item.get('doc_type', '')}] "
+                    f"(origen: {item.get('source', '')}) {item.get('detalle', '')}")
+            role = 'notice'
+            # Cuando viene del agente LLM la origina la señal REGISTRAR_SOLICITUD;
+            # se registra para que la validación de señales siga funcionando.
+            if item.get('source') == 'llm':
+                signals_acc.append(f"REGISTRAR_SOLICITUD:{item.get('doc_type', '')}")
         else:
             text = str(item)
             role = 'notice'
@@ -233,6 +241,7 @@ def persist_outbound(
             'msg_type': item.get('msg_type', item_type if item_type in (
                 'text', 'button', 'image', 'document', 'list', 'template',
                 'admin_notification_suppressed', 'llm_request_recorded',
+                'document_request_recorded',
             ) else 'text'),
             'signals': item_signals or None,
             'latency_ms': (total_latency_ms if first_assistant and role == 'assistant' else None),

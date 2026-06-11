@@ -82,6 +82,31 @@ def notify_admin_llm_request(user_phone: str, tipo: str) -> None:
     notify_admins(msg)
 
 
+DOC_TYPE_LABELS = {
+    "paz_salvo": "Paz y salvo",
+}
+
+
+def notify_admin_document_request(user_phone: str, doc_type: str, source: str = "menu") -> None:
+    """Notify admins that a client requested a document (paz y salvo, etc.)."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "document_request",
+            "doc_type": doc_type,
+            "body": f"Notificación a admin suprimida: solicitud de documento {doc_type}.",
+        })
+        return
+    label = DOC_TYPE_LABELS.get(doc_type, doc_type)
+    origen = "el menú del bot" if source == "menu" else "el agente LLM"
+    msg = (
+        f"📄 *Nueva Solicitud de Documento*\n\n"
+        f"El cliente {user_phone} solicitó un *{label}* desde {origen}.\n"
+        f"Gestiónala en el panel (pestaña Paz y Salvos): https://bot.proalto.co/admin"
+    )
+    notify_admins(msg)
+
+
 def notify_admin_error(user_phone: str, error_msg: str) -> None:
     """Notify admins that a system error occurred while interacting with a user."""
     if test_mode.is_test_phone(user_phone):

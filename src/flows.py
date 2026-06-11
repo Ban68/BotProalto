@@ -148,6 +148,27 @@ def _process_llm_signals(llm_response: str) -> tuple:
     return clean, signals
 
 
+# Tipos de REGISTRAR_SOLICITUD que son solicitudes de documentos: van al panel
+# de documentos (document_requests), separado de las solicitudes LLM para que
+# no se pierdan. Hoy solo paz y salvo; agregar aquí futuros tipos de documento.
+DOC_REQUEST_TIPOS = {"paz_salvo"}
+
+
+def registrar_solicitud_llm(user_phone: str, client_name: str, tipo: str, detalle: str):
+    """Enruta una señal REGISTRAR_SOLICITUD del agente LLM: los tipos de
+    documento van a document_requests, el resto a llm_requests."""
+    if tipo in DOC_REQUEST_TIPOS:
+        from src.conversation_log import save_document_request
+        from src.notifications import notify_admin_document_request
+        save_document_request(user_phone, client_name, tipo, source="llm", detalle=detalle)
+        notify_admin_document_request(user_phone, tipo, source="llm")
+    else:
+        from src.conversation_log import save_llm_request
+        from src.notifications import notify_admin_llm_request
+        save_llm_request(user_phone, client_name, tipo, detalle)
+        notify_admin_llm_request(user_phone, tipo)
+
+
 def _launch_llm_agent(user_phone: str, text: str):
     """
     Safe launcher for LLM agent. Deduplicates rapid messages from the same
@@ -233,10 +254,7 @@ def _handle_llm_agent(user_phone: str, text: str):
                 WhatsAppService.send_message(user_phone, human_msg, msg_type=_LLM_MSG_TYPE)
 
             if "registrar_solicitud" in signals:
-                from src.conversation_log import save_llm_request
-                from src.notifications import notify_admin_llm_request
-                save_llm_request(user_phone, client_name, signals["registrar_solicitud"], text)
-                notify_admin_llm_request(user_phone, signals["registrar_solicitud"])
+                registrar_solicitud_llm(user_phone, client_name, signals["registrar_solicitud"], text)
 
             if signals.get("hablar_asesor"):
                 set_agent_mode(user_phone, "agent")
@@ -1302,11 +1320,19 @@ class FlowHandler:
                 "Dirección y teléfono de contacto."
             )
 
-        # ── Nivel 2C — "Paz y Salvo": aún no existe un flujo estructurado ──
-        # TODO: cuando exista una integración/flujo de Paz y Salvo, reemplazar
-        # este mensaje provisional por el enrutamiento al flujo real.
+        # ── Nivel 2C — "Paz y Salvo": registro manual mientras no exista
+        # generación automática. La solicitud queda en document_requests y los
+        # asesores la gestionan desde el panel de admin (pestaña Paz y Salvos).
+        # TODO: cuando exista la generación automática del paz y salvo,
+        # reemplazar este registro por el envío directo del documento.
         elif btn_id == "cred_paz":
             set_user_state(user_phone, "active")
+            from src.conversation_log import save_document_request
+            from src.notifications import notify_admin_document_request
+            client_name = get_client_name(user_phone)
+            save_document_request(user_phone, client_name, "paz_salvo", source="menu",
+                                  detalle="Solicitado desde el menú (botón Paz y Salvo)")
+            notify_admin_document_request(user_phone, "paz_salvo", source="menu")
             WhatsAppService.send_message(
                 user_phone,
                 "Estamos generando tu paz y salvo, un asesor te lo enviará en breve."

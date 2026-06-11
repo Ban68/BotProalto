@@ -965,6 +965,7 @@
                 </div>
             </div>
             <button type="button" class="tool-nav-btn" id="tabLLMRequests" onclick="switchTab('llmrequests')">🤖 Solicitudes <span id="badgeLLMPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
+            <button type="button" class="tool-nav-btn" id="tabDocRequests" onclick="switchTab('docrequests')">📄 Paz y Salvos <span id="badgeDocReqPendientes" style="display:none; background:#ef4444; color:white; border-radius:999px; padding:1px 5px; font-size:0.72rem; margin-left:2px;">0</span></button>
             <button type="button" class="tool-nav-btn" id="tabAnalytics" onclick="switchTab('analytics')">📊 Analytics</button>
         </div>
         <div class="content-area">
@@ -1900,6 +1901,46 @@
         </div>
     </div>
 
+    <!-- Solicitudes de Documentos (Paz y Salvos) State -->
+    <div class="main-chat" id="docRequestsState" style="display: none; padding: 30px; overflow-y: auto; background: white;">
+        <h2 style="color: #2563eb; margin-bottom: 20px;">📄 Solicitudes de Documentos</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+            Clientes que solicitaron un paz y salvo u otro documento (desde el menú del bot o el agente LLM).
+            Marca cada solicitud como completada cuando el documento ya se le envió al cliente.
+        </p>
+        <div style="background: var(--bg-color); padding: 20px; border-radius: var(--radius); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">Total: <span id="docReqCount">0</span> &nbsp;|&nbsp; Pendientes: <span id="docReqPendingCount" style="color: #dc2626; font-weight: bold;">0</span></h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" id="docReqOnlyPending" onchange="fetchDocumentRequests()" style="cursor: pointer;">
+                        Solo pendientes
+                    </label>
+                    <button class="btn btn-outline-danger" onclick="fetchDocumentRequests()" style="border-color: #2563eb; color: #2563eb;">🔄 Actualizar</button>
+                </div>
+            </div>
+            <div style="max-height: 520px; overflow-y: auto; background: white; border: 1px solid var(--border); border-radius: 5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #2563eb; color: white; position: sticky; top: 0; z-index: 2;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left; white-space: nowrap;">Fecha</th>
+                            <th style="padding: 10px; text-align: left;">Teléfono</th>
+                            <th style="padding: 10px; text-align: left;">Cliente</th>
+                            <th style="padding: 10px; text-align: left;">Documento</th>
+                            <th style="padding: 10px; text-align: left;">Origen</th>
+                            <th style="padding: 10px; text-align: left;">Detalle</th>
+                            <th style="padding: 10px; text-align: center;">Estado</th>
+                            <th style="padding: 10px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="docReqTableBody">
+                        <tr><td colspan="8" style="padding: 15px; text-align: center; color: var(--text-muted);">Cargando solicitudes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Analytics Dashboard ─────────────────────────────────────── -->
     <div class="main-chat" id="analyticsState" style="display: none; flex-direction: column; overflow-y: auto; background: #f1f5f9;">
 
@@ -2366,7 +2407,7 @@
             // Close any open nav group dropdowns
             document.querySelectorAll('.tool-nav-group.open').forEach(el => el.classList.remove('open'));
             document.getElementById('emptyState').style.display = (tab === 'activas' || tab === 'prospectos' || tab === 'renovadoschat' || tab === 'anticiposchat' || tab === 'archivadas') ? 'flex' : 'none';
-            if (tab === 'envios' || tab === 'leads' || tab === 'renovados' || tab === 'anticipos' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'analytics') {
+            if (tab === 'envios' || tab === 'leads' || tab === 'renovados' || tab === 'anticipos' || tab === 'correos' || tab === 'rojo' || tab === 'docrecibidos' || tab === 'llmrequests' || tab === 'docrequests' || tab === 'analytics') {
                 document.getElementById('emptyState').style.display = 'none';
             }
             document.getElementById('mainChat').style.display = 'none';
@@ -2421,6 +2462,7 @@
                 tabRojo:        { active: '#dc2626', tab: 'rojo',         isDropdown: true  },
                 tabDocRecibidos:{ active: '#b45309', tab: 'docrecibidos', isDropdown: true  },
                 tabLLMRequests: { active: '#7c3aed', tab: 'llmrequests',  isDropdown: false },
+                tabDocRequests: { active: '#2563eb', tab: 'docrequests',  isDropdown: false },
                 tabAnalytics:   { active: '#0891b2', tab: 'analytics',    isDropdown: false },
             };
             for (const [id, cfg] of Object.entries(toolColors)) {
@@ -2502,6 +2544,12 @@
                 llmRequestsState.style.flexDirection = 'column';
             }
 
+            const docRequestsState = document.getElementById('docRequestsState');
+            if(docRequestsState) {
+                docRequestsState.style.display = tab === 'docrequests' ? 'flex' : 'none';
+                docRequestsState.style.flexDirection = 'column';
+            }
+
             const analyticsState = document.getElementById('analyticsState');
             if(analyticsState) {
                 analyticsState.style.display = tab === 'analytics' ? 'flex' : 'none';
@@ -2541,6 +2589,8 @@
                 fetchReceivedDocuments();
             } else if (tab === 'llmrequests') {
                 fetchLLMRequests();
+            } else if (tab === 'docrequests') {
+                fetchDocumentRequests();
             } else if (tab === 'analytics') {
                 initAnalyticsDates();
                 fetchAnalytics();
@@ -3745,6 +3795,117 @@
                 alert('Error de conexión.');
                 btn.disabled = false;
                 btn.innerText = '✓ Resolver';
+            }
+        }
+
+        // ── Solicitudes de Documentos (Paz y Salvos) ──────────────────
+        const DOC_TYPE_LABELS = {
+            paz_salvo: { label: 'Paz y salvo', color: '#2563eb' },
+        };
+        const DOC_SOURCE_LABELS = {
+            menu: 'Menú del bot',
+            llm:  'Agente LLM',
+        };
+
+        async function fetchDocumentRequests() {
+            const tbody = document.getElementById('docReqTableBody');
+            if (!tbody) return;
+            const onlyPending = document.getElementById('docReqOnlyPending')?.checked;
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:15px;text-align:center;color:var(--text-muted);">Cargando...</td></tr>';
+            try {
+                const url = '/admin/api/document-requests' + (onlyPending ? '?pending=true' : '');
+                const res = await fetch(url);
+                const data = await res.json();
+                const items = data.requests || [];
+                const pending = items.filter(r => !r.completed).length;
+                document.getElementById('docReqCount').innerText = items.length;
+                document.getElementById('docReqPendingCount').innerText = pending;
+                updateDocReqBadge(pending);
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="padding:15px;text-align:center;color:var(--text-muted);">No hay solicitudes registradas.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = items.map(r => {
+                    const tipoInfo = DOC_TYPE_LABELS[r.doc_type] || { label: r.doc_type, color: '#6b7280' };
+                    const badge = `<span style="background:${tipoInfo.color}1a;color:${tipoInfo.color};border:1px solid ${tipoInfo.color}44;padding:2px 8px;border-radius:999px;font-size:0.78rem;font-weight:600;white-space:nowrap;">${tipoInfo.label}</span>`;
+                    const fecha = r.created_at ? new Date(r.created_at).toLocaleString('es-CO', {dateStyle:'short', timeStyle:'short'}) : '';
+                    const origen = DOC_SOURCE_LABELS[r.source] || r.source || '';
+                    const detalle = (r.detalle || '').slice(0, 120) + ((r.detalle || '').length > 120 ? '…' : '');
+                    const estadoBadge = r.completed
+                        ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;font-size:0.8rem;">✓ Completado</span>`
+                        : `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:0.8rem;">Pendiente</span>`;
+                    const actionBtn = r.completed
+                        ? `<button onclick="reopenDocumentRequest('${r.id}', this)" style="background:none;color:#6b7280;border:1px solid #d1d5db;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;">↩ Reabrir</button>`
+                        : `<button onclick="completeDocumentRequest('${r.id}', this)" style="background:#16a34a;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Completado</button>`;
+                    return `<tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:10px;white-space:nowrap;font-size:0.85rem;">${fecha}</td>
+                        <td style="padding:10px;font-size:0.85rem;">${r.phone}</td>
+                        <td style="padding:10px;font-size:0.85rem;">${r.client_name || ''}</td>
+                        <td style="padding:10px;">${badge}</td>
+                        <td style="padding:10px;font-size:0.85rem;white-space:nowrap;">${origen}</td>
+                        <td style="padding:10px;font-size:0.85rem;color:var(--text-muted);max-width:260px;">${detalle}</td>
+                        <td style="padding:10px;text-align:center;">${estadoBadge}</td>
+                        <td style="padding:10px;text-align:center;">${actionBtn}</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:15px;text-align:center;color:#dc2626;">Error al cargar solicitudes.</td></tr>';
+            }
+        }
+
+        function updateDocReqBadge(pendingCount) {
+            const badge = document.getElementById('badgeDocReqPendientes');
+            if (!badge) return;
+            if (pendingCount === null || pendingCount === undefined) return;
+            badge.style.display = pendingCount > 0 ? 'inline' : 'none';
+            badge.innerText = pendingCount;
+        }
+
+        // Carga inicial del contador de pendientes para que la pestaña
+        // muestre el badge sin necesidad de abrirla.
+        (async () => {
+            try {
+                const res = await fetch('/admin/api/document-requests?pending=true');
+                const data = await res.json();
+                updateDocReqBadge((data.requests || []).length);
+            } catch (e) { /* sin conexión: el badge se actualiza al abrir la pestaña */ }
+        })();
+
+        async function completeDocumentRequest(id, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch(`/admin/api/document-requests/${id}/complete`, { method: 'POST' });
+                if (res.ok) {
+                    fetchDocumentRequests();
+                } else {
+                    alert('Error al marcar como completado.');
+                    btn.disabled = false;
+                    btn.innerText = '✓ Completado';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '✓ Completado';
+            }
+        }
+
+        async function reopenDocumentRequest(id, btn) {
+            btn.disabled = true;
+            btn.innerText = '...';
+            try {
+                const res = await fetch(`/admin/api/document-requests/${id}/reopen`, { method: 'POST' });
+                if (res.ok) {
+                    fetchDocumentRequests();
+                } else {
+                    alert('Error al reabrir la solicitud.');
+                    btn.disabled = false;
+                    btn.innerText = '↩ Reabrir';
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                btn.disabled = false;
+                btn.innerText = '↩ Reabrir';
             }
         }
 

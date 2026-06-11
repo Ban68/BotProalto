@@ -252,12 +252,12 @@ def api_llm_retrigger(phone):
             return jsonify({"error": "El LLM no pudo generar una respuesta"}), 500
 
         # Handle tags the same way as flows.py
-        from src.conversation_log import set_user_state, save_llm_request
-        from src.notifications import notify_admin_agent_request, notify_admin_llm_request
+        from src.conversation_log import set_user_state
+        from src.notifications import notify_admin_agent_request
         from src.flows import set_agent_mode as flows_set_agent_mode
 
         # Strip ALL signal tags and process each action
-        from src.flows import _process_llm_signals
+        from src.flows import _process_llm_signals, registrar_solicitud_llm
         human_msg, signals = _process_llm_signals(llm_response)
 
         if signals:
@@ -265,8 +265,7 @@ def api_llm_retrigger(phone):
                 WhatsAppService.send_message(phone, human_msg, msg_type=_LLM_MSG_TYPE)
 
             if "registrar_solicitud" in signals:
-                save_llm_request(phone, client_name, signals["registrar_solicitud"], last_user_msg)
-                notify_admin_llm_request(phone, signals["registrar_solicitud"])
+                registrar_solicitud_llm(phone, client_name, signals["registrar_solicitud"], last_user_msg)
 
             if signals.get("hablar_asesor"):
                 set_agent_mode(phone, "agent")
@@ -828,6 +827,43 @@ def api_resolve_llm_request(request_id):
     from src.conversation_log import resolve_llm_request
     try:
         resolve_llm_request(request_id)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/document-requests')
+@requires_auth
+def api_document_requests():
+    """Get list of document requests (paz y salvo, etc.)."""
+    only_pending = request.args.get('pending', 'false').lower() == 'true'
+    from src.conversation_log import get_document_requests
+    try:
+        items = get_document_requests(only_pending=only_pending)
+        return jsonify({"status": "ok", "requests": items})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/document-requests/<request_id>/complete', methods=['POST'])
+@requires_auth
+def api_complete_document_request(request_id):
+    """Mark a document request as completed (documento enviado al cliente)."""
+    from src.conversation_log import complete_document_request
+    try:
+        complete_document_request(request_id)
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/document-requests/<request_id>/reopen', methods=['POST'])
+@requires_auth
+def api_reopen_document_request(request_id):
+    """Revert a document request to pending (deshacer un completado por error)."""
+    from src.conversation_log import reopen_document_request
+    try:
+        reopen_document_request(request_id)
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
