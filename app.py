@@ -1,12 +1,46 @@
-from flask import Flask
+import hashlib
+import os
+
+from flask import Flask, url_for
 from config import Config
 from src.webhook import webhook_bp
 from src.admin import admin_bp
 from src.analytics_api import analytics_bp
 
+# Cache de hashes de estáticos: {filename: (mtime, hash8)}
+_static_hash_cache = {}
+
+
+def _static_file_hash(static_folder, filename):
+    path = os.path.join(static_folder, filename)
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    cached = _static_hash_cache.get(filename)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    with open(path, 'rb') as f:
+        digest = hashlib.md5(f.read()).hexdigest()[:8]
+    _static_hash_cache[filename] = (mtime, digest)
+    return digest
+
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Los módulos JS importados via `import` no llevan ?v=, así que forzamos
+    # revalidación por ETag (304 si no cambió) para que un deploy refresque
+    # CSS/JS sin Ctrl+F5.
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+    @app.template_global()
+    def static_v(filename):
+        """url_for('static') con ?v=<hash> para cache busting en deploys."""
+        digest = _static_file_hash(app.static_folder, filename)
+        if digest:
+            return url_for('static', filename=filename, v=digest)
+        return url_for('static', filename=filename)
 
     # Register Blueprints
     app.register_blueprint(webhook_bp)

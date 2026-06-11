@@ -14,6 +14,9 @@ test_*.py
 old_reqs.txt
 .claude/
 
+# Uploads de clientes en runtime (media de WhatsApp) — no subir al repo
+static/uploads/
+
 # Datos privados de clientes — no subir al repo
 context/conversaciones_bot.md
 chats_*.md
