@@ -188,6 +188,7 @@
             llmrequests:   { panel: 'llmRequestsState',   chat: false, onEnter: () => fetchLLMRequests() },
             docrequests:   { panel: 'docRequestsState',   chat: false, onEnter: () => fetchDocumentRequests() },
             analytics:     { panel: 'analyticsState',     chat: false, onEnter: () => { initAnalyticsDates(); fetchAnalytics(); fetchAuditReports(); } },
+            diagnostico:   { panel: 'diagnosticoState',   chat: false, onEnter: () => fetchDiagnostics() },
         };
 
         function switchTab(tab) {
@@ -1296,15 +1297,18 @@
                     const isOut = m.direction === 'outbound';
                     const isAgentMsg = isOut && (m.text.includes('Asesor ProAlto') || m.text.includes('👨‍💼'));
                     const isLlmMsg = isOut && m.type === 'llm';
+                    const isFailedMsg = isOut && m.type === 'failed';
 
                     let classes = `message ${isOut ? 'msg-outbound' : 'msg-inbound'}`;
                     if (isAgentMsg) classes += ' msg-agent';
                     if (isLlmMsg) classes += ' msg-llm';
+                    if (isFailedMsg) classes += ' msg-failed';
 
                     let text = (m.text || "").replace(/\n/g, '<br>');
 
                     const llmBadge = isLlmMsg ? `<span class="msg-llm-badge">🤖 Agente IA</span>` : '';
-                    let content = `<div>${llmBadge}${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>`;
+                    const failedBadge = isFailedMsg ? `<span class="msg-failed-badge">⚠️ No entregado — ver Diagnóstico</span>` : '';
+                    let content = `<div>${llmBadge}${failedBadge}${text || '<i>(Mensaje vacío o sin formato)</i>'}</div>`;
 
                     if (m.type === 'image') {
                         content = `

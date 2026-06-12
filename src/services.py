@@ -1,14 +1,73 @@
 import requests
 import json
 import os
+import time
 from config import Config
 from src.conversation_log import log_message
-from src import test_mode
+from src import test_mode, error_tracker
 
 
 def _fake_meta_response() -> dict:
     """Respuesta simulada compatible con la forma que devuelve Meta."""
     return {"messages": [{"id": "test_message"}]}
+
+
+# Timeout por intento (segundos) y reintentos ante errores transitorios.
+# Sin timeout, un cuelgue de red bloquea el hilo de Flask indefinidamente.
+_SEND_TIMEOUT = 15
+_SEND_ATTEMPTS = 3          # 1 intento + 2 reintentos
+_SEND_BACKOFF = (1.5, 3.0)  # espera antes del 2º y 3º intento
+
+
+def _send_to_meta(to_number, payload, kind, log_text, log_type):
+    """POST a la Cloud API con timeout, reintentos y registro de resultado.
+
+    - Reintenta solo errores transitorios (5xx de Meta, fallos de red, rate
+      limit); los rechazos definitivos (token, ventana 24h, payload) no.
+    - Éxito  → loguea el outbound en Supabase con su wamid y devuelve el JSON.
+    - Fracaso → loguea el mensaje como msg_type "failed" (visible en el panel),
+      registra el evento clasificado en error_tracker y devuelve None (mismo
+      contrato que antes para los callers).
+    """
+    url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
+    headers = {
+        "Authorization": f"Bearer {Config.API_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    last_classified = None
+    for attempt in range(_SEND_ATTEMPTS):
+        try:
+            response = requests.post(url, headers=headers, json=payload,
+                                     timeout=_SEND_TIMEOUT)
+            response.raise_for_status()
+            res_json = response.json()
+
+            wamid = None
+            if "messages" in res_json and len(res_json["messages"]) > 0:
+                wamid = res_json["messages"][0].get("id")
+            log_message(to_number, "outbound", log_text, log_type, wamid=wamid)
+            return res_json
+
+        except requests.exceptions.RequestException as e:
+            last_classified = error_tracker.classify_send_exception(e)
+            print(f"Error sending {kind} (intento {attempt + 1}/{_SEND_ATTEMPTS}): "
+                  f"{last_classified['detail']}")
+            if not last_classified["retryable"] or attempt == _SEND_ATTEMPTS - 1:
+                break
+            time.sleep(_SEND_BACKOFF[min(attempt, len(_SEND_BACKOFF) - 1)])
+
+    # Todos los intentos fallaron: dejar rastro visible y clasificado.
+    error_tracker.record_event(
+        last_classified["category"],
+        f"Envío {kind} fallido tras {_SEND_ATTEMPTS if last_classified['retryable'] else 1} "
+        f"intento(s): {last_classified['detail']}",
+        phone=to_number,
+        http_status=last_classified["http_status"],
+        meta_code=last_classified["meta_code"],
+    )
+    log_message(to_number, "outbound", log_text, "failed")
+    return None
 
 
 def _staging_blocks_send(to_number, kind: str, summary) -> bool:
@@ -45,36 +104,13 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "text", message_body):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
             "type": "text",
             "text": {"body": message_body}
         }
-
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            res_json = response.json()
-
-            # Extract WhatsApp Message ID
-            wamid = None
-            if "messages" in res_json and len(res_json["messages"]) > 0:
-                wamid = res_json["messages"][0].get("id")
-
-            # Log outbound message with its ID
-            log_message(to_number, "outbound", message_body, msg_type, wamid=wamid)
-            return res_json
-        except requests.exceptions.RequestException as e:
-            print(f"Error sending message: {e}")
-            if e.response:
-                print(f"Response content: {e.response.text}")
-            return None
+        return _send_to_meta(to_number, data, "text", message_body, msg_type)
 
     @staticmethod
     def send_image(to_number, image_url, caption=None):
@@ -92,11 +128,6 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "image", image_url):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
@@ -107,17 +138,7 @@ class WhatsAppService:
         }
         if caption:
             data["image"]["caption"] = caption
-
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            res_json = response.json()
-            wamid = res_json["messages"][0].get("id") if "messages" in res_json else None
-            log_message(to_number, "outbound", image_url, "image", wamid=wamid)
-            return res_json
-        except Exception as e:
-            print(f"Error sending image: {e}")
-            return None
+        return _send_to_meta(to_number, data, "image", image_url, "image")
 
     @staticmethod
     def send_document(to_number, doc_url, filename=None, caption=None):
@@ -136,11 +157,6 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "document", doc_url):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
@@ -153,17 +169,7 @@ class WhatsAppService:
             data["document"]["filename"] = filename
         if caption:
             data["document"]["caption"] = caption
-
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            res_json = response.json()
-            wamid = res_json["messages"][0].get("id") if "messages" in res_json else None
-            log_message(to_number, "outbound", doc_url, "document", wamid=wamid)
-            return res_json
-        except Exception as e:
-            print(f"Error sending document: {e}")
-            return None
+        return _send_to_meta(to_number, data, "document", doc_url, "document")
 
     @staticmethod
     def send_interactive_button(to_number, body_text, buttons):
@@ -182,12 +188,6 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "interactive", body_text):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
         action_buttons = []
         for btn in buttons:
             action_buttons.append({
@@ -208,25 +208,10 @@ class WhatsAppService:
                 "action": {"buttons": action_buttons}
             }
         }
-        
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            res_json = response.json()
 
-            # Extract WhatsApp Message ID
-            wamid = None
-            if "messages" in res_json and len(res_json["messages"]) > 0:
-                wamid = res_json["messages"][0].get("id")
-
-            # Log outbound interactive message
-            button_titles = [b["reply"]["title"] for b in action_buttons]
-            log_text = f"{body_text} [Botones: {', '.join(button_titles)}]"
-            log_message(to_number, "outbound", log_text, "interactive", wamid=wamid)
-            return res_json
-        except requests.exceptions.RequestException as e:
-            print(f"Error sending interactive message: {e}")
-            return None
+        button_titles = [b["reply"]["title"] for b in action_buttons]
+        log_text = f"{body_text} [Botones: {', '.join(button_titles)}]"
+        return _send_to_meta(to_number, data, "interactive", log_text, "interactive")
 
     @staticmethod
     def send_interactive_list(to_number, body_text, button_text, sections):
@@ -246,12 +231,6 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "list", body_text):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
@@ -265,16 +244,12 @@ class WhatsAppService:
                 }
             }
         }
-        
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Error sending list message: {e}")
-            if e.response:
-                print(f"Response content: {e.response.text}")
-            return None
+
+        # Las listas (menús) ahora también quedan en el historial del panel;
+        # antes eran invisibles incluso cuando salían bien.
+        row_titles = [row.get("title", "") for sec in (sections or []) for row in sec.get("rows", [])]
+        log_text = f"{body_text} [Lista: {', '.join(row_titles)}]"
+        return _send_to_meta(to_number, data, "list", log_text, "interactive")
 
     @staticmethod
     def send_template(to_number, template_name, language_code="es_CO", components=None):
@@ -294,11 +269,6 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "template", template_name):
             return _fake_meta_response()
 
-        url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}/messages"
-        headers = {
-            "Authorization": f"Bearer {Config.API_TOKEN}",
-            "Content-Type": "application/json"
-        }
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
@@ -309,25 +279,8 @@ class WhatsAppService:
                 "components": components or []
             }
         }
-        
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            res_json = response.json()
-            
-            # Extract WhatsApp Message ID
-            wamid = None
-            if "messages" in res_json and len(res_json["messages"]) > 0:
-                wamid = res_json["messages"][0].get("id")
-
-            # Log outbound template message
-            log_message(to_number, "outbound", f"[Template: {template_name}]", "template", wamid=wamid)
-            return res_json
-        except requests.exceptions.RequestException as e:
-            print(f"Error sending template: {e}")
-            if e.response:
-                print(f"Response content: {e.response.text}")
-            return None
+        return _send_to_meta(to_number, data, "template",
+                             f"[Template: {template_name}]", "template")
 
     @staticmethod
     def get_media_url(media_id):
@@ -340,7 +293,7 @@ class WhatsAppService:
         }
         
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=_SEND_TIMEOUT)
             response.raise_for_status()
             return response.json().get("url")
         except requests.exceptions.RequestException as e:
@@ -362,7 +315,7 @@ class WhatsAppService:
             # Ensure directory exists
             os.makedirs(os.path.dirname(target_path), exist_ok=True)
             
-            response = requests.get(media_url, headers=headers, stream=True)
+            response = requests.get(media_url, headers=headers, stream=True, timeout=60)
             response.raise_for_status()
             
             with open(target_path, "wb") as f:
@@ -426,9 +379,9 @@ class WhatsAppService:
         }
         
         try:
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, timeout=_SEND_TIMEOUT)
             res_json = response.json()
-            
+
             if response.status_code >= 200 and response.status_code < 300:
                 return True, res_json
             else:

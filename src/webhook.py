@@ -4,8 +4,39 @@ import hashlib
 from flask import Blueprint, request, jsonify, current_app
 from config import Config
 from src.flows import FlowHandler
+from src import error_tracker
+from src.conversation_log import log_message
 
 webhook_bp = Blueprint('webhook', __name__)
+
+
+def _process_failed_statuses(value: dict):
+    """Registra entregas fallidas que Meta reporta via webhook de 'statuses'.
+
+    Meta puede ACEPTAR un mensaje (devuelve wamid) y aun así fallar la
+    entrega después (ventana de 24h cerrada, número inválido, etc.). Ese
+    fallo llega aquí. Los statuses sent/delivered/read se ignoran como antes.
+    """
+    for status in value.get("statuses", []):
+        if status.get("status") != "failed":
+            continue
+        recipient = status.get("recipient_id", "")
+        errors = status.get("errors", []) or [{}]
+        err = errors[0]
+        code = err.get("code")
+        title = err.get("title", "")
+        details = (err.get("error_data") or {}).get("details", "") or err.get("message", "")
+
+        category = error_tracker.classify_delivery_failure(code)
+        error_tracker.record_event(
+            category,
+            f"Entrega fallida reportada por Meta — código {code} ({title}): {details}",
+            phone=recipient,
+            meta_code=code,
+        )
+        # Marca visible en el chat del panel para quien gestiona la conversación.
+        log_message(recipient, "outbound",
+                    f"[Entrega fallida — código {code}] {title}: {details}", "failed")
 
 # ── Deduplication cache ──────────────────────────────────────────────
 # Stores { message_id: timestamp } to avoid processing the same
@@ -86,6 +117,13 @@ def receive_message():
             entry = data.get("entry", [{}])[0]
             changes = entry.get("changes", [{}])[0]
             value = changes.get("value", {})
+
+            # Entregas fallidas (statuses) — solo registro, no interrumpe el flujo
+            try:
+                _process_failed_statuses(value)
+            except Exception as status_err:
+                print(f"Error procesando statuses: {status_err}")
+
             messages = value.get("messages", [])
             if messages:
                 msg_id = messages[0].get("id", "")

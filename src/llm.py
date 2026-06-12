@@ -367,4 +367,11 @@ def ask_llm(user_phone: str, user_message: str, state: str, client_name: str = "
 
     except Exception as e:
         print(f"[LLM] ask_llm error (all attempts failed): {e}")
+        try:
+            from src import error_tracker
+            error_tracker.record_event(
+                "llm", f"ask_llm falló tras los reintentos: {type(e).__name__}: {e}",
+                phone=user_phone)
+        except Exception:
+            pass
         return None

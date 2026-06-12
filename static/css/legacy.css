@@ -447,6 +447,22 @@
             display: block;
         }
 
+        /* Mensaje que el bot intentó enviar pero NO llegó al cliente
+           (rechazo de Meta o entrega fallida). Ver panel Diagnóstico. */
+        .msg-outbound.msg-failed {
+            background: #fef2f2;
+            border-left: 3px solid #dc2626;
+            opacity: 0.9;
+        }
+
+        .msg-failed-badge {
+            font-size: 0.68rem;
+            color: #dc2626;
+            font-weight: 700;
+            margin-bottom: 3px;
+            display: block;
+        }
+
         .msg-meta {
             font-size: 0.7rem;
             color: var(--text-muted);

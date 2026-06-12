@@ -66,6 +66,7 @@
             <div class="nav-group">
                 <div class="nav-group-label">Análisis</div>
                 <button type="button" class="nav-item" data-view="analytics" data-title="Analytics" style="--accent:#0891b2" onclick="switchTab('analytics')"><span class="nav-item-icon">📊</span><span class="nav-item-label">Analytics</span></button>
+                <button type="button" class="nav-item" data-view="diagnostico" data-title="Diagnóstico" style="--accent:#dc2626" onclick="switchTab('diagnostico')"><span class="nav-item-icon">🩺</span><span class="nav-item-label">Diagnóstico</span></button>
             </div>
         </div>
         <button type="button" class="nav-rail-collapse" onclick="toggleNavRail()" title="Expandir/colapsar menú"><span class="nav-item-icon">⮜⮞</span><span class="nav-item-label">Colapsar</span></button>
@@ -426,6 +427,40 @@
     </div>
 
     <!-- ── Analytics Dashboard ─────────────────────────────────────── -->
+    <!-- Diagnóstico: estado de servicios y fallos clasificados -->
+    <div class="main-chat" id="diagnosticoState" style="display: none; overflow-y: auto; background: white;">
+        <div class="cmp-panel" style="--accent:#dc2626;">
+            <h2 class="cmp-title">🩺 Diagnóstico del Bot</h2>
+            <p class="cmp-desc">
+                Estado en vivo de los servicios de los que depende el bot y registro de fallos recientes.
+                Cada fallo indica su origen y qué hacer:
+                <span class="diag-chip diag-chip-esperar">Esperar</span> el problema es externo (ej. caída de Meta) y se
+                resuelve solo &nbsp;·&nbsp;
+                <span class="diag-chip diag-chip-gestionar">Gestionar</span> lo resuelve el equipo desde el panel (ej.
+                reabrir con plantilla) &nbsp;·&nbsp;
+                <span class="diag-chip diag-chip-intervenir">Intervenir</span> requiere soporte técnico (contactar a Carlos).
+            </p>
+
+            <div id="diagHealthCards" class="diag-grid">
+                <div class="diag-empty">Cargando…</div>
+            </div>
+
+            <div class="cmp-card card-x">
+                <div class="cmp-card-head">
+                    <h3 class="cmp-count-line">Fallos en la última hora: <span id="diagSummary">—</span></h3>
+                    <div class="cmp-actions">
+                        <button type="button" class="btn-x btn-x-outline" onclick="fetchDiagnostics()">🔄 Actualizar</button>
+                    </div>
+                </div>
+                <p class="cmp-desc" style="margin-bottom: var(--sp-2);">
+                    Eventos desde el último reinicio del servidor (más recientes primero). Los envíos fallidos también
+                    quedan marcados en rojo dentro del chat de cada cliente.
+                </p>
+                <div id="diagEventsContainer"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="main-chat" id="analyticsState" style="display: none; flex-direction: column; overflow-y: auto; background: #f1f5f9;">
 
         <!-- Dashboard Header -->
@@ -696,6 +731,7 @@
     <script src="{{ static_v('js/campaign-panel.js') }}"></script>
     <script src="{{ static_v('js/paste-campaign.js') }}"></script>
     <script src="{{ static_v('js/campaigns.js') }}"></script>
+    <script src="{{ static_v('js/diagnostics.js') }}"></script>
     <script src="{{ static_v('js/legacy.js') }}"></script>
 </body>
 

@@ -1392,3 +1392,45 @@ def api_test_compare():
         if detail and detail.get("session"):
             sessions.append(detail)
     return jsonify({"status": "ok", "sessions": sessions})
+
+
+# ─────────────────────────────────────────────────────────────────────
+# DIAGNÓSTICO — estado de servicios y eventos de fallo clasificados
+# ─────────────────────────────────────────────────────────────────────
+
+
+@admin_bp.route('/admin/api/diagnostics', methods=['GET'])
+@requires_auth
+def api_diagnostics():
+    """Estado en vivo de cada servicio externo + eventos de fallo recientes.
+
+    Los health checks corren en paralelo (cada uno con timeout corto) para
+    que el panel cargue rápido incluso con un servicio caído. Si este
+    endpoint mismo no responde, el frontend lo interpreta como caída del
+    servidor (Render) — ese caso no puede reportarse a sí mismo.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from src import error_tracker
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            "meta": pool.submit(error_tracker.check_meta),
+            "supabase": pool.submit(error_tracker.check_supabase),
+            "cloud_run": pool.submit(error_tracker.check_cloud_run),
+            "llm": pool.submit(error_tracker.check_llm),
+        }
+        health = {}
+        for name, fut in futures.items():
+            try:
+                health[name] = fut.result(timeout=15)
+            except Exception as e:
+                health[name] = {"estado": "alerta",
+                                "detalle": f"El health check no respondió: {e}"}
+
+    return jsonify({
+        "health": health,
+        "summary": error_tracker.get_summary(60),
+        "events": error_tracker.get_events(100),
+        "environment": Config.ENVIRONMENT,
+        "server_time": datetime.now().isoformat(),
+    })
