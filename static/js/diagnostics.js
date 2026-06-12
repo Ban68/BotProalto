@@ -63,7 +63,9 @@ function renderDiagEvents(events) {
                 <td class="diag-td-fecha">${fecha}</td>
                 <td><div class="diag-td-titulo">${diagEscape(ev.titulo)}</div>
                     <div class="diag-td-origen">${diagEscape(ev.origen)}</div></td>
-                <td class="diag-td-phone">${diagEscape(ev.phone || '—')}</td>
+                <td class="diag-td-phone">${ev.phone
+                    ? `${diagEscape(ev.phone)}<br><button onclick="goToChat('${diagEscape(ev.phone)}')" style="margin-top:3px;padding:2px 9px;font-size:0.7rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button>`
+                    : '—'}</td>
                 <td class="diag-td-detail">${diagEscape(ev.detail)}
                     <div class="diag-td-quehacer">${diagEscape(ev.que_hacer)}</div></td>
                 <td><span class="diag-chip ${action.cls}">${action.label}</span></td>

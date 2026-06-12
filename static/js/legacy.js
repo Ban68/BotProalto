@@ -280,7 +280,7 @@
                     </td>
                     <td style="padding: 10px; font-size: 0.85rem; ${strike}">${formatTime(item.created_at)}</td>
                     <td style="padding: 10px; ${strike}">${item.name || '---'}</td>
-                    <td style="padding: 10px; ${strike}">${item.phone}</td>
+                    <td style="padding: 10px; white-space: nowrap; ${strike}">${item.phone} <button onclick="goToChat('${item.phone}')" style="padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button></td>
                     <td style="padding: 10px; font-weight: 600; ${isDone ? 'color: #9ca3af;' : 'color: var(--primary-dark);'} ${strike}">${item.email}</td>
                     <td style="padding: 10px;"><button onclick="openEditEmailModalFromRow(this)" style="padding: 4px 10px; font-size: 0.8rem; background: #f0f9ff; border: 1px solid #3b82f6; color: #1d4ed8; border-radius: 4px; cursor: pointer;">Editar</button></td>
                 </tr>`;
@@ -400,7 +400,7 @@
                             <tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${formatTime(item.created_at)}</td>
                                 <td style="padding: 10px;">${item.name || ''}</td>
-                                <td style="padding: 10px;">${item.phone}</td>
+                                <td style="padding: 10px; white-space: nowrap;">${item.phone} <button onclick="goToChat('${item.phone}')" style="padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button></td>
                                 <td style="padding: 10px; font-size: 0.85rem; color: var(--text-muted);">${item.empresa || '<span style="color:#aaa;">—</span>'}</td>
                                 <td style="padding: 10px;">${titularCell}</td>
                                 <td style="padding: 10px; font-weight: bold;">${item.numero_cuenta || '<span style="color:#aaa;">Pendiente</span>'}</td>
@@ -514,6 +514,7 @@
                         rows += `<tr style="background:#fef3c7; border-top: 2px solid #b45309;" data-empresa="${(info.empresa || '').toLowerCase()}">
                             <td colspan="3" style="padding: 10px 12px; font-weight: 600;">
                                 👤 ${info.client_name || '---'} &nbsp;·&nbsp; <span style="color:#666;font-weight:400;">${info.phone}</span>
+                                <button onclick="goToChat('${info.phone}')" style="padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;margin-left:6px;">Ver chat →</button>
                                 &nbsp;&nbsp; <span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:999px;font-size:0.8rem;">${clientDocs.length} archivo${clientDocs.length > 1 ? 's' : ''}</span>${empresaLabel}
                             </td>
                             <td colspan="2" style="padding: 10px 12px; text-align: right;">${revisarTodosBtn}${completosBadge}</td>
@@ -703,9 +704,10 @@
                     const actionBtn = r.resolved
                         ? `<button onclick="reopenLLMRequest('${r.id}', this)" style="background:none;color:#6b7280;border:1px solid #d1d5db;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;">↩ Reabrir</button>`
                         : `<button onclick="resolveLLMRequest('${r.id}', this)" style="background:#7c3aed;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Resolver</button>`;
+                    const chatBtn = `<button onclick="goToChat('${r.phone}')" style="padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button>`;
                     return `<tr style="border-bottom:1px solid #eee;">
                         <td style="padding:10px;white-space:nowrap;font-size:0.85rem;">${fecha}</td>
-                        <td style="padding:10px;font-size:0.85rem;">${r.phone}</td>
+                        <td style="padding:10px;font-size:0.85rem;white-space:nowrap;">${r.phone} ${chatBtn}</td>
                         <td style="padding:10px;font-size:0.85rem;">${r.client_name || ''}</td>
                         <td style="padding:10px;">${badge}</td>
                         <td style="padding:10px;font-size:0.85rem;color:var(--text-muted);max-width:260px;">${detalle}</td>
