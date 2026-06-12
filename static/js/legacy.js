@@ -795,9 +795,10 @@
                     const actionBtn = r.completed
                         ? `<button onclick="reopenDocumentRequest('${r.id}', this)" style="background:none;color:#6b7280;border:1px solid #d1d5db;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;">↩ Reabrir</button>`
                         : `<button onclick="completeDocumentRequest('${r.id}', this)" style="background:#16a34a;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.8rem;">✓ Completado</button>`;
+                    const chatBtn = `<button onclick="goToChat('${r.phone}')" style="padding:3px 10px;font-size:0.72rem;background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:4px;cursor:pointer;white-space:nowrap;">Ver chat →</button>`;
                     return `<tr style="border-bottom:1px solid #eee;">
                         <td style="padding:10px;white-space:nowrap;font-size:0.85rem;">${fecha}</td>
-                        <td style="padding:10px;font-size:0.85rem;">${r.phone}</td>
+                        <td style="padding:10px;font-size:0.85rem;white-space:nowrap;">${r.phone} ${chatBtn}</td>
                         <td style="padding:10px;font-size:0.85rem;">${r.client_name || ''}</td>
                         <td style="padding:10px;">${badge}</td>
                         <td style="padding:10px;font-size:0.85rem;white-space:nowrap;">${origen}</td>
