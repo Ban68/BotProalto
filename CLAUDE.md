@@ -81,6 +81,26 @@ Variables de entorno necesarias (en `.env`):
 
 ---
 
+## Antes de iniciar una sesión de trabajo
+
+**Siempre, antes de tocar código**, verifica que la carpeta local esté sincronizada con
+GitHub. Carlos trabaja en dos dispositivos (Surface Laptop Studio y Surface Pro), así que el
+riesgo real es empezar sobre una versión vieja o perder trabajo entre equipos.
+
+```bash
+git fetch && git status -sb
+```
+
+- Si aparece `behind`, corre `git pull` antes de empezar.
+- Si aparece `ahead`, faltó hacer `git push` desde el otro dispositivo — súbelo desde allá
+  primero o resuelve antes de avanzar.
+- Confirma además que estás en la rama correcta (`main`, `staging` o la `feature/...` que
+  corresponda): el sincronizado de una rama no implica que las demás lo estén.
+
+Al terminar la sesión: `git add -A` → `git commit -m "..."` → `git push`.
+
+---
+
 ## Pruebas y staging
 
 Antes de pasar cualquier cambio a producción, pruébalo en el entorno de **staging**.
