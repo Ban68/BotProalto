@@ -1354,9 +1354,20 @@ class FlowHandler:
                     "👉 https://forms.gle/zXzrcrzVefuoVsEX6\n\n"
                     "Si tienes alguna duda durante el proceso, estamos aquí para ayudarte."
                 )
+            elif btn_id == "Solicitar crédito":
+                # Opción "Solicitar crédito" de la plantilla de leads (contacto_leads).
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Realiza tu crédito rápido con ProAlto por DESCUENTO DE NÓMINA. "
+                    "Ahora es más fácil y práctico 👇🏼 https://forms.gle/zXzrcrzVefuoVsEX6\n"
+                    "Ten en cuenta estas 3 claves:\n"
+                    "✅ Tu límite ágil: puedes solicitar hasta el doble de tu salario sin necesidad de codeudor.\n"
+                    "🤝 Monto mayor: para más del doble de tu salario, requerimos un codeudor y sus documentos.\n"
+                    "📈 Aumento de crédito: si ya tuviste un crédito con nosotros, revisamos tu capacidad para aumentarlo un 40% sobre el valor anterior.\n"
+                    "🛡️ ¿Prefieres no abrir enlaces externos? Lo entendemos. Tu seguridad es nuestra prioridad. Si te sientes más tranquilo, puedes hacer tu solicitud directamente desde nuestro sitio web oficial: www.proalto.co"
+                )
             else:
-                prefix = "¡Excelente elección! " if btn_id == "Solicitar crédito" else ""
-                WhatsAppService.send_message(user_phone, f"{prefix}Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
+                WhatsAppService.send_message(user_phone, "Para solicitar tu crédito, por favor llena el siguiente formulario:\n\n👉 https://forms.gle/zXzrcrzVefuoVsEX6")
 
         elif btn_id in ["choice_credito", "choice_anticipo"]:
             # Respuesta a la disambiguación cuando el cliente tenía solicitud
