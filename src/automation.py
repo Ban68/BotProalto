@@ -8,6 +8,7 @@ from src.services import WhatsAppService
 from src.conversation_log import (
     get_notified_phones_batch, set_user_state, get_template_stats_batch,
     get_notified_phones_rojo_batch, get_phones_menu_contacted_rojo_batch, get_template_stats_batch_rojo,
+    get_undeliverable_phones_batch,
     get_phones_with_email, get_phones_with_docs_completos,
     get_notified_phones_amarillo_batch, get_template_stats_batch_amarillo,
     get_phones_with_cuenta, set_solicitud_context,
@@ -499,6 +500,7 @@ def get_pending_falta_documento_notifications():
     notified_today = get_notified_phones_rojo_batch(phones_to_check)
     menu_contacted_today = get_phones_menu_contacted_rojo_batch(phones_to_check)
     docs_completos = get_phones_with_docs_completos(phones_to_check)
+    undeliverable = get_undeliverable_phones_batch(phones_to_check)
 
     # Separate eligible from excluded, capturing the reason for each exclusion
     eligible_users = []
@@ -511,6 +513,8 @@ def get_pending_falta_documento_notifications():
             reasons.append("Consultó su estado hoy por el bot")
         if u["phone"] in docs_completos:
             reasons.append("Docs marcados como completos")
+        if u["phone"] in undeliverable:
+            reasons.append("Número no entregable (sin WhatsApp / código 131026)")
         if reasons:
             u["excluded_reasons"] = reasons
             excluded_users.append(u)
@@ -548,13 +552,24 @@ def execute_bulk_falta_documento_notifications(users_list):
     Sends the 'estado_rojo' template to a list of users with missing documents.
     Returns summary of results.
     """
-    results = {"total": len(users_list), "success": 0, "fail": 0, "errors": []}
+    results = {"total": len(users_list), "success": 0, "fail": 0, "skipped": 0, "errors": []}
+
+    # Defensa: no reenviar a números ya marcados como no entregables (131026).
+    # Meta acepta el envío (devuelve wamid) pero la entrega falla segundos después
+    # vía webhook, así que el conteo de "éxito" sería engañoso y solo genera fatiga.
+    all_phones = [u.get("phone") for u in users_list if u.get("phone")]
+    undeliverable = get_undeliverable_phones_batch(all_phones)
 
     for user in users_list:
         phone_str = user.get("phone")
         nombre = user.get("name")
 
         if not phone_str:
+            continue
+
+        if phone_str in undeliverable:
+            results["skipped"] += 1
+            results["errors"].append(f"{phone_str}: omitido (no entregable, código 131026)")
             continue
 
         components = [

@@ -1317,6 +1317,30 @@ def get_template_stats_batch_rojo(phones: list) -> dict:
         return {}
 
 
+def get_undeliverable_phones_batch(phones: list) -> set:
+    """
+    Devuelve el SET de teléfonos a los que Meta reportó una entrega fallida con
+    código 131026 ("Message Undeliverable": número sin WhatsApp, ToS no aceptados
+    o número inválido). Son no entregables de forma permanente, así que se excluyen
+    de las campañas para no gastar envíos ni generar fatiga. El marcador lo escribe
+    _process_failed_statuses en webhook.py como mensaje "failed".
+    """
+    if not supabase_client or not phones:
+        return set()
+    try:
+        res = supabase_client.table('bot_messages')\
+            .select("phone")\
+            .in_("phone", phones)\
+            .eq("direction", "outbound")\
+            .eq("msg_type", "failed")\
+            .like("text", "[Entrega fallida — código 131026]%")\
+            .execute()
+        return {item["phone"] for item in res.data}
+    except Exception as e:
+        print(f"Supabase get_undeliverable_phones_batch error: {e}")
+        return set()
+
+
 def get_notified_phones_rojo_batch(phones: list) -> set:
     """
     Given a list of phone numbers, returns a SET of those that

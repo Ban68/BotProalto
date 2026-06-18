@@ -214,7 +214,12 @@ def classify_send_exception(exc) -> dict:
     if status == 401 or code in (190, 0, 3, 10, 200):
         return {"category": "meta_token", "detail": detail,
                 "http_status": status, "meta_code": code, "retryable": False}
-    if code in (131047, 131026, 131021, 131051):
+    if code == 131026:
+        # "Message Undeliverable": el destinatario no puede recibir (sin WhatsApp,
+        # ToS no aceptados, número inválido). NO es la ventana de 24h.
+        return {"category": "meta_entrega", "detail": detail,
+                "http_status": status, "meta_code": code, "retryable": False}
+    if code in (131047, 131021, 131051):
         return {"category": "meta_ventana", "detail": detail,
                 "http_status": status, "meta_code": code, "retryable": False}
     if status == 403:
