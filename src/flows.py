@@ -330,26 +330,8 @@ def _render_credito_result(user_phone, result):
         response_msg += f"📋 *Estado:* {mensaje_cliente}\n"
 
         WhatsAppService.send_message(user_phone, response_msg)
-
-        from src.conversation_log import get_email_for_phone
-        existing_email = get_email_for_phone(user_phone)
-
-        if existing_email:
-            WhatsAppService.send_message(
-                user_phone,
-                f"📧 En breve te llegará el contrato para firma electrónica al correo *{existing_email}*.\n\n"
-                "Estamos trabajando en tu proceso. ¡Pronto tendrás noticias!"
-            )
-            set_user_state(user_phone, "active")
-        else:
-            instruction_msg = (
-                "⚠️ *ACCIÓN NECESARIA*\n\n"
-                "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
-                "_Lo necesitamos para enviarte el contrato para firma electrónica._"
-            )
-            WhatsAppService.send_message(user_phone, instruction_msg)
-            set_client_name(user_phone, nombre)
-            set_user_state(user_phone, "waiting_for_email")
+        set_client_name(user_phone, nombre)
+        _ask_aprobado_choice(user_phone)
         return
 
     if clean_status == "FALTA ALGÚN DOCUMENTO":
@@ -443,6 +425,44 @@ def _render_anticipo_result(user_phone, anticipo):
     WhatsAppService.send_message(user_phone, f"{header}\n\n{body}")
     set_user_state(user_phone, "active")
     WhatsAppService.send_message(user_phone, next_msg)
+
+
+def _ask_aprobado_choice(user_phone):
+    """Tras mostrar el estado APROBADO POR EL CLIENTE, ofrece dos opciones:
+    enviar el correo para el contrato, o expresar dudas sobre el valor aprobado.
+    Los botones los maneja process_button_click, así que el estado vuelve a 'active'."""
+    WhatsAppService.send_interactive_button(
+        user_phone,
+        "Para enviarte el contrato para firma necesitamos tu correo. ¿Cómo quieres seguir?",
+        [
+            {"id": "aprobado_enviar_correo", "title": "Enviar correo"},
+            {"id": "aprobado_dudas_valor", "title": "Tengo dudas"},
+        ]
+    )
+    set_user_state(user_phone, "active")
+
+
+def _proceed_to_aprobado_email(user_phone):
+    """Continúa el proceso de envío de contrato: si ya hay correo guardado lo
+    confirma, si no lo pide. El nombre del cliente ya se guardó al mostrar el estado."""
+    from src.conversation_log import get_email_for_phone
+    existing_email = get_email_for_phone(user_phone)
+
+    if existing_email:
+        WhatsAppService.send_message(
+            user_phone,
+            f"📧 En breve te llegará el contrato para firma electrónica al correo *{existing_email}*.\n\n"
+            "Estamos trabajando en tu proceso. ¡Pronto tendrás noticias!"
+        )
+        set_user_state(user_phone, "active")
+    else:
+        instruction_msg = (
+            "⚠️ *ACCIÓN NECESARIA*\n\n"
+            "Para continuar con tu desembolso, por favor *CONFÍRMANOS TU CORREO ELECTRÓNICO* 📧 escribiéndolo a continuación.\n\n"
+            "_Lo necesitamos para enviarte el contrato para firma electrónica._"
+        )
+        WhatsAppService.send_message(user_phone, instruction_msg)
+        set_user_state(user_phone, "waiting_for_email")
 
 
 def _ask_solicitud_choice(user_phone, cedula):
@@ -1337,6 +1357,35 @@ class FlowHandler:
                 user_phone,
                 "Estamos generando tu paz y salvo, un asesor te lo enviará en breve."
             )
+
+        # ── Estado APROBADO POR EL CLIENTE — elección post-aprobación ──
+        elif btn_id == "aprobado_enviar_correo":
+            # Tanto el primer botón "Enviar correo" como el "Sí, enviar correo"
+            # del set de dudas terminan aquí.
+            _proceed_to_aprobado_email(user_phone)
+
+        elif btn_id == "aprobado_dudas_valor":
+            WhatsAppService.send_interactive_button(
+                user_phone,
+                "Te aprobamos esta cantidad porque es el valor más seguro para ti en este momento. "
+                "Revisamos tus gastos y queremos estar seguros de que la cuota que vas a pagar no te "
+                "deje sin plata para tus cosas de todos los días. Así puedes estar al día sin pasar apuros.",
+                [
+                    {"id": "aprobado_enviar_correo", "title": "📩 Sí, enviar correo"},
+                    {"id": "aprobado_no_seguir", "title": "❌ No seguir"},
+                ]
+            )
+            set_user_state(user_phone, "active")
+
+        elif btn_id == "aprobado_no_seguir":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Entendido, respetamos tu decisión. Si más adelante quieres retomar tu crédito, "
+                "escríbenos y con gusto te ayudamos."
+            )
+            from src.notifications import notify_admin_aprobado_abandono
+            notify_admin_aprobado_abandono(user_phone, get_client_name(user_phone))
 
         elif btn_id in ["menu_solicitud", "cred_estado"]:
             # "Estado Solicitud" (menú viejo) y "Estado de mi solicitud" (nuevo

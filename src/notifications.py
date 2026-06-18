@@ -173,3 +173,23 @@ def notify_admin_cedula_mismatch(user_phone: str) -> None:
         f"Revísalo en el panel: https://bot.proalto.co/admin"
     )
     notify_admins(msg)
+
+
+def notify_admin_aprobado_abandono(user_phone: str, client_name: str = "") -> None:
+    """Notify admins that a client with an approved credit chose not to continue
+    after expressing doubts about the approved amount."""
+    if test_mode.is_test_phone(user_phone):
+        test_mode.append_outbound(user_phone, {
+            "type": "admin_notification_suppressed",
+            "kind": "aprobado_abandono",
+            "body": "Notificación a admin suprimida: cliente con crédito aprobado no seguirá.",
+        })
+        return
+    nombre_txt = f" ({client_name})" if client_name and client_name != "Cliente" else ""
+    msg = (
+        f"🚪 *Cliente no continúa con crédito aprobado*\n\n"
+        f"El número {user_phone}{nombre_txt} tenía un crédito aprobado, "
+        f"tuvo dudas sobre el valor aprobado y eligió no seguir con el proceso.\n"
+        f"Revísalo en el panel: https://bot.proalto.co/admin"
+    )
+    notify_admins(msg)
