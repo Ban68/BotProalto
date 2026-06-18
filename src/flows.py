@@ -1502,15 +1502,23 @@ class FlowHandler:
             )
 
         elif btn_id == "Necesito más información":
-            set_user_state(user_phone, "agent")
-            WhatsAppService.send_message(
-                user_phone,
-                "Con gusto! En un momento un asesor te contactará para darte toda la información sobre tu renovación."
-            )
-            try:
-                notify_admin_agent_request(user_phone)
-            except Exception as e:
-                print(f"Error notifying admin: {e}")
+            if state == "lead_notified":
+                # Plantilla de leads (contacto_leads): "Necesito más información"
+                # entra al MISMO flujo de "Información General" (intro + lista:
+                # Requisitos / Tasas / Montos y plazos / Hablar con un asesor).
+                set_user_state(user_phone, "active")
+                FlowHandler.send_info_general_menu(user_phone)
+            else:
+                # Plantilla de renovación: transfiere a asesor.
+                set_user_state(user_phone, "agent")
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Con gusto! En un momento un asesor te contactará para darte toda la información sobre tu renovación."
+                )
+                try:
+                    notify_admin_agent_request(user_phone)
+                except Exception as e:
+                    print(f"Error notifying admin: {e}")
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
