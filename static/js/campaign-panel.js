@@ -11,6 +11,7 @@
 
 function createCampaignPanel(cfg) {
     const f = cfg.features || {};
+    const m = cfg.metrics; // opcional: panel de métricas del template (Familia A de estado)
     const mount = document.querySelector(`[data-campaign="${cfg.id}"]`);
     if (!mount) { console.error(`CampaignPanel: no existe mount para "${cfg.id}"`); return null; }
 
@@ -33,6 +34,33 @@ function createCampaignPanel(cfg) {
     <div class="cmp-panel" style="--accent:${cfg.accent};">
         <h2 class="cmp-title">${cfg.icon || ''} ${cfg.title}</h2>
         <p class="cmp-desc">${cfg.description}</p>
+        ${m ? `
+        <div class="pcmp-metrics card-x">
+            <div class="pcmp-metrics-head">
+                <strong>${m.header}</strong>
+                <button type="button" data-ref="metricsRefresh">🔄 Actualizar</button>
+            </div>
+            <div class="pcmp-timeline" data-ref="timeline"></div>
+            <div class="pcmp-cards" style="grid-template-columns: repeat(${m.cards.length}, 1fr);">
+                ${m.cards.map((c, i) => `
+                <div class="pcmp-card">
+                    <div class="pcmp-card-value" style="color:${c.color};" data-card="${i}">—</div>
+                    <div class="pcmp-card-label">${c.label}</div>
+                    <div class="pcmp-card-pct" style="color:${c.color};" data-card-pct="${i}"></div>
+                </div>`).join('')}
+            </div>
+            <div class="pcmp-table-block">
+                <div class="pcmp-table-title">${m.tableTitle}</div>
+                <div class="pcmp-table-wrap">
+                    <table class="table-x pcmp-table">
+                        <thead><tr><th>Nombre</th><th>Teléfono</th><th>Respondió</th><th class="cmp-c">Chat</th></tr></thead>
+                        <tbody data-ref="metricsBody">
+                            <tr><td colspan="4" class="cmp-empty">Haz clic en Actualizar para cargar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>` : ''}
         <div class="cmp-card card-x">
             <div class="cmp-card-head">
                 <div>
@@ -101,6 +129,46 @@ function createCampaignPanel(cfg) {
     const $ = ref => mount.querySelector(`[data-ref="${ref}"]`);
     const tbody = mount.querySelector(`#${cfg.id}TableBody`);
     const searchInput = mount.querySelector(`#${cfg.id}Search`);
+
+    // ── Métricas del template (opcional) ───────────────────────────
+    let timeline = null;
+    async function fetchMetrics() {
+        if (!m) return;
+        try {
+            const res = await fetch(m.endpoint + (timeline ? timeline.params() : ''));
+            const data = await res.json();
+            if (!res.ok || !data.metrics) return;
+            const mt = data.metrics;
+            const total = mt.total || 0;
+
+            m.cards.forEach((c, i) => {
+                const value = c.count(mt) || 0;
+                mount.querySelector(`[data-card="${i}"]`).innerText = (i === 0 && !value) ? '0' : value;
+                const pctEl = mount.querySelector(`[data-card-pct="${i}"]`);
+                pctEl.innerText = (c.pct && total > 0) ? Math.round((value / total) * 100) + '%' : '';
+            });
+
+            const mbody = $('metricsBody');
+            if (!mt.solicitar || mt.solicitar.length === 0) {
+                mbody.innerHTML = `<tr><td colspan="4" class="cmp-empty">${m.emptyMsg}</td></tr>`;
+                return;
+            }
+            mbody.innerHTML = mt.solicitar.map(r => {
+                const fecha = r.responded_at ? new Date(r.responded_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+                return `<tr>
+                    <td>${r.client_name || '—'}</td>
+                    <td class="pcmp-mono">${r.phone}</td>
+                    <td class="cmp-muted">${fecha}</td>
+                    <td class="cmp-c"><button type="button" class="pcmp-chat-btn" onclick="goToChat('${r.phone}')">Chat</button></td>
+                </tr>`;
+            }).join('');
+        } catch (e) { console.error(`fetchMetrics ${cfg.id} error:`, e); }
+    }
+    if (m) {
+        timeline = createMetricsTimeline(() => fetchMetrics());
+        $('timeline').appendChild(timeline.el);
+        $('metricsRefresh').addEventListener('click', fetchMetrics);
+    }
 
     // ── Selección ──────────────────────────────────────────────────
     function rowChecks() { return tbody.querySelectorAll('input[data-idx]'); }
@@ -177,6 +245,7 @@ function createCampaignPanel(cfg) {
 
     // ── Fetch ──────────────────────────────────────────────────────
     async function refresh(hideResults = true) {
+        if (m) fetchMetrics();
         if (hideResults) $('results').style.display = 'none';
         tbody.innerHTML = `<tr><td colspan="${colCount}" class="cmp-empty">Consultando clientes elegibles...</td></tr>`;
         $('execute').disabled = true;

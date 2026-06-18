@@ -486,13 +486,19 @@ def api_trigger_bulk_renovados():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+def _metrics_dates():
+    """Extract optional from/to (YYYY-MM-DD) date range from request args."""
+    return request.args.get('from') or None, request.args.get('to') or None
+
+
 @admin_bp.route('/admin/api/lead-metrics')
 @requires_auth
 def api_lead_metrics():
     """Get metrics for the contacto_leads campaign (retrospective from bot_messages)."""
     from src.conversation_log import get_lead_metrics
+    date_from, date_to = _metrics_dates()
     try:
-        return jsonify({"status": "ok", "metrics": get_lead_metrics()})
+        return jsonify({"status": "ok", "metrics": get_lead_metrics(date_from, date_to)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -502,8 +508,9 @@ def api_lead_metrics():
 def api_renovado_metrics():
     """Get metrics for the estado_renovar campaign (retrospective from bot_messages)."""
     from src.conversation_log import get_renovado_metrics
+    date_from, date_to = _metrics_dates()
     try:
-        return jsonify({"status": "ok", "metrics": get_renovado_metrics()})
+        return jsonify({"status": "ok", "metrics": get_renovado_metrics(date_from, date_to)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -513,9 +520,58 @@ def api_renovado_metrics():
 def api_anticipo_metrics():
     """Get metrics for the anticipo_salario campaign."""
     from src.conversation_log import get_anticipo_metrics
+    date_from, date_to = _metrics_dates()
     try:
-        metrics = get_anticipo_metrics()
+        metrics = get_anticipo_metrics(date_from, date_to)
         return jsonify({"status": "ok", "metrics": metrics})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/aprobado-metrics')
+@requires_auth
+def api_aprobado_metrics():
+    """Get metrics for the estado_verde (Aprobado) campaign."""
+    from src.conversation_log import get_aprobado_metrics
+    date_from, date_to = _metrics_dates()
+    try:
+        return jsonify({"status": "ok", "metrics": get_aprobado_metrics(date_from, date_to)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/rojo-metrics')
+@requires_auth
+def api_rojo_metrics():
+    """Get metrics for the estado_rojo (Falta documento) campaign."""
+    from src.conversation_log import get_rojo_metrics
+    date_from, date_to = _metrics_dates()
+    try:
+        return jsonify({"status": "ok", "metrics": get_rojo_metrics(date_from, date_to)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/amarillo-metrics')
+@requires_auth
+def api_amarillo_metrics():
+    """Get metrics for the estado_amarillo (Listo en PandaDoc) campaign."""
+    from src.conversation_log import get_amarillo_metrics
+    date_from, date_to = _metrics_dates()
+    try:
+        return jsonify({"status": "ok", "metrics": get_amarillo_metrics(date_from, date_to)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/negados-metrics')
+@requires_auth
+def api_negados_metrics():
+    """Get metrics for the estado_negados (Créditos negados) campaign."""
+    from src.conversation_log import get_negados_metrics
+    date_from, date_to = _metrics_dates()
+    try:
+        return jsonify({"status": "ok", "metrics": get_negados_metrics(date_from, date_to)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

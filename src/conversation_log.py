@@ -288,7 +288,7 @@ def log_anticipo_response(phone: str, response: str):
         print(f"Supabase log_anticipo_response error: {e}")
 
 
-def get_anticipo_metrics() -> dict:
+def get_anticipo_metrics(date_from: str = None, date_to: str = None) -> dict:
     """
     Build anticipo_salario campaign metrics (fully retrospective).
     Merges click data from bot_messages and anticipo_responses since each source
@@ -296,16 +296,22 @@ def get_anticipo_metrics() -> dict:
     under load; anticipo_responses skips the 'no_gracias' write when the user's
     state is no longer 'anticipos_notified'. Latest-response-wins per phone.
     Phones that replied only by free text are reported separately.
+    Optionally scoped to the period the template was sent (date_from/date_to).
     """
     if not supabase_client:
         return {}
     try:
-        sent_res = supabase_client.table('bot_messages')\
+        gte, lte = _date_bounds(date_from, date_to)
+        sent_q = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
             .eq("text", "[Template: anticipo_salario]")\
             .eq("direction", "outbound")\
-            .order("created_at", desc=False)\
-            .execute()
+            .order("created_at", desc=False)
+        if gte:
+            sent_q = sent_q.gte("created_at", gte)
+        if lte:
+            sent_q = sent_q.lte("created_at", lte)
+        sent_res = sent_q.execute()
 
         phone_sent_at = {}
         for row in (sent_res.data or []):
@@ -314,10 +320,14 @@ def get_anticipo_metrics() -> dict:
 
         # Recovery: include phones where set_user_state("anticipos_notified") ran
         # but bot_messages log was lost due to the race-condition bug.
-        conv_res = supabase_client.table('bot_conversations')\
+        conv_q = supabase_client.table('bot_conversations')\
             .select("phone, updated_at")\
-            .eq("status", "anticipos_notified")\
-            .execute()
+            .eq("status", "anticipos_notified")
+        if gte:
+            conv_q = conv_q.gte("updated_at", gte)
+        if lte:
+            conv_q = conv_q.lte("updated_at", lte)
+        conv_res = conv_q.execute()
         for row in (conv_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["updated_at"]
@@ -488,20 +498,240 @@ def get_anticipo_no_gracias_phones(phones: list) -> set:
         return set()
 
 
-def get_lead_metrics() -> dict:
+def _date_bounds(date_from: str = None, date_to: str = None):
+    """Return (gte, lte) ISO bounds for a YYYY-MM-DD range, or None for open ends."""
+    gte = f"{date_from}T00:00:00" if date_from else None
+    lte = f"{date_to}T23:59:59" if date_to else None
+    return gte, lte
+
+
+def _get_template_campaign_metrics(template_name: str, recovery_status: str | None,
+                                   categories: dict, table_keys: list,
+                                   count_media: bool = False, media_priority: bool = False,
+                                   date_from: str = None, date_to: str = None) -> dict:
     """
-    Build leads campaign metrics from bot_messages (fully retrospective).
-    msg_type='button' = template button click (vs 'interactive' = menu click).
+    Generic retrospective metrics for a status-notification template, optionally
+    scoped to the period in which the template was SENT (date_from/date_to as
+    YYYY-MM-DD). Each phone is bucketed into exactly one outcome so the card
+    percentages add up to the total: a known template button category, a document
+    upload (when count_media), a free-text reply, or no response.
+
+    categories: dict result_key -> list of button titles that map to it.
+    table_keys: result_keys (may include the synthetic "_media"/"_chat") whose
+                phones populate the detail table.
+    Returns: total, <key>_count for each category key, enviaron_docs_count (when
+    count_media), respondieron_chat_count, sin_respuesta_count, solicitar (table
+    rows) and solicitar_count.
     """
     if not supabase_client:
         return {}
     try:
-        sent_res = supabase_client.table('bot_messages')\
+        gte, lte = _date_bounds(date_from, date_to)
+
+        sent_q = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .eq("text", f"[Template: {template_name}]")\
+            .eq("direction", "outbound")\
+            .order("created_at", desc=False)
+        if gte:
+            sent_q = sent_q.gte("created_at", gte)
+        if lte:
+            sent_q = sent_q.lte("created_at", lte)
+
+        phone_sent_at = {}
+        for row in (sent_q.execute().data or []):
+            if row["phone"] not in phone_sent_at:
+                phone_sent_at[row["phone"]] = row["created_at"]
+
+        # Recovery: phones whose bot_messages log was lost but state was set correctly
+        if recovery_status:
+            rec_q = supabase_client.table('bot_conversations')\
+                .select("phone, updated_at")\
+                .eq("status", recovery_status)
+            if gte:
+                rec_q = rec_q.gte("updated_at", gte)
+            if lte:
+                rec_q = rec_q.lte("updated_at", lte)
+            for row in (rec_q.execute().data or []):
+                if row["phone"] not in phone_sent_at:
+                    phone_sent_at[row["phone"]] = row["updated_at"]
+
+        def _empty() -> dict:
+            base = {"total": 0, "solicitar": [], "solicitar_count": 0,
+                    "respondieron_chat_count": 0, "sin_respuesta_count": 0}
+            for k in categories:
+                base[f"{k}_count"] = 0
+            if count_media:
+                base["enviaron_docs_count"] = 0
+            return base
+
+        if not phone_sent_at:
+            return _empty()
+
+        all_phones = list(phone_sent_at.keys())
+        total = len(all_phones)
+
+        title_to_key = {}
+        for key, titles in categories.items():
+            for t in titles:
+                title_to_key[t] = key
+        all_titles = list(title_to_key.keys())
+
+        # Template button clicks (first matching click per phone wins)
+        phone_btn = {}
+        if all_titles:
+            btn_res = supabase_client.table('bot_messages')\
+                .select("phone, text, created_at")\
+                .in_("phone", all_phones)\
+                .eq("direction", "inbound")\
+                .eq("msg_type", "button")\
+                .in_("text", all_titles)\
+                .order("created_at", desc=False)\
+                .execute()
+            for row in (btn_res.data or []):
+                if row["phone"] not in phone_btn:
+                    phone_btn[row["phone"]] = (title_to_key[row["text"]], row["created_at"])
+
+        # Document/image uploads sent AFTER the template went out (optional)
+        phones_media = {}
+        if count_media:
+            media_res = supabase_client.table('bot_messages')\
+                .select("phone, created_at")\
+                .in_("phone", all_phones)\
+                .eq("direction", "inbound")\
+                .in_("msg_type", ["image", "document"])\
+                .order("created_at", desc=False)\
+                .execute()
+            for row in (media_res.data or []):
+                p = row["phone"]
+                sent_at = phone_sent_at.get(p)
+                if sent_at and (row.get("created_at") or "") >= sent_at and p not in phones_media:
+                    phones_media[p] = row["created_at"]
+
+        # Free-text replies sent AFTER the template went out
+        text_res = supabase_client.table('bot_messages')\
+            .select("phone, created_at")\
+            .in_("phone", all_phones)\
+            .eq("direction", "inbound")\
+            .eq("msg_type", "text")\
+            .order("created_at", desc=False)\
+            .execute()
+        phones_text = {}
+        for row in (text_res.data or []):
+            p = row["phone"]
+            sent_at = phone_sent_at.get(p)
+            if sent_at and (row.get("created_at") or "") >= sent_at and p not in phones_text:
+                phones_text[p] = row["created_at"]
+
+        name_res = supabase_client.table('bot_conversations')\
+            .select("phone, client_name")\
+            .in_("phone", all_phones)\
+            .execute()
+        names = {r["phone"]: r.get("client_name") or "" for r in (name_res.data or [])}
+
+        counts = {k: 0 for k in categories}
+        media_count = chat_count = none_count = 0
+        table_rows = []
+
+        for phone in all_phones:
+            btn = phone_btn.get(phone)
+            media_at = phones_media.get(phone)
+            # Precedence: media-first for media_priority campaigns, else button-first.
+            if media_priority and media_at:
+                key, responded_at = "_media", media_at
+            elif btn:
+                key, responded_at = btn[0], btn[1]
+            elif media_at:
+                key, responded_at = "_media", media_at
+            elif phones_text.get(phone):
+                key, responded_at = "_chat", phones_text[phone]
+            else:
+                key, responded_at = "_none", None
+
+            if key == "_media":
+                media_count += 1
+            elif key == "_chat":
+                chat_count += 1
+            elif key == "_none":
+                none_count += 1
+            else:
+                counts[key] += 1
+
+            if key in table_keys:
+                table_rows.append({"phone": phone, "client_name": names.get(phone, ""),
+                                   "responded_at": responded_at})
+
+        table_rows.sort(key=lambda x: x["responded_at"] or "", reverse=True)
+
+        result = {"total": total, "solicitar": table_rows, "solicitar_count": len(table_rows),
+                  "respondieron_chat_count": chat_count, "sin_respuesta_count": none_count}
+        for k in categories:
+            result[f"{k}_count"] = counts[k]
+        if count_media:
+            result["enviaron_docs_count"] = media_count
+        return result
+    except Exception as e:
+        print(f"Supabase _get_template_campaign_metrics({template_name}) error: {e}")
+        return {}
+
+
+def get_aprobado_metrics(date_from: str = None, date_to: str = None) -> dict:
+    """Metrics for the estado_verde (Aprobado) campaign."""
+    return _get_template_campaign_metrics(
+        "estado_verde", None,
+        {"acepto": ["Acepto las condiciones"]},
+        ["acepto"], date_from=date_from, date_to=date_to)
+
+
+def get_rojo_metrics(date_from: str = None, date_to: str = None) -> dict:
+    """Metrics for the estado_rojo (Falta documento) campaign. Sending documents is
+    the goal, so an upload outranks the 'Consultar documentos' button click."""
+    return _get_template_campaign_metrics(
+        "estado_rojo", None,
+        {"consultaron": ["Consultar documentos"]},
+        ["_media", "consultaron"], count_media=True, media_priority=True,
+        date_from=date_from, date_to=date_to)
+
+
+def get_amarillo_metrics(date_from: str = None, date_to: str = None) -> dict:
+    """Metrics for the estado_amarillo (Listo en PandaDoc) campaign."""
+    return _get_template_campaign_metrics(
+        "estado_amarillo", None,
+        {"cuenta_propia": ["Enviar Cuenta propia"],
+         "cuenta_tercero": ["Enviar Cuenta de tercero"]},
+        ["cuenta_propia", "cuenta_tercero"],
+        date_from=date_from, date_to=date_to)
+
+
+def get_negados_metrics(date_from: str = None, date_to: str = None) -> dict:
+    """Metrics for the estado_negados (Créditos negados) campaign. The template has
+    no buttons, so only free-text replies count as engagement."""
+    return _get_template_campaign_metrics(
+        "estado_negados", "denegado_notified",
+        {},
+        ["_chat"], date_from=date_from, date_to=date_to)
+
+
+def get_lead_metrics(date_from: str = None, date_to: str = None) -> dict:
+    """
+    Build leads campaign metrics from bot_messages (fully retrospective).
+    msg_type='button' = template button click (vs 'interactive' = menu click).
+    Optionally scoped to the period the template was sent (date_from/date_to).
+    """
+    if not supabase_client:
+        return {}
+    try:
+        gte, lte = _date_bounds(date_from, date_to)
+        sent_q = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
             .eq("text", "[Template: contacto_leads]")\
             .eq("direction", "outbound")\
-            .order("created_at", desc=False)\
-            .execute()
+            .order("created_at", desc=False)
+        if gte:
+            sent_q = sent_q.gte("created_at", gte)
+        if lte:
+            sent_q = sent_q.lte("created_at", lte)
+        sent_res = sent_q.execute()
 
         phone_sent_at = {}
         for row in (sent_res.data or []):
@@ -509,10 +739,14 @@ def get_lead_metrics() -> dict:
                 phone_sent_at[row["phone"]] = row["created_at"]
 
         # Recovery: phones whose bot_messages log was lost but state was set correctly
-        conv_res = supabase_client.table('bot_conversations')\
+        conv_q = supabase_client.table('bot_conversations')\
             .select("phone, updated_at")\
-            .eq("status", "lead_notified")\
-            .execute()
+            .eq("status", "lead_notified")
+        if gte:
+            conv_q = conv_q.gte("updated_at", gte)
+        if lte:
+            conv_q = conv_q.lte("updated_at", lte)
+        conv_res = conv_q.execute()
         for row in (conv_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["updated_at"]
@@ -570,20 +804,26 @@ def get_lead_metrics() -> dict:
         return {}
 
 
-def get_renovado_metrics() -> dict:
+def get_renovado_metrics(date_from: str = None, date_to: str = None) -> dict:
     """
     Build renovados campaign metrics from bot_messages (fully retrospective).
     msg_type='button' = template button click (vs 'interactive' = menu click).
+    Optionally scoped to the period the template was sent (date_from/date_to).
     """
     if not supabase_client:
         return {}
     try:
-        sent_res = supabase_client.table('bot_messages')\
+        gte, lte = _date_bounds(date_from, date_to)
+        sent_q = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
             .eq("text", "[Template: estado_renovar]")\
             .eq("direction", "outbound")\
-            .order("created_at", desc=False)\
-            .execute()
+            .order("created_at", desc=False)
+        if gte:
+            sent_q = sent_q.gte("created_at", gte)
+        if lte:
+            sent_q = sent_q.lte("created_at", lte)
+        sent_res = sent_q.execute()
 
         phone_sent_at = {}
         for row in (sent_res.data or []):
@@ -591,10 +831,14 @@ def get_renovado_metrics() -> dict:
                 phone_sent_at[row["phone"]] = row["created_at"]
 
         # Recovery: phones whose bot_messages log was lost but state was set correctly
-        conv_res = supabase_client.table('bot_conversations')\
+        conv_q = supabase_client.table('bot_conversations')\
             .select("phone, updated_at")\
-            .eq("status", "renovado_notified")\
-            .execute()
+            .eq("status", "renovado_notified")
+        if gte:
+            conv_q = conv_q.gte("updated_at", gte)
+        if lte:
+            conv_q = conv_q.lte("updated_at", lte)
+        conv_res = conv_q.execute()
         for row in (conv_res.data or []):
             if row["phone"] not in phone_sent_at:
                 phone_sent_at[row["phone"]] = row["updated_at"]

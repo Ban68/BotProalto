@@ -23,7 +23,8 @@ function createPasteCampaign(cfg) {
                 <strong>${m.header}</strong>
                 <button type="button" data-ref="metricsRefresh">🔄 Actualizar</button>
             </div>
-            <div class="pcmp-cards">
+            <div class="pcmp-timeline" data-ref="timeline"></div>
+            <div class="pcmp-cards" style="grid-template-columns: repeat(${m.cards.length}, 1fr);">
                 ${m.cards.map((c, i) => `
                 <div class="pcmp-card">
                     <div class="pcmp-card-value" style="color:${c.color};" data-card="${i}">—</div>
@@ -79,10 +80,14 @@ function createPasteCampaign(cfg) {
 
     const $ = ref => mount.querySelector(`[data-ref="${ref}"]`);
 
+    // ── Timeline (filtro de intervalo de tiempo) ───────────────────
+    const timeline = createMetricsTimeline(() => fetchMetrics());
+    $('timeline').appendChild(timeline.el);
+
     // ── Métricas ───────────────────────────────────────────────────
     async function fetchMetrics() {
         try {
-            const res = await fetch(m.endpoint);
+            const res = await fetch(m.endpoint + timeline.params());
             const data = await res.json();
             if (!res.ok || !data.metrics) return;
             const mt = data.metrics;

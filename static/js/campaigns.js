@@ -19,6 +19,18 @@ const CampaignPanels = {};
         executeLabel: '🚀 Ejecutar Envío a Seleccionados',
         batchSize: 15,
         features: { empresa: true, soloNuevos: true, lastSentTime: true },
+        metrics: {
+            endpoint: '/admin/api/aprobado-metrics',
+            header: 'Métricas: estado_verde',
+            cards: [
+                { label: 'Total enviados', color: '#4f46e5', count: m => m.total },
+                { label: 'Aceptaron condiciones', color: '#059669', count: m => m.acepto_count, pct: true },
+                { label: 'Respondieron por chat', color: '#2563eb', count: m => m.respondieron_chat_count, pct: true },
+                { label: 'Sin respuesta', color: '#9ca3af', count: m => m.sin_respuesta_count, pct: true },
+            ],
+            tableTitle: 'Clientes que aceptaron las condiciones',
+            emptyMsg: 'Sin respuestas aún.',
+        },
     },
     {
         id: 'rojo',
@@ -33,6 +45,19 @@ const CampaignPanels = {};
         executeLabel: '🔴 Ejecutar Envío a Seleccionados',
         batchSize: 15,
         features: { empresa: true, soloNuevos: true, finca: true, lastSentTime: true },
+        metrics: {
+            endpoint: '/admin/api/rojo-metrics',
+            header: 'Métricas: estado_rojo',
+            cards: [
+                { label: 'Total enviados', color: '#dc2626', count: m => m.total },
+                { label: 'Enviaron documentos', color: '#059669', count: m => m.enviaron_docs_count, pct: true },
+                { label: 'Consultaron documentos', color: '#0284c7', count: m => m.consultaron_count, pct: true },
+                { label: 'Respondieron por chat', color: '#2563eb', count: m => m.respondieron_chat_count, pct: true },
+                { label: 'Sin respuesta', color: '#9ca3af', count: m => m.sin_respuesta_count, pct: true },
+            ],
+            tableTitle: 'Clientes que enviaron documentos o consultaron',
+            emptyMsg: 'Sin respuestas aún.',
+        },
     },
     {
         id: 'amarillo',
@@ -47,6 +72,19 @@ const CampaignPanels = {};
         executeLabel: '🟡 Ejecutar Envío a Seleccionados',
         batchSize: 15,
         features: { empresa: true, soloNuevos: true, lastSentTime: true },
+        metrics: {
+            endpoint: '/admin/api/amarillo-metrics',
+            header: 'Métricas: estado_amarillo',
+            cards: [
+                { label: 'Total enviados', color: '#d97706', count: m => m.total },
+                { label: 'Cuenta propia', color: '#059669', count: m => m.cuenta_propia_count, pct: true },
+                { label: 'Cuenta de tercero', color: '#7c3aed', count: m => m.cuenta_tercero_count, pct: true },
+                { label: 'Respondieron por chat', color: '#2563eb', count: m => m.respondieron_chat_count, pct: true },
+                { label: 'Sin respuesta', color: '#9ca3af', count: m => m.sin_respuesta_count, pct: true },
+            ],
+            tableTitle: 'Clientes que enviaron su cuenta',
+            emptyMsg: 'Sin respuestas aún.',
+        },
     },
     {
         id: 'negados',
@@ -62,6 +100,17 @@ const CampaignPanels = {};
         batchSize: 20,
         emptyMsg: 'No hay clientes pendientes por notificar.',
         features: { empresa: true, fechaSolicitud: true },
+        metrics: {
+            endpoint: '/admin/api/negados-metrics',
+            header: 'Métricas: estado_negados',
+            cards: [
+                { label: 'Total enviados', color: '#6b7280', count: m => m.total },
+                { label: 'Respondieron por chat', color: '#2563eb', count: m => m.respondieron_chat_count, pct: true },
+                { label: 'Sin respuesta', color: '#9ca3af', count: m => m.sin_respuesta_count, pct: true },
+            ],
+            tableTitle: 'Clientes que respondieron por chat',
+            emptyMsg: 'Sin respuestas aún.',
+        },
     },
     {
         id: 'actualizacion',
