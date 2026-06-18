@@ -18,6 +18,51 @@ _SEND_TIMEOUT = 15
 _SEND_ATTEMPTS = 3          # 1 intento + 2 reintentos
 _SEND_BACKOFF = (1.5, 3.0)  # espera antes del 2º y 3º intento
 
+# Límites de tamaño de media de la Cloud API de Meta (bytes).
+# Si se excede, Meta acepta el envío pero falla async al descargar el link.
+META_MEDIA_LIMITS = {
+    "image": 5 * 1024 * 1024,        # 5 MB
+    "document": 100 * 1024 * 1024,   # 100 MB
+}
+
+
+def verify_remote_media(url, kind):
+    """Verifica que un link de media sea descargable y no esté vacío.
+
+    Meta solo valida el link de forma asíncrona: acepta el envío (HTTP 200 con
+    wamid) y recién después intenta descargarlo. Si el archivo está vacío
+    (0 bytes) o excede el límite, rebota con código 131053 y el asesor cree que
+    salió bien. Este chequeo (HEAD) ataja eso ANTES de enviar.
+
+    Devuelve (True, None) si está OK, o (False, motivo) si no debe enviarse.
+    """
+    try:
+        resp = requests.head(url, timeout=_SEND_TIMEOUT, allow_redirects=True)
+    except requests.exceptions.RequestException as e:
+        return False, f"no se pudo acceder al archivo ({e})"
+
+    if resp.status_code != 200:
+        return False, f"el link respondió HTTP {resp.status_code}"
+
+    length = resp.headers.get("Content-Length")
+    if length is None:
+        # Sin Content-Length no podemos validar tamaño; dejamos pasar para no
+        # bloquear envíos legítimos (la causa conocida sí trae Content-Length).
+        return True, None
+    try:
+        size = int(length)
+    except ValueError:
+        return True, None
+
+    if size == 0:
+        return False, "el archivo está vacío (0 bytes)"
+
+    limit = META_MEDIA_LIMITS.get(kind)
+    if limit and size > limit:
+        return False, (f"el archivo pesa {size // (1024*1024)} MB y excede el "
+                       f"límite de {limit // (1024*1024)} MB de WhatsApp")
+    return True, None
+
 
 def _send_to_meta(to_number, payload, kind, log_text, log_type):
     """POST a la Cloud API con timeout, reintentos y registro de resultado.
@@ -128,6 +173,16 @@ class WhatsAppService:
         if _staging_blocks_send(to_number, "image", image_url):
             return _fake_meta_response()
 
+        ok, reason = verify_remote_media(image_url, "image")
+        if not ok:
+            error_tracker.record_event(
+                "codigo",
+                f"Envío image abortado antes de Meta: {reason} — {image_url}",
+                phone=to_number,
+            )
+            log_message(to_number, "outbound", image_url, "failed")
+            return None
+
         data = {
             "messaging_product": "whatsapp",
             "to": to_number,
@@ -156,6 +211,16 @@ class WhatsAppService:
 
         if _staging_blocks_send(to_number, "document", doc_url):
             return _fake_meta_response()
+
+        ok, reason = verify_remote_media(doc_url, "document")
+        if not ok:
+            error_tracker.record_event(
+                "codigo",
+                f"Envío document abortado antes de Meta: {reason} — {doc_url}",
+                phone=to_number,
+            )
+            log_message(to_number, "outbound", doc_url, "failed")
+            return None
 
         data = {
             "messaging_product": "whatsapp",
@@ -340,7 +405,11 @@ class WhatsAppService:
         try:
             with open(local_path, "rb") as f:
                 file_bytes = f.read()
-                
+
+            if not file_bytes:
+                print(f"Refusing to upload empty file to Supabase: {storage_path}")
+                return None
+
             supabase_client.storage.from_("media").upload(
                 path=storage_path,
                 file=file_bytes,

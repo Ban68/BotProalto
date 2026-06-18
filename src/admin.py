@@ -17,7 +17,7 @@ from src.conversation_log import (
     get_archived_conversations, restore_conversation,
     mark_message_deleted
 )
-from src.services import WhatsAppService
+from src.services import WhatsAppService, META_MEDIA_LIMITS
 from src.auth import requires_auth
 from datetime import datetime, timedelta
 
@@ -374,13 +374,27 @@ def api_upload_media():
     os.makedirs(os.path.dirname(temp_path), exist_ok=True)
     
     file.save(temp_path)
-    
-    # Determine type
-    content_type = file.content_type
+
+    # Validar que el archivo no llegó vacío ni excede el límite de Meta. Un
+    # archivo de 0 bytes se sube "bien" a Supabase pero Meta lo rechaza async
+    # (código 131053) y el asesor cree que salió. Cortamos aquí con un error
+    # visible en el panel.
+    content_type = file.content_type or "application/octet-stream"
+    media_kind = "image" if content_type.startswith("image/") else "document"
+    size = os.path.getsize(temp_path)
+    limit = META_MEDIA_LIMITS.get(media_kind)
+    if size == 0:
+        os.remove(temp_path)
+        return jsonify({"error": "El archivo está vacío. Vuelve a seleccionarlo e intenta de nuevo."}), 400
+    if limit and size > limit:
+        os.remove(temp_path)
+        return jsonify({"error": f"El archivo pesa {size // (1024*1024)} MB y supera el "
+                                 f"límite de {limit // (1024*1024)} MB de WhatsApp."}), 400
+
     storage_path = f"admin_uploads/{phone}/{unique_name}"
-    
+
     public_url = WhatsAppService.upload_to_supabase_storage(temp_path, storage_path, content_type)
-    
+
     # Cleanup temp file
     try:
         os.remove(temp_path)
