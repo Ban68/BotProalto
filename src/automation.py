@@ -430,18 +430,29 @@ def build_docs_message(docs_faltantes: str, tipo_empleador: str) -> str:
     else:
         items = [item.strip() for item in re.split(r"[;,]", docs_faltantes or "") if item.strip()]
 
-    if not items or any("TODOS" in item.upper() for item in items):
+    # Marca si la solicitud pide la lista completa ("Todos los documentos",
+    # campo vacío, o nombres no reconocidos): en ese caso recordamos el
+    # certificado de saldo para quienes tengan una libranza activa.
+    es_todos = not items or any("TODOS" in item.upper() for item in items)
+    if es_todos:
         selected = all_docs
     else:
         selected = [doc_map[item.upper()] for item in items if item.upper() in doc_map]
         if not selected:
             selected = all_docs  # fallback si ningún nombre coincide
+            es_todos = True
 
     doc_list = "\n".join(selected)
+    nota_libranza = (
+        "\n\n⚠️ *Ten en cuenta:* si tienes un préstamo de libranza activo es "
+        "obligatorio que nos envíes el certificado de saldo para poder revisar tu solicitud."
+        if es_todos else ""
+    )
     return (
         "Para agilizar tu proceso, necesitamos que nos envíes:\n\n"
         f"{doc_list}\n\n"
         "Puedes enviárnoslos directamente aquí por WhatsApp (foto o PDF)."
+        f"{nota_libranza}"
     )
 
 
