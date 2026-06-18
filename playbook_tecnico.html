@@ -220,12 +220,17 @@
     <a href="#google-sheets">google_sheets.py &mdash; Fallback</a>
     <div class="sep"></div>
     <a href="#admin">admin.py &mdash; Panel Admin</a>
-    <a href="#admin-html">admin.html &mdash; Frontend</a>
+    <a href="#error-tracker">error_tracker.py &mdash; Diagnostico</a>
+    <a href="#test-mode">test_mode.py &mdash; Simulador</a>
+    <a href="#auth">auth.py &mdash; Basic Auth</a>
+    <a href="#analytics">analytics_api.py &mdash; Metricas</a>
+    <a href="#frontend">Frontend &mdash; static/ modular</a>
     <a href="#cloud-run">Cloud Run &mdash; Microservicio DB</a>
     <div class="sep"></div>
+    <a href="#staging">Entorno de Staging</a>
     <a href="#state-machine">Maquina de Estados Completa</a>
     <a href="#supabase-schema">Schema Supabase</a>
-    <a href="#templates-wa">Templates WhatsApp</a>
+    <a href="#templates-wa">Templates y Campanas</a>
     <a href="#context-files">Archivos de Contexto LLM</a>
     <a href="#threading">Threading y Async</a>
     <a href="#security">Seguridad</a>
@@ -242,11 +247,11 @@
     <div class="hero">
         <div class="badge">Playbook Tecnico</div>
         <h1>Bot WhatsApp ProAlto</h1>
-        <p>Documentacion tecnica completa. Arquitectura, codigo fuente, APIs, base de datos, despliegue y guias de extension. Suficiente para que cualquier desarrollador gestione el bot desde cero.</p>
+        <p>Documentacion tecnica completa. Arquitectura, codigo fuente, APIs, base de datos, staging, diagnostico, despliegue y guias de extension. Suficiente para que cualquier desarrollador sin conocimiento previo gestione el bot, resuelva incidentes y construya nuevos desarrollos.</p>
         <div class="meta">
-            <span>Version 1.0</span>
-            <span>Marzo 2026</span>
-            <span>Stack: Python / Flask / Supabase / Meta Cloud API / Claude</span>
+            <span>Version 2.0</span>
+            <span>Junio 2026</span>
+            <span>Stack: Python / Flask / Supabase / Meta Cloud API v21.0 / Claude</span>
         </div>
     </div>
 
@@ -291,9 +296,17 @@
                 <tr><td><strong>Bridge DB</strong></td><td>Python / functions-framework</td><td>Google Cloud Run</td><td>API puente HTTP→PostgreSQL (firewall)</td></tr>
                 <tr><td><strong>WhatsApp API</strong></td><td>Meta Cloud API v21.0</td><td>Meta</td><td>Envio/recepcion de mensajes</td></tr>
                 <tr><td><strong>LLM</strong></td><td>Claude Haiku (claude-haiku-4-5-20251001)</td><td>Anthropic</td><td>Respuestas en lenguaje natural</td></tr>
-                <tr><td><strong>Google Sheets (fallback)</strong></td><td>Apps Script</td><td>Google</td><td>Verificacion de solicitudes recientes del formulario</td></tr>
+                <tr><td><strong>Google Sheets (fallback)</strong></td><td>Apps Script</td><td>Google</td><td>Verificacion de solicitudes recientes del formulario y anticipos</td></tr>
+                <tr><td><strong>Diagnostico de fallos</strong></td><td>Buffer en memoria (<code>error_tracker.py</code>)</td><td>En el bot</td><td>Clasifica errores de envio/entrega y los muestra en el panel</td></tr>
+                <tr><td><strong>Analytics</strong></td><td>Blueprint <code>analytics_api.py</code> + Claude</td><td>En el bot</td><td>Embudo, volumen, tiempos de respuesta, auditorias LLM</td></tr>
+                <tr><td><strong>Simulador / Test</strong></td><td><code>test_mode.py</code> (en memoria)</td><td>En el bot</td><td>Panel <code>/admin/test</code>: prueba flujos sin tocar Meta ni Supabase</td></tr>
             </tbody>
         </table>
+
+        <div class="callout">
+            <span class="icon">🌐</span>
+            <div><strong>Dos entornos.</strong> <strong>Produccion</strong> sigue la rama <code>main</code>; <strong>staging</strong> sigue la rama <code>staging</code> (segunda instancia en Render). En staging la variable <code>ENVIRONMENT=staging</code> bloquea TODO envio real a Meta y a admins, y el scheduler de automatizacion no arranca. Ver seccion <a href="#staging">Entorno de Staging</a>. El deploy a produccion en Render es <strong>manual</strong> (se dispara desde el dashboard tras el merge a <code>main</code>); staging auto-despliega.</div>
+        </div>
     </section>
 
     <hr class="page-break">
@@ -306,46 +319,60 @@
 
         <div class="file-tree">
 <span class="dir">Bot/</span>
-├── <span class="file">app.py</span>                    <span class="comment"># Flask app factory, entry point, rutas raiz</span>
-├── <span class="file">config.py</span>                 <span class="comment"># Clase Config — carga variables de entorno</span>
+├── <span class="file">app.py</span>                    <span class="comment"># Flask factory, registra 3 blueprints, static_v, arranque scheduler</span>
+├── <span class="file">config.py</span>                 <span class="comment"># Clase Config — variables de entorno + ENVIRONMENT/IS_STAGING</span>
 ├── <span class="file">Procfile</span>                  <span class="comment"># web: gunicorn app:app --bind 0.0.0.0:$PORT</span>
 ├── <span class="file">requirements.txt</span>          <span class="comment"># Dependencias Python</span>
 ├── <span class="file">.env</span>                      <span class="comment"># Variables de entorno (NO en git)</span>
 │
 ├── <span class="dir">src/</span>
-│   ├── <span class="file">__init__.py</span>           <span class="comment"># Vacio</span>
-│   ├── <span class="file">webhook.py</span>            <span class="comment"># Blueprint: GET/POST /webhook</span>
-│   ├── <span class="file">flows.py</span>              <span class="comment"># FlowHandler: maquina de estados principal</span>
-│   ├── <span class="file">services.py</span>           <span class="comment"># WhatsAppService: envio mensajes, media, templates</span>
+│   ├── <span class="file">webhook.py</span>            <span class="comment"># Blueprint /webhook + entregas fallidas → error_tracker</span>
+│   ├── <span class="file">flows.py</span>              <span class="comment"># FlowHandler: maquina de estados (NO tocar sin confirmar)</span>
+│   ├── <span class="file">services.py</span>           <span class="comment"># WhatsAppService: envio, media, reintentos, guard staging/media</span>
 │   ├── <span class="file">conversation_log.py</span>   <span class="comment"># Supabase CRUD: mensajes, estados, capturas</span>
 │   ├── <span class="file">database.py</span>           <span class="comment"># Cloud Run bridge: solicitudes, saldos</span>
-│   ├── <span class="file">automation.py</span>         <span class="comment"># Envios masivos, debounce docs, status mapping</span>
-│   ├── <span class="file">admin.py</span>              <span class="comment"># Blueprint: /admin/* — panel y APIs</span>
-│   ├── <span class="file">llm.py</span>                <span class="comment"># Claude LLM: system prompt, ask_llm()</span>
+│   ├── <span class="file">automation.py</span>         <span class="comment"># Campanas masivas, debounce docs, status mapping</span>
+│   ├── <span class="file">admin.py</span>              <span class="comment"># Blueprint /admin/* — panel, APIs, campanas, test, diagnostico</span>
+│   ├── <span class="file">analytics_api.py</span>      <span class="comment"># Blueprint /admin/api/analytics/* — embudo, volumen, auditorias</span>
+│   ├── <span class="file">analytics_queries.py</span>   <span class="comment"># Consultas y auditorias LLM que alimentan analytics_api</span>
+│   ├── <span class="file">llm.py</span>                <span class="comment"># Claude LLM: system prompt, ask_llm(), prompt caching</span>
 │   ├── <span class="file">notifications.py</span>      <span class="comment"># Alertas a admin, horario laboral</span>
-│   ├── <span class="file">google_sheets.py</span>      <span class="comment"># Fallback Google Sheets</span>
+│   ├── <span class="file">google_sheets.py</span>      <span class="comment"># Fallback Google Apps Script (formulario + anticipos)</span>
+│   ├── <span class="file">error_tracker.py</span>      <span class="comment"># Buffer de fallos clasificados → panel Diagnostico</span>
+│   ├── <span class="file">test_mode.py</span>          <span class="comment"># Simulador en memoria (panel /admin/test): no toca Meta ni Supabase</span>
+│   ├── <span class="file">test_personas.py</span>      <span class="comment"># Personas sinteticas para pruebas automaticas</span>
+│   ├── <span class="file">test_runner.py</span>        <span class="comment"># Motor de conversaciones automaticas de prueba</span>
+│   ├── <span class="file">auth.py</span>               <span class="comment"># HTTP Basic Auth compartido (@requires_auth)</span>
 │   └── <span class="file">status_mapping.json</span>   <span class="comment"># Mapa estado_interno → mensaje al cliente</span>
 │
-├── <span class="dir">context/</span>                   <span class="comment"># Archivos de contexto para el LLM</span>
-│   ├── <span class="file">empresa.md</span>            <span class="comment"># Informacion general de ProAlto</span>
-│   ├── <span class="file">productos.md</span>          <span class="comment"># Credito de libranza, requisitos</span>
-│   ├── <span class="file">estados_solicitud.md</span>  <span class="comment"># Explicacion de cada estado</span>
-│   ├── <span class="file">faq.md</span>                <span class="comment"># Preguntas frecuentes</span>
-│   ├── <span class="file">capacidades_bot.md</span>    <span class="comment"># Que puede y no puede hacer el bot</span>
-│   ├── <span class="file">compliance.md</span>         <span class="comment"># Legal, Habeas Data</span>
-│   ├── <span class="file">ejemplos_conversacion.md</span> <span class="comment"># Ejemplos de respuesta</span>
-│   └── <span class="file">flujos.md, conversaciones_bot.md, README.md</span>
+├── <span class="dir">context/</span>                   <span class="comment"># Conocimiento inyectado al LLM (editar = cambia respuestas)</span>
+│   ├── <span class="file">empresa.md, productos.md, estados_solicitud.md, faq.md</span>
+│   ├── <span class="file">capacidades_bot.md, compliance.md, ejemplos_conversacion.md</span>
+│   ├── <span class="file">flujos.md, tiempos_proceso.md</span>   <span class="comment"># Referencia de flujos y SLAs</span>
+│   ├── <span class="file">conversaciones_bot.md</span>          <span class="comment"># Historial real (&gt;1MB — leer con offset/limit)</span>
+│   ├── <span class="file">auditoria_completa.md</span>          <span class="comment"># Metricas y analisis de rendimiento</span>
+│   └── <span class="dir">test_personas/</span>               <span class="comment"># Definiciones de personas de prueba</span>
 │
 ├── <span class="dir">cloud_run/</span>
 │   └── <span class="file">main.py</span>              <span class="comment"># Google Cloud Function: bridge HTTP→PostgreSQL</span>
 │
 ├── <span class="dir">templates/</span>
-│   └── <span class="file">admin.html</span>            <span class="comment"># Dashboard SPA completo</span>
+│   ├── <span class="file">admin.html</span>            <span class="comment"># Shell del panel (nav rail + paneles); CSS/JS en static/</span>
+│   ├── <span class="file">admin_test.html</span>       <span class="comment"># Panel de testing manual (/admin/test)</span>
+│   └── <span class="file">admin_test_review.html</span> <span class="comment"># Revision de sesiones de prueba (/admin/test/review)</span>
 │
-├── <span class="dir">static/uploads/</span>           <span class="comment"># Media temporal (efimera en Render)</span>
-├── <span class="dir">scripts/</span>                   <span class="comment"># Scripts de debugging y utilidad</span>
-└── <span class="dir">data/</span>
-    └── <span class="file">conversations.json</span>    <span class="comment"># Datos estaticos (legacy)</span>
+├── <span class="dir">static/</span>
+│   ├── <span class="dir">css/</span>  <span class="comment"># tokens.css, base.css, layout.css, panels.css, legacy.css</span>
+│   ├── <span class="dir">js/</span>   <span class="comment"># nav, campaign-panel, paste-campaign, campaigns, diagnostics, metrics-timeline, legacy</span>
+│   └── <span class="dir">uploads/temp/</span>             <span class="comment"># Media temporal (efimera en Render)</span>
+│
+├── <span class="dir">docs/</span>
+│   └── <span class="file">STAGING.md</span>            <span class="comment"># Flujo oficial de staging → produccion</span>
+│
+├── <span class="file">playbook_tecnico.html</span>     <span class="comment"># Este documento</span>
+├── <span class="file">playbook_general.html</span>     <span class="comment"># Vision de producto / no tecnica</span>
+├── <span class="file">playbook_operativo.html</span>   <span class="comment"># Guia operativa del equipo (panel)</span>
+└── <span class="dir">scripts/</span>                   <span class="comment"># Scripts de debugging y utilidad</span>
         </div>
 
         <h3>Dependencias (requirements.txt)</h3>
@@ -377,7 +404,8 @@ anthropic>=0.40.0</code></pre>
                 <tr><td><code>BUSINESS_PHONE</code></td><td>123456789012</td><td>Si</td><td>WhatsApp Business Phone Number ID</td></tr>
                 <tr><td><code>WEBHOOK_VERIFY_TOKEN</code></td><td>mi_token_secreto</td><td>Si</td><td>Token de verificacion del webhook Meta</td></tr>
                 <tr><td><code>APP_SECRET</code></td><td>abc123...</td><td>Recomendado</td><td>Secret para HMAC-SHA256 de webhooks. Si no se define, se acepta todo</td></tr>
-                <tr><td><code>PORT</code></td><td>5000</td><td>No</td><td>Puerto del servidor Flask</td></tr>
+                <tr><td><code>ENVIRONMENT</code></td><td>production | staging</td><td>No (default <code>production</code>)</td><td>En <code>staging</code> bloquea TODO envio real a Meta/admins y no arranca el scheduler</td></tr>
+                <tr><td><code>PORT</code></td><td>5000</td><td>No</td><td>Puerto del servidor Flask (Render la inyecta sola)</td></tr>
                 <tr><td><code>DEBUG</code></td><td>True</td><td>No</td><td>Modo debug de Flask (False en produccion)</td></tr>
                 <tr><td><code>SUPABASE_URL</code></td><td>https://xxx.supabase.co</td><td>Si</td><td>URL del proyecto Supabase</td></tr>
                 <tr><td><code>SUPABASE_KEY</code></td><td>eyJhb...</td><td>Si</td><td>Anon key de Supabase</td></tr>
@@ -388,14 +416,15 @@ anthropic>=0.40.0</code></pre>
                 <tr><td><code>ADMIN_NOTIFY_NUMBERS</code></td><td>573101234567,573109876543</td><td>Recomendado</td><td>Telefonos para notificaciones de admin (CSV)</td></tr>
                 <tr><td><code>ADMIN_TIMEZONE</code></td><td>America/Bogota</td><td>No</td><td>Zona horaria para horario laboral</td></tr>
                 <tr><td><code>ANTHROPIC_API_KEY</code></td><td>sk-ant-...</td><td>Si (para LLM)</td><td>API key de Anthropic para Claude</td></tr>
-                <tr><td><code>GOOGLE_APPS_SCRIPT_URL</code></td><td>https://script.google.com/macros/s/...</td><td>No</td><td>URL del Apps Script fallback</td></tr>
+                <tr><td><code>GOOGLE_APPS_SCRIPT_URL</code></td><td>https://script.google.com/macros/s/...</td><td>No (tiene default)</td><td>URL del Apps Script fallback (formulario reciente)</td></tr>
+                <tr><td><code>GOOGLE_APPS_SCRIPT_ANTICIPO_URL</code></td><td>https://script.google.com/macros/s/...</td><td>No</td><td>Apps Script para consulta de Anticipo de Salario por cedula</td></tr>
                 <tr><td><code>MAINTENANCE_MODE</code></td><td>False</td><td>No</td><td>Si True, deshabilita llamadas a DB</td></tr>
             </tbody>
         </table>
 
         <div class="callout">
             <span class="icon">🔐</span>
-            <div><strong>En Render:</strong> Todas estas variables se configuran en el dashboard de Render → Environment. El archivo <code>.env</code> solo se usa para desarrollo local.</div>
+            <div><strong>En Render:</strong> Todas estas variables se configuran en el dashboard de Render → Environment. El archivo <code>.env</code> solo se usa para desarrollo local. <code>API_VERSION</code> NO es variable de entorno: esta hardcodeada en <code>config.py</code> (<code>v21.0</code>). El servicio de <strong>staging</strong> usa las mismas variables pero con <code>ENVIRONMENT=staging</code> y su propio <code>ADMIN_USER</code>/<code>ADMIN_PASS</code> (ver <a href="#staging">Entorno de Staging</a>).</div>
         </div>
     </section>
 
@@ -411,22 +440,32 @@ anthropic>=0.40.0</code></pre>
             <p>Archivo principal. Crea la app Flask, registra blueprints y define rutas raiz.</p>
         </div>
 
-        <pre><code># Blueprints registrados:
-webhook_bp  →  /webhook (GET y POST)
-admin_bp    →  /admin/*
+        <pre><code># create_app() — Flask factory. Blueprints registrados:
+webhook_bp    →  /webhook (GET y POST)
+admin_bp      →  /admin/*
+analytics_bp  →  /admin/api/analytics/*
 
 # Rutas directas:
 GET /          →  "ProAlto Bot is running 🚀"
 GET /privacy   →  Pagina HTML de politica de privacidad
 GET /health    →  "OK" (healthcheck para Render)
-GET /whoami    →  IP publica del servidor (debug)
+GET /whoami    →  IP publica de salida del servidor (debug de allowlists)
 
-# Deployment:
-# Procfile: web: gunicorn app:app --bind 0.0.0.0:$PORT</code></pre>
+# Cache busting de estaticos:
+#   static_v(filename) → url_for('static', v=<md5[:8]>)  (template global)
+#   SEND_FILE_MAX_AGE_DEFAULT = 0 → revalida por ETag (304 si no cambio)
+#   Asi un deploy refresca CSS/JS sin Ctrl+F5.
 
-        <div class="card info">
-            <div class="card-title">Scheduler (comentado)</div>
-            <p>En <code>app.py</code> hay un import condicional de <code>start_scheduler</code> desde <code>src.automation</code>. Actualmente esta comentado. Si se activa, usa APScheduler para tareas periodicas en background.</p>
+# Arranque (al final del modulo, fuera de __main__):
+#   print [BOOT] ENVIRONMENT=<...>
+#   if IS_STAGING: NO arranca scheduler (no toca datos de produccion)
+#   else: intenta from src.automation import start_scheduler
+
+# Deployment:  Procfile → web: gunicorn app:app --bind 0.0.0.0:$PORT</code></pre>
+
+        <div class="card warning">
+            <div class="card-title">Sobre el scheduler de automatizacion</div>
+            <p>En produccion <code>app.py</code> intenta <code>from src.automation import start_scheduler; start_scheduler()</code>, pero esa funcion <strong>no existe hoy</strong> en <code>automation.py</code> (solo hay un <code>BackgroundScheduler</code> con el <code>add_job</code> comentado). El <code>ImportError</code> se captura y se imprime <em>"Could not start scheduler"</em>. <strong>Resultado real: no corren tareas en background.</strong> Todas las campanas masivas se disparan <strong>manualmente</strong> desde el panel admin. Si en el futuro se quiere automatizar, hay que implementar <code>start_scheduler()</code> en <code>automation.py</code> y registrar el job.</p>
         </div>
     </section>
 
@@ -441,19 +480,25 @@ GET /whoami    →  IP publica del servidor (debug)
     APP_SECRET           = os.getenv("APP_SECRET", "")
     API_TOKEN            = os.getenv("API_TOKEN")
     BUSINESS_PHONE       = os.getenv("BUSINESS_PHONE")
-    API_VERSION          = os.getenv("API_VERSION", "v21.0")
+    API_VERSION          = "v21.0"                 # hardcoded, NO es env var
     PORT                 = int(os.getenv("PORT", 5000))
-    DEBUG                = os.getenv("DEBUG", "True").lower() == "true"
-    ADMIN_NOTIFY_NUMBERS = os.getenv("ADMIN_NOTIFY_NUMBERS", "")
+    DEBUG                = os.getenv("DEBUG", "True") == "True"
+
+    # Entorno de despliegue: "production" | "staging"
+    ENVIRONMENT          = os.getenv("ENVIRONMENT", "production").strip().lower()
+    IS_STAGING           = ENVIRONMENT == "staging"
+
+    ADMIN_NOTIFY_NUMBERS = os.getenv("ADMIN_NOTIFY_NUMBERS", "").split(",")
     ADMIN_TIMEZONE       = os.getenv("ADMIN_TIMEZONE", "America/Bogota")
     ADMIN_USER           = os.getenv("ADMIN_USER", "")
     ADMIN_PASS           = os.getenv("ADMIN_PASS", "")
     SUPABASE_URL         = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY         = os.getenv("SUPABASE_KEY", "")
-    MAINTENANCE_MODE     = os.getenv("MAINTENANCE_MODE", "False").lower() == "true"
-    GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_APPS_SCRIPT_URL", "...")</code></pre>
+    MAINTENANCE_MODE     = os.getenv("MAINTENANCE_MODE", "False") == "True"
+    GOOGLE_APPS_SCRIPT_URL = os.getenv("GOOGLE_APPS_SCRIPT_URL", "&lt;default&gt;")
+    GOOGLE_APPS_SCRIPT_ANTICIPO_URL = os.getenv("GOOGLE_APPS_SCRIPT_ANTICIPO_URL", "").strip()</code></pre>
 
-        <p>Cargado globalmente via <code>from config import Config</code> en todos los modulos.</p>
+        <p>Cargado globalmente via <code>from config import Config</code> en todos los modulos. <code>IS_STAGING</code> es la bandera que activa el guard de bloqueo de envios en <code>services.py</code>.</p>
     </section>
 
     <hr class="page-break">
@@ -683,6 +728,41 @@ HEADERS  = {"Authorization": f"Bearer {Config.API_TOKEN}", "Content-Type": "appl
             <span class="icon">📌</span>
             <div>Todos los mensajes enviados se registran con <code>log_message()</code> incluyendo el <code>wamid</code> (WhatsApp message ID) extraido de la respuesta de Meta.</div>
         </div>
+
+        <h3>Camino de envio: <code>_send_to_meta()</code></h3>
+        <p>Todos los metodos <code>send_*</code> terminan en este helper central. Antes de salir a la red atraviesan tres compuertas en orden:</p>
+        <pre><code>1. test_mode.is_test_phone(to)  → si es telefono __test_, NO sale a Meta:
+                                  acumula el outbound en el buffer en memoria.
+2. _staging_blocks_send(...)    → si ENVIRONMENT=staging, NO sale a Meta:
+                                  imprime "[STAGING] Envio real bloqueado" y retorna.
+3. (image/document) verify_remote_media(url, kind) → valida el link ANTES de enviar.
+
+_send_to_meta(to, payload, kind, log_text, log_type):
+  - POST con timeout 15s y reintentos: _SEND_ATTEMPTS=3 (1 + 2 retries),
+    backoff (1.5s, 3.0s). Solo reintenta errores TRANSITORIOS (5xx, red,
+    rate limit); rechazos definitivos (token, ventana 24h, payload) NO.
+  - Exito  → log_message(...) con wamid, devuelve JSON de Meta.
+  - Fracaso→ error_tracker.record_event(categoria) + log_message(..., "failed")
+             (visible en el panel) y devuelve None. Clasificacion en error_tracker.</code></pre>
+
+        <h3>Validacion de media — evita el error Meta 131053</h3>
+        <div class="card danger">
+            <div class="card-title">Por que existe esto</div>
+            <p>Al enviar imagenes/documentos por <code>link</code>, Meta valida el archivo de forma <strong>asincrona</strong>: acepta el envio (HTTP 200 + <code>wamid</code>) y recien despues intenta descargar la URL. Si el archivo esta vacio (0 bytes), excede el limite de tamano o no es accesible, Meta lo rechaza con el codigo <code>131053</code> ("No media found from weblink and received http code 200") via webhook de estado — y el asesor ya creyo que el documento salio. Un caso real (jun/2026): un PDF subido por el panel quedo en Supabase con <code>Content-Length: 0</code> y reboto.</p>
+        </div>
+        <pre><code>META_MEDIA_LIMITS = {"image": 5 MB, "document": 100 MB}
+
+verify_remote_media(url, kind) -> (ok: bool, motivo: str | None)
+  # HEAD a la URL (timeout 15s, sigue redirects). Bloquea el envio si:
+  #   - no responde 200
+  #   - Content-Length == 0  (archivo vacio)
+  #   - Content-Length > limite de Meta para ese tipo
+  # Sin Content-Length, deja pasar (no bloquea envios legitimos).
+
+# send_image / send_document llaman verify_remote_media tras el guard de
+# staging. Si falla: error_tracker.record_event("codigo", ...) +
+# log_message(..., "failed") y retornan None (NO se envia a Meta).</code></pre>
+        <p>Defensa en capas complementaria en la subida (<a href="#admin">admin.py</a> <code>api_upload_media</code> rechaza 0 bytes y archivos sobre el limite con HTTP 400) y en <code>upload_to_supabase_storage</code> (no sube bytes vacios). Asi el problema se corta en el origen y, si algo se cuela, antes de llegar a Meta.</p>
     </section>
 
     <hr class="page-break">
@@ -1049,25 +1129,163 @@ notify_admin_error(user_phone, error_msg)
                 <tr><td>POST</td><td><code>/admin/api/llm-requests/&lt;id&gt;/resolve</code></td><td>Marcar solicitud como resuelta</td></tr>
             </tbody>
         </table>
+
+        <div class="card info">
+            <div class="card-title">Familias de rutas anadidas (el panel creció — &gt;70 endpoints)</div>
+            <p>Ademas de las anteriores, <code>admin.py</code> agrupa hoy estas familias. Para la lista exacta: <code>grep "@admin_bp.route" src/admin.py</code>.</p>
+            <table>
+                <thead><tr><th>Familia</th><th>Ejemplos</th><th>Proposito</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>Campanas (8 estados)</strong></td><td><code>/api/pending-*</code>, <code>/api/trigger-bulk-{send,rojo,amarillo,leads,renovados,anticipos,denegado,actualizacion-datos}</code></td><td>Listar elegibles y disparar envios masivos por template</td></tr>
+                    <tr><td><strong>Metricas por campana</strong></td><td><code>/api/{lead,renovado,anticipo,aprobado,rojo,amarillo,negados}-metrics</code></td><td>Conteos por boton/intervalo de cada campana</td></tr>
+                    <tr><td><strong>Conversaciones por tipo</strong></td><td><code>/api/{lead,renovado,anticipos}-conversations</code></td><td>Bandejas separadas por origen de campana</td></tr>
+                    <tr><td><strong>Solicitudes de documentos</strong></td><td><code>/api/document-requests</code>, <code>.../&lt;id&gt;/{complete,reopen}</code></td><td>Gestion de documentos pedidos al cliente</td></tr>
+                    <tr><td><strong>Panel de pruebas</strong></td><td><code>/admin/test</code>, <code>/admin/test/review</code>, <code>/api/test/*</code></td><td>Simulador en memoria (ver <a href="#test-mode">test_mode.py</a>)</td></tr>
+                    <tr><td><strong>Diagnostico</strong></td><td><code>/api/diagnostics</code></td><td>Eventos de fallo clasificados (ver <a href="#error-tracker">error_tracker.py</a>)</td></tr>
+                    <tr><td><strong>Analytics</strong></td><td><code>/api/analytics/*</code> (blueprint aparte)</td><td>Embudo, volumen, tiempos, auditorias (ver <a href="#analytics">analytics_api.py</a>)</td></tr>
+                    <tr><td><strong>Reinyeccion LLM</strong></td><td><code>/api/llm-retrigger/&lt;phone&gt;</code></td><td>Reintentar respuesta del agente para un chat</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 12b. ERROR_TRACKER.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="error-tracker">
+        <h2><span class="num">15b</span> error_tracker.py — Diagnostico de Fallos</h2>
+
+        <p>Buffer en memoria (<code>deque(maxlen=300)</code>, thread-safe) que recoge y <strong>clasifica por origen</strong> todos los fallos relevantes del bot, para que el panel de Diagnostico le diga al equipo <em>que paso y que hacer</em>. Un reinicio de Render lo limpia (aceptable: si el modulo no responde, el problema es Render).</p>
+
+        <h3>API</h3>
+        <pre><code>record_event(category, detail, phone=None, http_status=None, meta_code=None)
+  # Registra un evento. Nunca lanza excepcion (es instrumentacion).
+classify_send_exception(exc)      # Excepcion de requests → categoria
+classify_delivery_failure(code)   # Codigo Meta de entrega fallida → categoria
+get_events(limit=100)             # Lo consume /admin/api/diagnostics</code></pre>
+
+        <h3>Categorias y accion sugerida</h3>
+        <table>
+            <thead><tr><th>Categoria</th><th>Origen</th><th>Accion</th></tr></thead>
+            <tbody>
+                <tr><td><code>meta_caida</code></td><td>Meta / WhatsApp</td><td><span class="badge-inline badge-yellow">esperar</span> reintenta solo</td></tr>
+                <tr><td><code>red</code></td><td>Red / Render</td><td><span class="badge-inline badge-yellow">esperar</span> timeout/conexion</td></tr>
+                <tr><td><code>meta_token</code></td><td>Meta / WhatsApp</td><td><span class="badge-inline badge-red">intervenir</span> renovar API_TOKEN</td></tr>
+                <tr><td><code>meta_limite</code></td><td>Meta / WhatsApp</td><td><span class="badge-inline badge-yellow">esperar</span> rate limit</td></tr>
+                <tr><td><code>meta_ventana</code></td><td>Meta / WhatsApp</td><td><span class="badge-inline badge-blue">gestionar</span> usar plantilla (24h)</td></tr>
+                <tr><td><code>meta_entrega</code></td><td>Meta / WhatsApp</td><td><span class="badge-inline badge-blue">gestionar</span> numero invalido/sin WA</td></tr>
+                <tr><td><code>meta_payload</code></td><td>Bot (codigo)</td><td><span class="badge-inline badge-red">intervenir</span> formato/plantilla mal</td></tr>
+                <tr><td><code>supabase</code></td><td>Supabase</td><td><span class="badge-inline badge-red">intervenir</span></td></tr>
+                <tr><td><code>cloud_run</code></td><td>Cloud Run</td><td><span class="badge-inline badge-yellow">esperar</span></td></tr>
+                <tr><td><code>llm</code></td><td>Anthropic</td><td><span class="badge-inline badge-yellow">esperar</span> asesor responde manual</td></tr>
+                <tr><td><code>codigo</code></td><td>Bot (codigo)</td><td><span class="badge-inline badge-red">intervenir</span> error inesperado</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">📡</span>
+            <div><strong>Como entran los eventos.</strong> (1) <code>_send_to_meta</code> registra los envios fallidos. (2) <code>webhook.py → _process_failed_statuses()</code> registra las <strong>entregas fallidas</strong> que Meta reporta async (el caso 131053 entra por aqui, no como error del POST) y deja una marca <code>[Entrega fallida — codigo N]</code> en el chat del panel. (3) Cualquier modulo puede llamar <code>record_event()</code>.</div>
+        </div>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 12c. TEST_MODE.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="test-mode">
+        <h2><span class="num">15c</span> test_mode.py — Simulador en Memoria</h2>
+
+        <p>Permite ejecutar el pipeline completo (<code>flows.py</code>, LLM, Cloud Run) <strong>sin escribir en Supabase, sin enviar nada a Meta y sin notificar admins</strong>. Es la via recomendada para probar cambios (incluido en staging). Lo expone el panel <code>/admin/test</code>.</p>
+
+        <h3>Como se activa</h3>
+        <pre><code># Un telefono cuyo id empieza con TEST_PHONE_PREFIX = "__test_"
+# dispara el modo test en cada metodo de envio y en conversation_log.
+is_test_phone(phone) -> bool   # phone.startswith("__test_")
+
+# Cada sesion es un dict en memoria (sustituto de bot_conversations +
+# bot_messages + capturas) con TTL de 2h. register_session() crea el phone.</code></pre>
+
+        <h3>Capacidades clave</h3>
+        <ul>
+            <li><strong>Sustituto en memoria</strong> de estado, historial, capturas (email/cuenta/docs/llm), contact-update y contadores.</li>
+            <li><strong>Buffer outbound</strong>: cada intento de envio del bot se acumula y el panel lo drena con <code>/api/test/poll</code>.</li>
+            <li><strong>Simulacion de templates de Meta</strong>: <code>TEMPLATES</code> trae los 8 cuerpos (transcritos del WhatsApp Manager) con sus botones y el <code>state</code> que dejaria el envio real; <code>inject_template()</code> reproduce la recepcion para probar el flujo desde el boton.</li>
+            <li><strong>Pruebas automaticas</strong>: <code>test_personas.py</code> + <code>test_runner.py</code> ejecutan conversaciones sinteticas (rutas <code>/api/test/auto/*</code>) y se revisan en <code>/admin/test/review</code>.</li>
+        </ul>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 12d. AUTH.PY -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="auth">
+        <h2><span class="num">15d</span> auth.py — HTTP Basic Auth compartido</h2>
+        <p>Decorador comun para los blueprints <code>admin_bp</code> y <code>analytics_bp</code>. Lee credenciales de <code>Config.ADMIN_USER</code>/<code>ADMIN_PASS</code> (variables de entorno), por eso staging tiene sus propias credenciales sin tocar codigo.</p>
+        <pre><code>@requires_auth          # decora cada ruta del panel
+check_auth(user, pwd)   # user == ADMIN_USER and pwd == ADMIN_PASS
+authenticate()          # 401 + WWW-Authenticate: Basic realm="ProAlto Admin"</code></pre>
+    </section>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 12e. ANALYTICS -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="analytics">
+        <h2><span class="num">15e</span> analytics_api.py — Metricas y Auditorias</h2>
+        <p>Blueprint <code>analytics_bp</code> montado en <code>/admin/api/analytics/*</code>. La logica de consulta vive en <code>analytics_queries.py</code>. Todas las rutas filtran por rango <code>?from=&amp;to=</code>.</p>
+        <table>
+            <thead><tr><th>Metodo</th><th>Ruta</th><th>Devuelve</th></tr></thead>
+            <tbody>
+                <tr><td>GET</td><td><code>/funnel</code></td><td>Embudo de conversion por estado</td></tr>
+                <tr><td>GET</td><td><code>/volume</code></td><td>Volumen de mensajes/conversaciones</td></tr>
+                <tr><td>GET</td><td><code>/response-times</code></td><td>Tiempos de respuesta (bot y asesores)</td></tr>
+                <tr><td>GET</td><td><code>/advisors</code></td><td>Asesores disponibles en el periodo</td></tr>
+                <tr><td>POST</td><td><code>/audit</code></td><td>Lanza una auditoria LLM (sample_size, audit_type, depth, focus)</td></tr>
+                <tr><td>GET</td><td><code>/audit/&lt;id&gt;</code></td><td>Reporte de una auditoria</td></tr>
+                <tr><td>GET</td><td><code>/audits</code></td><td>Lista de auditorias</td></tr>
+            </tbody>
+        </table>
+        <p>El frontend lo dibuja <code>static/js/metrics-timeline.js</code> y compania. Las auditorias usan Claude para analizar conversaciones reales (relacionado con el agente <code>/mejora-continua</code>).</p>
     </section>
 
     <hr class="page-break">
 
     <!-- ══════════════════════════════════════ -->
-    <!-- 16. ADMIN.HTML -->
+    <!-- 16. FRONTEND MODULAR -->
     <!-- ══════════════════════════════════════ -->
-    <section id="admin-html">
-        <h2><span class="num">16</span> admin.html — Frontend (SPA)</h2>
+    <section id="frontend">
+        <h2><span class="num">16</span> Frontend — <code>static/</code> modular</h2>
 
         <div class="card">
-            <p>Single Page Application en HTML/CSS/JS puro (sin framework). Renderizado por Flask via <code>render_template("admin.html")</code>.</p>
-            <ul>
-                <li><strong>CSS:</strong> Variables CSS ProAlto (--primary: #fec05c, --primary-dark: #283e52). Fuente: Outfit.</li>
-                <li><strong>JS:</strong> Vanilla JS con fetch() para API calls. Auto-refresh cada 10 segundos.</li>
-                <li><strong>Layout:</strong> Sidebar (lista chats) + Area central (chat activo) + Pestanas superiores.</li>
-                <li><strong>Libreria externa:</strong> SheetJS (xlsx) para exportar datos a Excel.</li>
-                <li><strong>Tabs:</strong> Conversaciones, Automatizacion, Emails, Cuentas, Documentos, Solicitudes LLM.</li>
-            </ul>
+            <p>El panel <strong>ya no es un solo <code>admin.html</code> monolitico</strong>. <code>templates/admin.html</code> es solo el <em>shell</em> (nav rail + contenedores de panel); el CSS y el JS viven modularizados en <code>static/</code> y se versionan con <code>static_v()</code> (cache busting por hash + ETag). Sigue siendo HTML/CSS/JS puro, sin framework.</p>
+        </div>
+
+        <h3>CSS (<code>static/css/</code>)</h3>
+        <table>
+            <thead><tr><th>Archivo</th><th>Rol</th></tr></thead>
+            <tbody>
+                <tr><td><code>tokens.css</code></td><td>Design tokens (colores ProAlto, espaciados, radios)</td></tr>
+                <tr><td><code>base.css</code></td><td>Componentes: <code>btn-*</code>, <code>table-*</code>, <code>card-*</code></td></tr>
+                <tr><td><code>layout.css</code></td><td>Shell de 3 columnas + nav rail</td></tr>
+                <tr><td><code>panels.css</code></td><td>Paneles de campana y de gestion</td></tr>
+                <tr><td><code>legacy.css</code></td><td>Estilos del chat en vivo y restos por migrar</td></tr>
+            </tbody>
+        </table>
+
+        <h3>JS (<code>static/js/</code>)</h3>
+        <table>
+            <thead><tr><th>Archivo</th><th>Rol</th></tr></thead>
+            <tbody>
+                <tr><td><code>nav.js</code></td><td>Nav rail + badges de conteo</td></tr>
+                <tr><td><code>campaigns.js</code></td><td>Configs declarativas de las 8 campanas</td></tr>
+                <tr><td><code>campaign-panel.js</code></td><td>Factory de campanas tipo pending-list</td></tr>
+                <tr><td><code>paste-campaign.js</code></td><td>Factory de campanas por pegado/Excel</td></tr>
+                <tr><td><code>diagnostics.js</code></td><td>Render del panel de Diagnostico</td></tr>
+                <tr><td><code>metrics-timeline.js</code></td><td>Graficas de analytics</td></tr>
+                <tr><td><code>legacy.js</code></td><td>Chat en vivo, presencia, gestion, analytics (pendiente de modularizar)</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout">
+            <span class="icon">🧩</span>
+            <div><strong>Cache busting.</strong> En las plantillas, referenciar estaticos con <code>{{ static_v('css/base.css') }}</code> para que el deploy invalide cache. Los modulos JS importados con <code>import</code> no llevan <code>?v=</code>; se refrescan por ETag (<code>SEND_FILE_MAX_AGE_DEFAULT = 0</code>).</div>
         </div>
     </section>
 
@@ -1133,6 +1351,51 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
 # Usa psycopg2 para conectar
 # Vista principal: v_solicitudes_whatsapp
 # Vista saldos: vista_consulta_saldo</code></pre>
+    </section>
+
+    <hr class="page-break">
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- 17b. STAGING -->
+    <!-- ══════════════════════════════════════ -->
+    <section id="staging">
+        <h2><span class="num">17b</span> Entorno de Staging</h2>
+
+        <div class="card success">
+            <div class="card-title">Regla de oro</div>
+            <p>Produccion no se toca hasta que el cambio se probo y aprobo en staging. Doc completo: <code>docs/STAGING.md</code>.</p>
+        </div>
+
+        <p>Staging es una <strong>segunda instancia del bot</strong> en Render que sigue SIEMPRE la rama <code>staging</code>, con su propia URL y sus propias credenciales de panel. Sirve para probar sin riesgo de escribir a clientes reales. Tres capas garantizan eso:</p>
+
+        <table>
+            <thead><tr><th>Capa</th><th>Donde</th><th>Que hace</th></tr></thead>
+            <tbody>
+                <tr><td><code>ENVIRONMENT=staging</code> + guard global</td><td><code>services.py</code> <code>_staging_blocks_send()</code></td><td>Bloquea y loguea TODO envio a Meta y notificaciones a admin (cubre send_message, image, document, interactive, list, template, revoke)</td></tr>
+                <tr><td>Scheduler desactivado</td><td><code>app.py</code> (<code>if IS_STAGING</code>)</td><td>No arranca tareas programadas (no muta datos compartidos con prod)</td></tr>
+                <tr><td><code>test_mode</code> en memoria</td><td>panel <code>/admin/test</code></td><td>Telefonos <code>__test_</code> que nunca tocan Supabase ni Meta — via recomendada de prueba</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Flujo oficial de trabajo</h3>
+        <div class="flow">
+            <div class="flow-step">feature/&lt;cambio&gt;</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">merge a staging</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">auto-deploy + probar /admin/test</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">aprobar</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step highlight">merge a main</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">deploy MANUAL a prod</div>
+        </div>
+
+        <div class="callout">
+            <span class="icon">⚠️</span>
+            <div><code>staging</code> es una rama <strong>permanente</strong> (no se borra). Criterio del equipo: cambios que tocan <code>src/</code> pasan por staging; cambios solo-panel (HTML/CSS/JS estaticos) pueden ir directo. El deploy de produccion en Render es manual; staging auto-despliega.</div>
+        </div>
     </section>
 
     <hr class="page-break">
@@ -1300,45 +1563,29 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
     <!-- 20. TEMPLATES WHATSAPP -->
     <!-- ══════════════════════════════════════ -->
     <section id="templates-wa">
-        <h2><span class="num">20</span> Templates de WhatsApp</h2>
+        <h2><span class="num">20</span> Templates de WhatsApp y Campanas</h2>
 
-        <p>Los templates deben estar pre-aprobados en el Meta Business Manager. No se pueden cambiar desde el codigo.</p>
+        <p>Los templates deben estar pre-aprobados en el Meta Business Manager (no se editan desde el codigo: el codigo solo referencia el nombre). Cada uno alimenta una <strong>campana masiva</strong> que se dispara manualmente desde el panel y deja la conversacion en un estado destino. Los cuerpos de referencia y botones estan transcritos en <code>test_mode.TEMPLATES</code> para el simulador.</p>
 
         <table>
             <thead>
-                <tr><th>Template</th><th>Idioma</th><th>Variables</th><th>Uso</th></tr>
+                <tr><th>Template</th><th>Campana / uso</th><th>Estado destino</th></tr>
             </thead>
             <tbody>
-                <tr>
-                    <td><code>estado_verde</code></td>
-                    <td>es_CO</td>
-                    <td>{{1}} nombre, {{2}} monto ($X.XXX.XXX), {{3}} plazo</td>
-                    <td>Notificar aprobacion, pedir email</td>
-                </tr>
-                <tr>
-                    <td><code>estado_rojo</code></td>
-                    <td>es_CO</td>
-                    <td>{{1}} nombre</td>
-                    <td>Notificar documentos faltantes</td>
-                </tr>
-                <tr>
-                    <td><code>estado_amarillo</code></td>
-                    <td>es_CO</td>
-                    <td>{{1}} nombre</td>
-                    <td>Notificar DocuSign listo, pedir cuenta</td>
-                </tr>
-                <tr>
-                    <td><code>contacto_leads</code></td>
-                    <td>es_CO</td>
-                    <td>{{1}} nombre</td>
-                    <td>Primer contacto a prospectos</td>
-                </tr>
+                <tr><td><code>estado_verde</code></td><td>Aprobado por el cliente: notifica aprobacion, pide email (vars: nombre, monto, plazo, cuota)</td><td><code>waiting_for_email</code></td></tr>
+                <tr><td><code>estado_rojo</code></td><td>Falta documento: pide documentos faltantes</td><td><code>waiting_for_docs_rojo</code></td></tr>
+                <tr><td><code>estado_amarillo</code></td><td>Listo en firma (PandaDoc/DocuSign): pide cuenta y banco</td><td><code>waiting_for_cuenta_amarillo</code></td></tr>
+                <tr><td><code>contacto_leads</code></td><td>Primer contacto a prospectos</td><td><code>lead_notified</code></td></tr>
+                <tr><td><code>estado_renovar</code></td><td>Renovados: clientes cerca de terminar su credito</td><td><code>renovado_notified</code></td></tr>
+                <tr><td><code>anticipo_salario</code></td><td>Anticipos: adelanto de nomina</td><td><code>anticipos_notified</code></td></tr>
+                <tr><td><code>estado_negados</code></td><td>Creditos negados: comunica rechazo (sin botones)</td><td><code>denegado_notified</code></td></tr>
+                <tr><td><code>actualizacion_datos</code></td><td>Actualizacion anual de datos de contacto</td><td><code>esperando_respuesta_actualizacion</code></td></tr>
             </tbody>
         </table>
 
         <div class="card warning">
             <div class="card-title">Para crear/modificar templates</div>
-            <p>Se hace desde <strong>Meta Business Manager → WhatsApp Manager → Message Templates</strong>. Los cambios pueden tardar hasta 24h en aprobarse. El codigo solo referencia el nombre del template.</p>
+            <p>Se hace desde <strong>Meta Business Manager → WhatsApp Manager → Message Templates</strong>. Los cambios pueden tardar hasta 24h en aprobarse. Si cambias el cuerpo/botones en Meta, actualiza tambien <code>test_mode.TEMPLATES</code> para que el simulador refleje lo real. Idioma: <code>es_CO</code>.</p>
         </div>
     </section>
 
@@ -1362,12 +1609,14 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
                 <tr><td><code>capacidades_bot.md</code></td><td>Que puede y no puede hacer el bot</td><td>Define limites de respuesta</td></tr>
                 <tr><td><code>compliance.md</code></td><td>Habeas Data, politicas legales</td><td>Responde sobre datos y privacidad</td></tr>
                 <tr><td><code>ejemplos_conversacion.md</code></td><td>Ejemplos de conversaciones reales</td><td>Define tono y estilo de respuesta</td></tr>
+                <tr><td><code>tiempos_proceso.md</code></td><td>SLAs y tiempos de cada etapa del proceso</td><td>Responde "cuanto tarda"</td></tr>
             </tbody>
         </table>
+        <p>Tambien en <code>context/</code> (referencia, no necesariamente inyectados al prompt): <code>flujos.md</code> (doc de flujos), <code>conversaciones_bot.md</code> (historial real, &gt;1MB — leer con <code>offset</code>/<code>limit</code>), <code>auditoria_completa.md</code> (metricas) y <code>test_personas/</code>.</p>
 
         <div class="callout">
             <span class="icon">📌</span>
-            <div><strong>Para modificar el comportamiento del LLM:</strong> edita estos archivos. Los cambios se aplican al reiniciar el bot (o al redesplegar en Render). No requiere cambios en codigo.</div>
+            <div><strong>Para modificar el comportamiento del LLM:</strong> edita estos archivos. Los cambios se aplican al reiniciar el bot (o al redesplegar en Render). No requiere cambios en codigo. Reglas criticas: el bot <strong>nunca admite ser IA</strong>; tono espanol colombiano, sin emojis, sin negrillas, 2-3 frases, sin signos de apertura (¿ ¡).</div>
         </div>
     </section>
 
@@ -1551,6 +1800,11 @@ ngrok http 5000
                     <td>Crear bucket en Supabase Storage. Verificar que sea publico o que el key tenga permisos</td>
                 </tr>
                 <tr>
+                    <td>Doc/imagen enviado por el panel no llega (codigo 131053)</td>
+                    <td>Archivo vacio (0 bytes) o sobre el limite de Meta. Meta acepta el envio y falla la descarga async</td>
+                    <td>Ya hay validacion: la subida rechaza 0 bytes y <code>verify_remote_media</code> hace HEAD antes de enviar. Si reaparece, verificar la URL con <code>curl -I "&lt;url&gt;"</code> (mirar <code>Content-Length</code>) y revisar el panel de Diagnostico. Ver <a href="#services">services.py → Validacion de media</a></td>
+                </tr>
+                <tr>
                     <td>LLM no responde</td>
                     <td>ANTHROPIC_API_KEY invalido o cuota agotada</td>
                     <td>Verificar la key. Verificar creditos en dashboard.anthropic.com</td>
@@ -1583,10 +1837,16 @@ ngrok http 5000
             </tbody>
         </table>
 
-        <h3>Logs</h3>
+        <h3>Logs y diagnostico</h3>
         <pre><code># Render: Dashboard → Service → Logs (en tiempo real)
 # Todo print() y logging aparece aqui
-# Errores criticos notifican a ADMIN_NOTIFY_NUMBERS via WhatsApp</code></pre>
+# Errores criticos notifican a ADMIN_NOTIFY_NUMBERS via WhatsApp
+#
+# Panel de Diagnostico (/admin → seccion Diagnostico, ruta /admin/api/diagnostics):
+#   muestra los ultimos fallos clasificados por origen con "que hacer".
+#   Primera parada ante un incidente. Ver error_tracker.py.
+# En staging buscar en logs: [BOOT] ENVIRONMENT=staging,
+#   [STAGING] Scheduler ... DESACTIVADO, [STAGING] Envio real bloqueado.</code></pre>
     </section>
 
     <hr class="page-break">
@@ -1653,14 +1913,15 @@ ngrok http 5000
             </ol>
         </div>
 
-        <h3>Agregar un nuevo template de WhatsApp</h3>
+        <h3>Agregar un nuevo template / campana de WhatsApp</h3>
         <div class="card">
             <ol>
-                <li>Crear el template en Meta Business Manager → Message Templates</li>
-                <li>Esperar aprobacion (hasta 24h)</li>
-                <li>En <code>automation.py</code>: crear funciones <code>get_pending_*()</code> y <code>execute_bulk_*()</code> siguiendo el patron existente</li>
-                <li>En <code>admin.py</code>: agregar rutas GET (elegibles) y POST (envio)</li>
-                <li>En <code>admin.html</code>: agregar la UI en la pestana de Automatizacion</li>
+                <li>Crear el template en Meta Business Manager → Message Templates y esperar aprobacion (hasta 24h)</li>
+                <li>En <code>automation.py</code>: crear <code>get_pending_*()</code> y <code>execute_bulk_*()</code> siguiendo el patron existente (limpieza de telefono, filtros de ya-notificado-hoy, <code>send_template</code>, set de estado destino)</li>
+                <li>En <code>admin.py</code>: agregar rutas GET (elegibles), POST (envio) y, si aplica, <code>*-metrics</code></li>
+                <li>En <code>static/js/campaigns.js</code>: agregar la config declarativa de la campana (la UI la genera la factory <code>campaign-panel.js</code> o <code>paste-campaign.js</code>, no se escribe HTML a mano)</li>
+                <li>En <code>test_mode.TEMPLATES</code>: agregar el cuerpo y botones para poder probarla en <code>/admin/test</code></li>
+                <li>Probar en staging antes de mergear a <code>main</code></li>
             </ol>
         </div>
 
@@ -1695,19 +1956,25 @@ ngrok http 5000
         <h3>Patrones clave a seguir</h3>
         <div class="card success">
             <ul>
+                <li><strong>Probar en staging primero:</strong> todo cambio que toque <code>src/</code> pasa por la rama <code>staging</code> y el panel <code>/admin/test</code> antes de <code>main</code>. Cambios solo-panel (HTML/CSS/JS) pueden ir directo.</li>
+                <li><strong>No tocar <code>flows.py</code> sin confirmacion:</strong> afecta el comportamiento en produccion.</li>
+                <li><strong>El bot nunca admite ser IA:</strong> ningun cambio puede revelarlo.</li>
                 <li><strong>Logging asincrono:</strong> Siempre usar <code>log_message()</code> — nunca bloquear el webhook por logging</li>
                 <li><strong>Retornos None:</strong> Las funciones de <code>database.py</code> retornan <code>None</code> en error. Siempre validar antes de usar</li>
+                <li><strong>Media por link:</strong> validar tamano/accesibilidad antes de enviar (<code>verify_remote_media</code>) — Meta falla async (131053) y deja falsos "enviado".</li>
+                <li><strong>Soporte test_mode:</strong> al agregar un envio o una escritura a Supabase, respetar el corto-circuito de <code>test_mode</code> para que el simulador siga funcionando.</li>
                 <li><strong>Estado como string:</strong> Los estados se guardan como string en Supabase. Usar nombres descriptivos con snake_case</li>
                 <li><strong>Telefonos con 57:</strong> Normalizar siempre al formato <code>57XXXXXXXXXX</code></li>
-                <li><strong>Templates:</strong> Los nombres deben coincidir exactamente con los aprobados en Meta</li>
-                <li><strong>Idioma:</strong> Todo en espanol colombiano, tuteo, tono profesional pero cercano</li>
+                <li><strong>Templates:</strong> Los nombres deben coincidir exactamente con los aprobados en Meta; reflejar el cuerpo en <code>test_mode.TEMPLATES</code></li>
+                <li><strong>Errores visibles:</strong> ante un fallo de envio/integracion, registrar con <code>error_tracker.record_event()</code> para que aparezca en Diagnostico</li>
+                <li><strong>Idioma:</strong> Todo en espanol colombiano, tuteo, tono profesional pero cercano, sin emojis ni negrillas en respuestas del bot</li>
             </ul>
         </div>
     </section>
 
     <!-- Footer -->
     <div style="text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 13px;">
-        <p>ProAlto Bot — Playbook Tecnico v1.0 — Marzo 2026</p>
+        <p>ProAlto Bot — Playbook Tecnico v2.0 — Junio 2026</p>
         <p>Documento confidencial — Solo equipo de desarrollo</p>
     </div>
 

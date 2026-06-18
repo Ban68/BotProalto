@@ -488,6 +488,7 @@
                 <li>Selecciona el archivo (imagen, PDF, Word)</li>
                 <li>El archivo se sube a Supabase y se envia al cliente</li>
             </ol>
+            <p style="margin-top:10px"><strong>Limites:</strong> imagenes hasta 5 MB, documentos hasta 100 MB. Si el archivo esta vacio o pesa de mas, el panel lo rechaza al subirlo con un aviso — vuelve a seleccionarlo. Asi evitamos enviar un archivo dañado que al cliente le llegaria en blanco.</p>
         </div>
 
         <h3>Borrar un mensaje enviado</h3>
@@ -1140,6 +1141,11 @@
                     <td>Los documentos no se descargan</td>
                     <td>Problema de permisos en el almacenamiento</td>
                     <td>Intenta abrir el enlace directamente. Si no funciona, contacta soporte tecnico</td>
+                </tr>
+                <tr>
+                    <td>Envie un archivo al cliente pero no le llego</td>
+                    <td>El archivo se subio vacio o dañado</td>
+                    <td>Vuelve a adjuntarlo desde el archivo original (no un acceso directo) y reenvialo. Si el panel te avisa que esta vacio, selecciona el archivo de nuevo. Verifica que se vea en el chat antes de confirmarle al cliente</td>
                 </tr>
                 <tr>
                     <td>El bot responde cosas raras con la IA</td>
