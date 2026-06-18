@@ -1080,6 +1080,52 @@ def api_test_send():
     })
 
 
+@admin_bp.route('/admin/api/test/templates', methods=['GET'])
+@requires_auth
+def api_test_templates():
+    """Lista los templates de Meta disponibles para simular en el panel."""
+    return jsonify({"status": "ok", "templates": test_mode.list_templates()})
+
+
+@admin_bp.route('/admin/api/test/template', methods=['POST'])
+@requires_auth
+def api_test_template():
+    """Simula la recepción de un template de Meta dentro de la sesión de prueba.
+
+    Body: { test_phone, template_name }
+    Deja la conversación en el estado que dejaría el envío real y devuelve el
+    cuerpo + botones para renderizarlos. Pulsar un botón dispara el flujo real
+    vía /admin/api/test/send (button_reply).
+    """
+    body = request.get_json(silent=True) or {}
+    test_phone = (body.get("test_phone") or "").strip()
+    template_name = (body.get("template_name") or "").strip()
+
+    if not test_mode.session_exists(test_phone):
+        return jsonify({"status": "error", "message": "Sesión de prueba inválida o expirada"}), 400
+
+    # Limpiar buffer previo para que el drain solo devuelva el template.
+    test_mode.drain_outbound(test_phone)
+    result = test_mode.inject_template(test_phone, template_name)
+    if result is None:
+        return jsonify({"status": "error", "message": "Template no encontrado"}), 404
+
+    outbound = test_mode.drain_outbound(test_phone)
+
+    session_id = test_runner.session_id_for(test_phone)
+    if session_id and outbound:
+        test_runner.persist_outbound(session_id, outbound)
+        test_runner.increment_turns(session_id)
+
+    return jsonify({
+        "status": "ok",
+        "template": result,
+        "outbound": outbound,
+        "snapshot": test_mode.snapshot(test_phone),
+        "session_id": session_id,
+    })
+
+
 @admin_bp.route('/admin/api/test/poll', methods=['GET'])
 @requires_auth
 def api_test_poll():

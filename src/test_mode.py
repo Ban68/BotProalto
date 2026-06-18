@@ -354,6 +354,177 @@ def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:
     return merged
 
 
+# ── Templates de Meta (simulación de flujo) ─────────────────────────
+#
+# El texto real de cada template vive en el administrador de Meta; aquí solo
+# guardamos un cuerpo representativo (con parámetros de ejemplo), el estado que
+# el envío real deja en la conversación (ver src/automation.py) y los botones
+# de respuesta rápida que disparan el flujo. El `id` de cada botón es la clave
+# exacta que `FlowHandler.process_button_click` enruta (a veces el título del
+# botón, a veces un id interno); el `title` es solo la etiqueta visible.
+
+# Cuerpos transcritos verbatim del WhatsApp Manager de Meta (capturas jun/2026).
+# El `*texto*` es el marcador de negrilla del template (Meta lo renderiza en
+# bold; el panel lo muestra literal). Las variables van como {nombre}/{monto}/…
+# y se sustituyen con los valores de `sample` al renderizar.
+TEMPLATES = {
+    "estado_verde": {
+        "label": "Aprobado por el cliente (estado_verde)",
+        "state": "waiting_for_email",
+        "body": ("¡Hola {nombre} ! \U0001f389 Tu solicitud de crédito ha sido *Aprobada*.\n"
+                 "Monto \U0001f4b0 {monto}\n"
+                 "Plazo ⏱️ {plazo}\n"
+                 "Cuota \U0001f4b5 {cuota}\n"
+                 "Para continuar, por favor confírmanos tu *correo electrónico* \U0001f4e9. "
+                 "A esa dirección te enviaremos el contrato para firma electrónica y así "
+                 "proceder con el desembolso."),
+        "sample": {"nombre": "Carlos", "monto": "$10.000.000", "plazo": "36 meses", "cuota": "$380.000"},
+        "buttons": [
+            {"id": "Acepto las condiciones", "title": "Acepto las condiciones"},
+        ],
+    },
+    "contacto_leads": {
+        "label": "Campaña Leads (contacto_leads)",
+        "state": "lead_notified",
+        "header": "Oportunidad de Crédito",
+        "body": ("¡Hola {nombre}! \U0001f31f En ProAlto queremos ayudarte a cumplir tus metas. "
+                 "Tenemos opciones de crédito disponibles para ti con aprobación rápida y sin "
+                 "tantos trámites.\n\n"
+                 "¿Te gustaría iniciar tu proceso ahora mismo?"),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "Solicitar crédito", "title": "Solicitar crédito"},
+            {"id": "Ahora no, gracias", "title": "Ahora no, gracias"},
+            {"id": "Necesito más información", "title": "Necesito más información"},
+        ],
+    },
+    "anticipo_salario": {
+        "label": "Campaña Anticipos (anticipo_salario)",
+        "state": "anticipos_notified",
+        "body": ("¡Hola {nombre}! En ProAlto te adelantamos tu nómina. \U0001f680 "
+                 "Recibe tu dinero en máximo 24 horas hábiles para lo que necesites."),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "Solicitar Anticipo", "title": "Solicitar Anticipo"},
+            {"id": "Ahora no, gracias", "title": "Ahora no, gracias"},
+        ],
+    },
+    "estado_renovar": {
+        "label": "Campaña Renovados (estado_renovar)",
+        "state": "renovado_notified",
+        "body": ("¡Hola! {nombre}\U0001f44b\U0001f3fb\n\n"
+                 "En ProAlto premiamos tu fidelidad\U0001f60a, se acerca el final de tu crédito "
+                 "actual y tienes la oportunidad de renovarlo y acceder a tasas competitivas, "
+                 "plazos flexibles y un servicio ajustado a tus necesidades."),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "Solicitar crédito", "title": "Solicitar crédito"},
+            {"id": "No lo quiero", "title": "No lo quiero"},
+            {"id": "Necesito más información", "title": "Necesito más información"},
+        ],
+    },
+    "estado_rojo": {
+        "label": "Falta documento (estado_rojo)",
+        "state": "waiting_for_docs_rojo",
+        "body": ("Hola {nombre}, tu proceso de crédito está detenido porque nos faltan "
+                 "algunos documentos para continuar.\n\n"
+                 "Envíanos los documentos directamente por este chat y nuestro equipo los "
+                 "revisará."),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "Consultar documentos", "title": "Consultar documentos"},
+        ],
+    },
+    "estado_amarillo": {
+        "label": "Listo en PandaDoc (estado_amarillo)",
+        "state": "waiting_for_cuenta_amarillo",
+        "body": ("Hola {nombre} Tu solicitud ha avanzado con éxito a la fase final del "
+                 "proceso. \U0001f4dd\n\n"
+                 "Para ir adelantando la gestión del desembolso y agilizar los tiempos, por "
+                 "favor envíanos tu *número de cuenta* y el *banco*\n\n"
+                 "*Importante*: Si la cuenta no te pertenece, para poder validarla necesitamos "
+                 "que nos adjuntes:\n\n"
+                 "Nombre completo del titular.\n"
+                 "Foto de la cédula del titular.\n"
+                 "Número y tipo de cuenta.\n\n"
+                 "Estamos trabajando para completar tu proceso lo antes posible."),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "Enviar Cuenta propia", "title": "Enviar Cuenta propia"},
+            {"id": "Enviar Cuenta de tercero", "title": "Enviar Cuenta de tercero"},
+        ],
+    },
+    "estado_negados": {
+        "label": "Créditos negados (estado_negados)",
+        "state": "denegado_notified",
+        "body": ("Hola {nombre}, te escribimos de ProAlto.\n\n"
+                 "Luego de evaluar tu solicitud de crédito, lamentamos informarte que en "
+                 "este momento no nos es posible aprobarla, ya que no cumple con los requisitos "
+                 "mínimos de nuestras políticas de crédito.\n\n"
+                 "Agradecemos el interés y la confianza que depositaste en nosotros. "
+                 "Esperamos poder ayudarte en el futuro. \U0001f64f"),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [],
+    },
+    "actualizacion_datos": {
+        "label": "Actualización de datos (actualizacion_datos)",
+        "state": "esperando_respuesta_actualizacion",
+        "body": ("Hola {nombre}, es momento de actualizar tus datos de contacto "
+                 "para mantener tu información al día."),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "update_data_yes", "title": "Actualizar ahora"},
+            {"id": "update_data_no", "title": "Más tarde"},
+        ],
+    },
+}
+
+
+def list_templates() -> list:
+    """Lista de {name, label} para poblar el selector del panel."""
+    return [{"name": name, "label": tpl["label"]} for name, tpl in TEMPLATES.items()]
+
+
+def _render_template_body(tpl: dict) -> str:
+    body = tpl["body"]
+    for k, v in tpl.get("sample", {}).items():
+        body = body.replace("{" + k + "}", v)
+    header = tpl.get("header")
+    if header:
+        body = f"{header}\n\n{body}"
+    return body
+
+
+def inject_template(phone: str, name: str) -> dict | None:
+    """Simula la recepción de un template de Meta: deja la conversación en el
+    estado que dejaría el envío real y encola el cuerpo + botones como outbound,
+    de modo que al pulsar un botón se dispare el flujo correspondiente.
+
+    Devuelve la definición renderizada o None si el template no existe."""
+    if not is_test_phone(phone):
+        return None
+    tpl = TEMPLATES.get(name)
+    if not tpl:
+        return None
+    rendered = _render_template_body(tpl)
+    with _lock:
+        s = _ensure_locked(phone)
+        s["state"] = tpl["state"]
+    append_outbound(phone, {
+        "type": "interactive",
+        "body": rendered,
+        "buttons": list(tpl["buttons"]),
+        "template_name": name,
+    })
+    return {
+        "name": name,
+        "label": tpl["label"],
+        "body": rendered,
+        "buttons": list(tpl["buttons"]),
+        "state": tpl["state"],
+    }
+
+
 # ── Snapshot para debug en el panel ─────────────────────────────────
 
 def snapshot(phone: str) -> dict:

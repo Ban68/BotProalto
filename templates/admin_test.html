@@ -652,6 +652,12 @@
                 <button type="button" id="btn-random-cedula">Generar y pegar</button>
                 <div class="cedula-result" id="cedula-result"></div>
             </div>
+            <div class="cedula-bar" id="template-bar">
+                <label for="template-select">Template de Meta:</label>
+                <select id="template-select"></select>
+                <button type="button" id="btn-simulate-template">Simular recepción</button>
+                <div class="cedula-result" id="template-result"></div>
+            </div>
             <div class="chat-input" id="chat-input">
                 <input type="text" id="msg-input" placeholder="Escribe un mensaje (ej. 'Hola', una cédula, 'hablar con asesor')…" autocomplete="off">
                 <button type="button" class="primary" id="btn-send">Enviar</button>
@@ -726,6 +732,7 @@
         const elAutoRunbar = document.getElementById('auto-runbar');
         const elChatInput = document.getElementById('chat-input');
         const elCedulaBar = document.getElementById('cedula-bar');
+        const elTemplateBar = document.getElementById('template-bar');
         const elChatTitle = document.getElementById('chat-title');
         const elTurnCounter = document.getElementById('auto-turn-counter');
         const elTurnMax = document.getElementById('auto-turn-max');
@@ -1277,6 +1284,7 @@
                 elAutoSetup.style.display = 'grid';
                 elChatInput.style.display = 'none';
                 elCedulaBar.style.display = 'none';
+                elTemplateBar.style.display = 'none';
                 elSaveToggleWrap.style.display = 'none';
                 document.getElementById('help-block-manual').style.display = 'none';
                 document.getElementById('help-block-auto').style.display = 'block';
@@ -1291,7 +1299,9 @@
                 elAutoSetup.style.display = 'none';
                 elChatInput.style.display = 'flex';
                 elCedulaBar.style.display = 'flex';
+                elTemplateBar.style.display = 'flex';
                 elSaveToggleWrap.style.display = 'flex';
+                loadTemplates();
                 document.getElementById('help-block-manual').style.display = 'block';
                 document.getElementById('help-block-auto').style.display = 'none';
                 elBody.innerHTML = '<div class="empty-state">Escribe abajo como si fueras el cliente.<br>Marca "Guardar para revisión" si quieres que esta conversación quede en Supabase.</div>';
@@ -1353,8 +1363,65 @@
             }
         }
 
+        // ── Templates de Meta ──────────────────────────────────────────
+
+        const elTemplateSelect = document.getElementById('template-select');
+        const elTemplateBtn = document.getElementById('btn-simulate-template');
+        const elTemplateResult = document.getElementById('template-result');
+        let templatesLoaded = false;
+
+        async function loadTemplates() {
+            if (templatesLoaded) return;
+            try {
+                const res = await fetch('/admin/api/test/templates');
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    elTemplateSelect.innerHTML = '';
+                    (data.templates || []).forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.name;
+                        opt.textContent = t.label;
+                        elTemplateSelect.appendChild(opt);
+                    });
+                    templatesLoaded = true;
+                }
+            } catch (e) {
+                console.error('loadTemplates error:', e);
+            }
+        }
+
+        async function simulateTemplate() {
+            if (isAutoView() || !state.testPhone || state.sending) return;
+            const templateName = elTemplateSelect.value;
+            if (!templateName) return;
+            elTemplateBtn.disabled = true;
+            elTemplateResult.textContent = 'Simulando…';
+            try {
+                const res = await fetch('/admin/api/test/template', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test_phone: state.testPhone, template_name: templateName }),
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    appendBubble({ direction: 'notice', text: `📨 Template recibido: ${data.template.label}`, kind: 'notice' });
+                    renderOutbound(data.outbound);
+                    renderSnapshot(data.snapshot);
+                    elTemplateResult.textContent = '';
+                } else {
+                    elTemplateResult.textContent = data.message || 'Error simulando template';
+                }
+            } catch (e) {
+                console.error(e);
+                elTemplateResult.textContent = 'Error de red';
+            } finally {
+                elTemplateBtn.disabled = false;
+            }
+        }
+
         // ── Wire up ────────────────────────────────────────────────────
 
+        elTemplateBtn.addEventListener('click', simulateTemplate);
         elSend.addEventListener('click', () => sendMessage(elInput.value.trim()));
         elInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendMessage(elInput.value.trim());
