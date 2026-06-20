@@ -1522,7 +1522,33 @@ class FlowHandler:
 
             WhatsAppService.send_message(user_phone, msg)
 
-        elif btn_id == "Solicitar Anticipo":
+        elif btn_id == "¿Cómo funciona?":
+            # Tercer botón de la plantilla de anticipo. Explica el producto y
+            # ofrece dos sub-opciones (requisitos / solicitar) en el mismo mensaje.
+            set_user_state(user_phone, "active")
+            from src.conversation_log import log_anticipo_response
+            log_anticipo_response(user_phone, "como_funciona")
+            WhatsAppService.send_interactive_button(
+                user_phone,
+                "¡Es súper fácil! Un adelanto en ProAlto te permite acceder a una parte de tu salario "
+                "antes del día de pago. Es ideal para resolver cualquier urgencia o cubrir un imprevisto "
+                "sin complicaciones. 💸\n\n"
+                "Todo el trámite es digital y, una vez aprobado, recibes la plata directamente en tu "
+                "cuenta en máximo 24 horas hábiles.",
+                [
+                    {"id": "anticipo_requisitos", "title": "Ver requisitos 📋"},
+                    {"id": "anticipo_solicitar", "title": "Solicitarlo 🚀"},
+                ]
+            )
+
+        elif btn_id == "anticipo_requisitos":
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(
+                user_phone,
+                "Lo único que necesitas tener a la mano es el desprendible de tu última nómina y listo."
+            )
+
+        elif btn_id in ("Solicitar Anticipo", "anticipo_solicitar"):
             set_user_state(user_phone, "active")
             from src.conversation_log import log_anticipo_response
             log_anticipo_response(user_phone, "solicitar")
