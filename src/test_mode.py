@@ -407,6 +407,7 @@ TEMPLATES = {
         "buttons": [
             {"id": "Solicitar Anticipo", "title": "Solicitar Anticipo"},
             {"id": "Ahora no, gracias", "title": "Ahora no, gracias"},
+            {"id": "¿Cómo funciona?", "title": "¿Cómo funciona?"},
         ],
     },
     "estado_renovar": {
