@@ -1559,7 +1559,20 @@ class FlowHandler:
                 "Si tienes alguna duda durante el proceso, estamos aqui para ayudarte."
             )
 
-        elif btn_id == "Ahora no, gracias":
+        elif btn_id == "renovar_info_asesor":
+            # Cliente de renovación pide asesor tras ver los requisitos. NO se trata
+            # como lead: handler propio con copy de renovación, sin pasar por is_lead.
+            set_agent_mode(user_phone, "agent")
+            WhatsAppService.send_message(
+                user_phone,
+                "Con gusto! En un momento un asesor te contactará para darte toda la información sobre tu renovación."
+            )
+            try:
+                notify_admin_agent_request(user_phone)
+            except Exception as e:
+                print(f"Error notifying admin: {e}")
+
+        elif btn_id in ("Ahora no, gracias", "renovar_ahora_no"):
             set_user_state(user_phone, "active")
             if state == "anticipos_notified":
                 from src.conversation_log import log_anticipo_response
@@ -1584,16 +1597,27 @@ class FlowHandler:
                 set_user_state(user_phone, "active")
                 FlowHandler.send_info_general_menu(user_phone)
             else:
-                # Plantilla de renovación: transfiere a asesor.
-                set_user_state(user_phone, "agent")
-                WhatsAppService.send_message(
+                # Plantilla de renovación: explica qué es el retranqueo, lista los
+                # requisitos y ofrece dos sub-opciones (asesor / posponer) en el mismo
+                # mensaje. Estos contactos son clientes que renuevan, NO leads: el
+                # botón de asesor tiene su propio handler (renovar_info_asesor) para
+                # no caer en el copy de lead del handler genérico.
+                WhatsAppService.send_interactive_button(
                     user_phone,
-                    "Con gusto! En un momento un asesor te contactará para darte toda la información sobre tu renovación."
+                    "Un retranqueo o renovación significa que puedes solicitar un nuevo crédito "
+                    "con nosotros de forma inmediata. Te enviamos este mensaje porque vimos que "
+                    "tu crédito actual ya está a punto de finalizar. 🎉\n\n"
+                    "📋 Requisitos\n"
+                    "Para iniciar tu solicitud, solo necesitas tener a la mano estos documentos:\n"
+                    "✅ 2 últimos desprendibles de pago de nómina.\n"
+                    "✅ Certificado laboral.\n"
+                    "✅ Foto de tu cédula.\n"
+                    "✅ Recibo público (agua, luz, gas o telefonía).",
+                    [
+                        {"id": "renovar_info_asesor", "title": "💬 Hablar con asesor"},
+                        {"id": "renovar_ahora_no", "title": "⏳ Ahora no, gracias"},
+                    ]
                 )
-                try:
-                    notify_admin_agent_request(user_phone)
-                except Exception as e:
-                    print(f"Error notifying admin: {e}")
 
         elif btn_id == "menu_main":
             FlowHandler.send_main_menu(user_phone)
