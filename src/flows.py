@@ -1,7 +1,7 @@
 from src.services import WhatsAppService
 from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet, get_anticipo_by_cedula
-from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents
+from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents, get_last_campaign_template
 from src.notifications import notify_admin_agent_request, notify_admin_error, notify_admin_contact_update, notify_admin_cedula_mismatch
 import os
 import json
@@ -1590,7 +1590,21 @@ class FlowHandler:
             )
 
         elif btn_id == "Necesito más información":
-            if state == "lead_notified":
+            # Botón compartido (mismo payload) por la plantilla de leads
+            # (contacto_leads) y la de renovación (estado_renovar). Para elegir el
+            # copy correcto NO usamos el status de la conversación: cualquier
+            # transición posterior o una segunda campaña lo sobrescribe, y un lead
+            # real podía quedar con status renovado_notified y recibir el copy de
+            # renovación. Enrutamos por la ÚLTIMA plantilla de campaña realmente
+            # enviada (rastro inmutable en bot_messages); el status solo se usa como
+            # último recurso si no hay rastro de plantilla.
+            last_tpl = get_last_campaign_template(user_phone)
+            if last_tpl is not None:
+                is_renovado = (last_tpl == "estado_renovar")
+            else:
+                is_renovado = (state == "renovado_notified")
+
+            if not is_renovado:
                 # Plantilla de leads (contacto_leads): "Necesito más información"
                 # entra al MISMO flujo de "Información General" (intro + lista:
                 # Requisitos / Tasas / Montos y plazos / Hablar con un asesor).

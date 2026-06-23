@@ -137,6 +137,44 @@ def set_agent_mode(phone: str, status: str = "agent"):
     set_user_state(phone, status)
 
 
+# Marcadores de log → nombre de plantilla de campaña. El orden no importa; se
+# resuelve por created_at en get_last_campaign_template.
+_CAMPAIGN_TEMPLATE_MARKERS = {
+    "[Template: contacto_leads]": "contacto_leads",
+    "[Template: estado_renovar]": "estado_renovar",
+    "[Template: anticipo_salario]": "anticipo_salario",
+}
+
+
+def get_last_campaign_template(phone: str):
+    """Devuelve el nombre de la última plantilla de campaña enviada a este número
+    (contacto_leads / estado_renovar / anticipo_salario), o None si no hay rastro.
+
+    Se usa para enrutar botones de respuesta rápida COMPARTIDOS entre plantillas
+    (p. ej. "Necesito más información", que tiene el mismo payload en leads y en
+    renovados). El status de la conversación NO sirve para esto: lo sobrescribe
+    cualquier transición posterior o una segunda campaña, así que un lead real
+    podía terminar con status renovado_notified y recibir el copy equivocado.
+    El rastro en bot_messages, en cambio, es inmutable y refleja qué plantilla
+    vio realmente el cliente."""
+    if test_mode.is_test_phone(phone):
+        return test_mode.get_last_template(phone)
+    try:
+        res = (supabase_client.table('bot_messages')
+               .select("text")
+               .eq("phone", phone)
+               .in_("text", list(_CAMPAIGN_TEMPLATE_MARKERS.keys()))
+               .order("created_at", desc=True)
+               .limit(1)
+               .execute())
+        if res.data:
+            return _CAMPAIGN_TEMPLATE_MARKERS.get(res.data[0]["text"])
+        return None
+    except Exception as e:
+        print(f"Supabase get_last_campaign_template error: {e}")
+        return None
+
+
 def _get_lead_phones() -> set:
     """Get all phone numbers that ever received the contacto_leads template."""
     try:

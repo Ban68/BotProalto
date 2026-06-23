@@ -52,6 +52,7 @@ def _new_session() -> dict:
         "document_requests_count": 0,
         "history": [],            # list of {direction, text, msg_type, created_at}
         "outbound": [],           # list pending to drain by the panel
+        "last_template": None,    # última plantilla de campaña inyectada
         "created_at": _now_iso(),
         "last_activity": _now_iso(),
     }
@@ -136,6 +137,13 @@ def set_state(phone: str, state: str) -> None:
     with _lock:
         s = _ensure_locked(phone)
         s["state"] = state
+
+
+def get_last_template(phone: str):
+    """Última plantilla de campaña inyectada en esta sesión (o None)."""
+    with _lock:
+        s = _ensure_locked(phone)
+        return s.get("last_template")
 
 
 def get_client_name(phone: str) -> str:
@@ -511,6 +519,7 @@ def inject_template(phone: str, name: str) -> dict | None:
     with _lock:
         s = _ensure_locked(phone)
         s["state"] = tpl["state"]
+        s["last_template"] = name
     append_outbound(phone, {
         "type": "interactive",
         "body": rendered,
