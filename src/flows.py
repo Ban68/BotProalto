@@ -1359,12 +1359,13 @@ class FlowHandler:
             )
 
         # ── Estado APROBADO POR EL CLIENTE — elección post-aprobación ──
-        elif btn_id == "aprobado_enviar_correo":
-            # Tanto el primer botón "Enviar correo" como el "Sí, enviar correo"
-            # del set de dudas terminan aquí.
+        elif btn_id in ["aprobado_enviar_correo", "Enviar correo"]:
+            # Confluyen aquí: el botón "Enviar correo" en sesión, el "Sí, enviar
+            # correo" del set de dudas, y el quick-reply "Enviar correo" del
+            # template estado_verde (Meta manda el texto del botón como payload).
             _proceed_to_aprobado_email(user_phone)
 
-        elif btn_id == "aprobado_dudas_valor":
+        elif btn_id in ["aprobado_dudas_valor", "Tengo dudas"]:
             WhatsAppService.send_interactive_button(
                 user_phone,
                 "Te aprobamos esta cantidad porque es el valor más seguro para ti en este momento. "
