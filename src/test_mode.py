@@ -473,7 +473,9 @@ TEMPLATES = {
                  "Agradecemos el interés y la confianza que depositaste en nosotros. "
                  "Esperamos poder ayudarte en el futuro. \U0001f64f"),
         "sample": {"nombre": "Carlos"},
-        "buttons": [],
+        "buttons": [
+            {"id": "Consultar motivo", "title": "Consultar motivo"},
+        ],
     },
     "actualizacion_datos": {
         "label": "Actualización de datos (actualizacion_datos)",

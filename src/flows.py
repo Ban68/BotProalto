@@ -76,6 +76,36 @@ def _normalize_opc_negadas(value):
     return " ".join(str(value).upper().split())
 
 
+def _denegado_reason_message(opc_negadas):
+    """Devuelve el mensaje específico de negación según opc_negadas, o None si
+    no hay un motivo reconocido (el caller cae al mensaje genérico de DENEGADO)."""
+    return NEGADAS_MESSAGES.get(_normalize_opc_negadas(opc_negadas))
+
+
+def _send_denegado_reason(user_phone):
+    """Envía al cliente el motivo concreto por el que se negó su crédito, usando
+    la MISMA lógica que el estado interno DENEGADO (opc_negadas → NEGADAS_MESSAGES).
+    Se dispara desde el botón "Consultar motivo" del template estado_negados.
+    Como ese template no traía la cédula, resolvemos opc_negadas por teléfono
+    (última solicitud). Si no hay motivo reconocido, cae al mensaje genérico."""
+    from src.database import get_client_context_by_phone
+    ctx = get_client_context_by_phone(user_phone) or {}
+    msg = _denegado_reason_message(ctx.get("opc_negadas"))
+    if not msg:
+        msg = STATUS_MESSAGES.get(
+            "DENEGADO",
+            "Lamentamos informarte que tu crédito no fue aprobado porque no se "
+            "cumplen los requisitos mínimos de nuestras políticas de pago. Por "
+            "ahora no podemos otorgarte este préstamo.",
+        )
+    nombre = ctx.get("nombre_completo") or get_client_name(user_phone)
+    if nombre:
+        set_client_name(user_phone, nombre)
+    WhatsAppService.send_message(user_phone, msg)
+    set_user_state(user_phone, "active")
+    WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+
+
 def _is_greeting(text: str) -> bool:
     """Check if text looks like a greeting (used in multiple states to allow menu escape)."""
     norm = text.lower().strip()
@@ -376,8 +406,7 @@ def _render_credito_result(user_phone, result):
     # aprobó. Mostramos el mensaje concreto en lugar del genérico. Si no hay motivo
     # reconocido, caemos al mensaje neutro de abajo (STATUS_MESSAGES["DENEGADO"]).
     if clean_status == "DENEGADO":
-        neg_key = _normalize_opc_negadas(result.get("opc_negadas"))
-        neg_msg = NEGADAS_MESSAGES.get(neg_key)
+        neg_msg = _denegado_reason_message(result.get("opc_negadas"))
         if neg_msg:
             set_client_name(user_phone, nombre)
             WhatsAppService.send_message(user_phone, neg_msg)
@@ -1172,10 +1201,14 @@ class FlowHandler:
         # 2e. denegado_notified — template sent; acknowledgments are absorbed silently,
         #     any other message shows the main menu
         if state == "denegado_notified":
+            norm = text.lower().strip()
+            # El cliente escribió en vez de tocar el botón "Consultar motivo".
+            if "consultar motivo" in norm or norm == "motivo":
+                _send_denegado_reason(user_phone)
+                return
             set_user_state(user_phone, "active")
             ack_words = ["ok", "okay", "entendido", "gracias", "de acuerdo", "listo",
                          "bien", "claro", "comprendo", "entiendo", "perfecto", "👍"]
-            norm = text.lower().strip()
             is_ack = any(norm == w or norm.startswith(w + " ") or norm.startswith(w + ",") for w in ack_words)
             if not is_ack:
                 FlowHandler.send_main_menu(user_phone)
@@ -1390,6 +1423,14 @@ class FlowHandler:
                 user_phone,
                 "Estamos generando tu paz y salvo, un asesor te lo enviará en breve."
             )
+
+        # ── Template estado_negados — botón "Consultar motivo" ──
+        elif btn_id in ["Consultar motivo", "consultar_motivo"]:
+            # El cliente quiere saber por qué se negó su crédito. Reusamos la
+            # misma lógica que el estado interno DENEGADO (opc_negadas →
+            # NEGADAS_MESSAGES), resolviendo el motivo por teléfono. Meta manda
+            # el texto del botón como payload en los quick-replies de template.
+            _send_denegado_reason(user_phone)
 
         # ── Estado APROBADO POR EL CLIENTE — elección post-aprobación ──
         elif btn_id in ["aprobado_enviar_correo", "Enviar correo"]:

@@ -742,12 +742,13 @@ def get_amarillo_metrics(date_from: str = None, date_to: str = None) -> dict:
 
 
 def get_negados_metrics(date_from: str = None, date_to: str = None) -> dict:
-    """Metrics for the estado_negados (Créditos negados) campaign. The template has
-    no buttons, so only free-text replies count as engagement."""
+    """Metrics for the estado_negados (Créditos negados) campaign. El template
+    ofrece el botón 'Consultar motivo' (el cliente pide el motivo de la negación);
+    sus clics se cuentan aparte de las respuestas de texto libre."""
     return _get_template_campaign_metrics(
         "estado_negados", "denegado_notified",
-        {},
-        ["_chat"], date_from=date_from, date_to=date_to)
+        {"consultaron_motivo": ["Consultar motivo"]},
+        ["consultaron_motivo", "_chat"], date_from=date_from, date_to=date_to)
 
 
 def get_lead_metrics(date_from: str = None, date_to: str = None) -> dict:

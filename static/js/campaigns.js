@@ -105,10 +105,11 @@ const CampaignPanels = {};
             header: 'Métricas: estado_negados',
             cards: [
                 { label: 'Total enviados', color: '#6b7280', count: m => m.total },
+                { label: 'Consultaron motivo', color: '#d97706', count: m => m.consultaron_motivo_count, pct: true },
                 { label: 'Respondieron por chat', color: '#2563eb', count: m => m.respondieron_chat_count, pct: true },
                 { label: 'Sin respuesta', color: '#9ca3af', count: m => m.sin_respuesta_count, pct: true },
             ],
-            tableTitle: 'Clientes que respondieron por chat',
+            tableTitle: 'Clientes que consultaron el motivo o respondieron',
             emptyMsg: 'Sin respuestas aún.',
         },
     },

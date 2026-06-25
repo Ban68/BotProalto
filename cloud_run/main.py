@@ -334,7 +334,7 @@ def get_solicitud(request):
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
                        empresa, documentos_faltantes, cuota, frecuencia,
-                       cedula_nit
+                       cedula_nit, opc_negadas
                 FROM v_solicitudes_whatsapp
                 WHERE telefono = %s OR telefono = %s
                 ORDER BY nro_solicitud DESC
@@ -358,6 +358,7 @@ def get_solicitud(request):
                     "cuota": float(record[8]) if record[8] else None,
                     "frecuencia": record[9] or "",
                     "cedula": str(record[10]) if record[10] else "",
+                    "opc_negadas": record[11] or "",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
