@@ -1,0 +1,9 @@
+{
+    "NO TIENE CAPACIDAD": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: No tienes capacidad de pago en este momento. Por ley, no cumples con el 50% de capacidad libre para poder realizarte un nuevo descuento.",
+    "NO CUMPLE CON EL 70%": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: Nuestra política es que debes haber pagado por lo menos el 70% de tu crédito actual para poder darte uno nuevo. Es por eso que en este momento no puedes acceder a otro préstamo con nosotros.",
+    "NO CUMPLE CON EL TIEMPO MÍNIMO EN LA EMPRESA": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: Nuestro requisito es que lleves mínimo 3 meses en la empresa. Te invitamos a solicitarlo de nuevo cuando cumplas este tiempo.",
+    "YA TIENE LIBRANZA": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: Al revisar tu información, vemos que actualmente ya tienes un crédito de libranza activo. Por nuestras políticas, no podemos aprobar este préstamo mientras tengas otra libranza vigente. Sin embargo, si te interesa, puedes escribirnos para revisar si podemos hacerte una compra de cartera.",
+    "INDEPENDIENTE": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: En Proalto solo le prestamos a personas que sean empleadas por una finca o empresa y que reciban su sueldo por nómina. Por ahora no tenemos créditos para trabajadores independientes.",
+    "SOLICITUD DOBLE": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: Hemos revisado nuestro sistema y tienes dos solicitudes activas al mismo tiempo. Por eso cancelamos esta, pero no te preocupes, dejamos tu otra solicitud activa para continuar con el proceso.",
+    "NO GENERA SEGURIDAD": "Hola 👋, tu solicitud no fue aprobada por el siguiente motivo: Al realizar el estudio de tu caso, vemos que la solicitud no cumple con las condiciones y políticas mínimas internas que requerimos para poder otorgarte el crédito en este momento."
+}

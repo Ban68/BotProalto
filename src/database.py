@@ -64,6 +64,7 @@ def get_solicitud_status(cedula):
                     "empresa": data.get("empresa", ""),
                     "documentos_faltantes": data.get("documentos_faltantes", ""),
                     "tipo_empleador": data.get("tipo_empleador", "EMPRESA"),
+                    "opc_negadas": data.get("opc_negadas", ""),
                 }
             else:
                 return {}  # Successfully queried, but no solicitud found

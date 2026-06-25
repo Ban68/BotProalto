@@ -55,6 +55,26 @@ except Exception as e:
     print(f"Error loading status mapping: {e}")
     STATUS_MESSAGES = {}
 
+# Pre-load denegado-reason mapping (estado_interno = DENEGADO + columna opc_negadas).
+# Keys are normalized (upper-case, single-spaced) versions of the option the asesor
+# selects in el software. Si opc_negadas viene vacío o con un valor desconocido,
+# el flujo cae al mensaje genérico de DENEGADO en STATUS_MESSAGES.
+NEGADAS_PATH = os.path.join(os.path.dirname(__file__), 'negadas_mapping.json')
+try:
+    with open(NEGADAS_PATH, 'r', encoding='utf-8') as f:
+        NEGADAS_MESSAGES = json.load(f)
+except Exception as e:
+    print(f"Error loading negadas mapping: {e}")
+    NEGADAS_MESSAGES = {}
+
+
+def _normalize_opc_negadas(value):
+    """Normaliza el valor de opc_negadas para hacer match con NEGADAS_MESSAGES:
+    mayúsculas, sin espacios extra. Devuelve '' si no hay valor."""
+    if not value:
+        return ""
+    return " ".join(str(value).upper().split())
+
 
 def _is_greeting(text: str) -> bool:
     """Check if text looks like a greeting (used in multiple states to allow menu escape)."""
@@ -351,6 +371,19 @@ def _render_credito_result(user_phone, result):
         WhatsAppService.send_message(user_phone, combined)
         log_message(user_phone, "outbound", "[Menu: estado_rojo]", "text")
         return
+
+    # Denegado con motivo específico: la columna opc_negadas indica por qué no se
+    # aprobó. Mostramos el mensaje concreto en lugar del genérico. Si no hay motivo
+    # reconocido, caemos al mensaje neutro de abajo (STATUS_MESSAGES["DENEGADO"]).
+    if clean_status == "DENEGADO":
+        neg_key = _normalize_opc_negadas(result.get("opc_negadas"))
+        neg_msg = NEGADAS_MESSAGES.get(neg_key)
+        if neg_msg:
+            set_client_name(user_phone, nombre)
+            WhatsAppService.send_message(user_phone, neg_msg)
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+            return
 
     # Estado neutro: mostrar y volver a "active"
     response_msg += f"📋 *Estado:* {mensaje_cliente}\n"

@@ -366,7 +366,8 @@ def get_solicitud(request):
             query = """
                 SELECT nro_solicitud, fecha_de_solicitud, valor_preestudiado,
                        estado_interno, nombre_completo, plazo,
-                       empresa, documentos_faltantes, cuota, frecuencia
+                       empresa, documentos_faltantes, cuota, frecuencia,
+                       opc_negadas
                 FROM v_solicitudes_whatsapp
                 WHERE cedula_nit = %s
                 ORDER BY nro_solicitud DESC
@@ -390,6 +391,7 @@ def get_solicitud(request):
                     "tipo_empleador": "EMPRESA",
                     "cuota": float(record[8]) if record[8] else None,
                     "frecuencia": record[9] or "",
+                    "opc_negadas": record[10] or "",
                 }), 200
             else:
                 return jsonify({"found": False}), 200
