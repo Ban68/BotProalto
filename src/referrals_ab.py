@@ -202,9 +202,22 @@ def variant_for_template(template_name: str) -> str | None:
     return TEMPLATE_TO_VARIANT.get(template_name)
 
 
+def variant_for_last_template(phone: str) -> str | None:
+    try:
+        from src import conversation_log
+        return variant_for_template(conversation_log.get_last_campaign_template(phone) or "")
+    except Exception as e:
+        print(f"Could not resolve referral variant from last template: {e}")
+        return None
+
+
 def variant_for_phone(phone: str) -> str:
     if test_mode.is_test_phone(phone):
         return variant_for_template(test_mode.get_last_template(phone) or "") or "discount_rate"
+
+    template_variant = variant_for_last_template(phone)
+    if template_variant in VARIANTS:
+        return template_variant
 
     assignment = get_assignment(phone) or {}
     return assignment.get("variant_key") or "discount_rate"
@@ -250,15 +263,24 @@ def get_assignment(phone: str, campaign_id: str = CAMPAIGN_ID) -> dict | None:
     client = _supabase()
     if not client:
         return None
+    phones = [str(phone or "")]
+    normalized = normalize_recipient_phone(phone)
+    if normalized and normalized not in phones:
+        phones.append(normalized)
     try:
-        res = (client.table("referral_ab_assignments")
-               .select("*")
-               .eq("campaign_id", campaign_id)
-               .eq("phone", phone)
-               .order("sent_at", desc=True)
-               .limit(1)
-               .execute())
-        return res.data[0] if res.data else None
+        for candidate in phones:
+            if not candidate:
+                continue
+            res = (client.table("referral_ab_assignments")
+                   .select("*")
+                   .eq("campaign_id", campaign_id)
+                   .eq("phone", candidate)
+                   .order("sent_at", desc=True)
+                   .limit(1)
+                   .execute())
+            if res.data:
+                return res.data[0]
+        return None
     except Exception as e:
         print(f"Supabase get_referral_assignment error: {e}")
         return None
@@ -273,8 +295,7 @@ def record_event(phone: str, event_type: str, event_text: str = "",
     if not client:
         return False
     try:
-        assignment = get_assignment(phone, campaign_id) if not variant_key else None
-        variant = variant_key or (assignment or {}).get("variant_key")
+        variant = variant_key or variant_for_phone(phone)
         client.table("referral_ab_events").insert({
             "campaign_id": campaign_id,
             "phone": phone,
@@ -350,6 +371,7 @@ def save_referral_name(referrer_phone: str, referrer_name: str,
     if not client:
         return False
     assignment = get_assignment(referrer_phone) or {}
+    variant_key = variant_for_phone(referrer_phone)
     now = _now_iso()
     try:
         pending = (client.table("referral_ab_referrals")
@@ -362,7 +384,7 @@ def save_referral_name(referrer_phone: str, referrer_name: str,
                    .execute())
         data = {
             "referrer_name": referrer_name or assignment.get("client_name") or "Cliente",
-            "variant_key": assignment.get("variant_key"),
+            "variant_key": variant_key,
             "referred_name": referred_name,
             "status": "awaiting_phone",
             "updated_at": now,
@@ -382,7 +404,7 @@ def save_referral_name(referrer_phone: str, referrer_name: str,
             "referral_name",
             referred_name,
             {"referred_name": referred_name},
-            variant_key=assignment.get("variant_key"),
+            variant_key=variant_key,
         )
         return True
     except Exception as e:
@@ -400,6 +422,7 @@ def complete_referral(referrer_phone: str, referrer_name: str,
     if not client:
         return False
     assignment = get_assignment(referrer_phone) or {}
+    variant_key = variant_for_phone(referrer_phone)
     now = _now_iso()
     try:
         pending = (client.table("referral_ab_referrals")
@@ -412,7 +435,7 @@ def complete_referral(referrer_phone: str, referrer_name: str,
                    .execute())
         data = {
             "referrer_name": referrer_name or assignment.get("client_name") or "Cliente",
-            "variant_key": assignment.get("variant_key"),
+            "variant_key": variant_key,
             "referred_name": referred_name,
             "referred_phone": referred_phone,
             "status": "completed",
@@ -433,7 +456,7 @@ def complete_referral(referrer_phone: str, referrer_name: str,
             "referral_phone",
             referred_phone,
             {"referred_name": referred_name, "referred_phone": referred_phone},
-            variant_key=assignment.get("variant_key"),
+            variant_key=variant_key,
         )
         return True
     except Exception as e:

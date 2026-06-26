@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProAlto Bot - Playbook Referidos A/B</title>
+    <style>
+        :root {
+            --bg: #f7fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --brand: #283e52;
+            --brand-deep: #183247;
+            --teal: #0f766e;
+            --accent: #fec05c;
+            --blue: #0284c7;
+            --violet: #7c3aed;
+            --green: #059669;
+            --red: #dc2626;
+            --amber: #d97706;
+            --radius: 12px;
+            --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                font-size: 12px;
+            }
+
+            .toc,
+            .print-btn {
+                display: none !important;
+            }
+
+            .layout {
+                display: block;
+            }
+
+            main {
+                max-width: none;
+                padding: 0;
+            }
+
+            section,
+            .card,
+            .panel {
+                break-inside: avoid;
+                box-shadow: none !important;
+            }
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .toc {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow: auto;
+            background: var(--brand);
+            color: #ffffff;
+            padding: 28px 18px;
+        }
+
+        .toc .eyebrow {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.6px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+
+        .toc h2 {
+            font-size: 20px;
+            line-height: 1.2;
+            margin-bottom: 22px;
+        }
+
+        .toc a {
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.78);
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            padding: 9px 10px;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        main {
+            max-width: 1120px;
+            padding: 42px 56px 110px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, var(--brand) 0%, #173b3f 100%);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            color: #ffffff;
+            margin-bottom: 34px;
+            overflow: hidden;
+            padding: 44px;
+            position: relative;
+        }
+
+        .hero::after {
+            background: var(--accent);
+            border-radius: 999px;
+            content: "";
+            height: 260px;
+            opacity: 0.1;
+            position: absolute;
+            right: -100px;
+            top: -110px;
+            width: 260px;
+        }
+
+        .hero .badge {
+            background: rgba(254, 192, 92, 0.18);
+            border: 1px solid rgba(254, 192, 92, 0.35);
+            border-radius: 999px;
+            color: var(--accent);
+            display: inline-flex;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.4px;
+            margin-bottom: 16px;
+            padding: 6px 14px;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-size: clamp(32px, 5vw, 52px);
+            letter-spacing: 0;
+            line-height: 1.02;
+            margin-bottom: 16px;
+            max-width: 760px;
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.84);
+            font-size: 17px;
+            max-width: 780px;
+        }
+
+        .hero .meta {
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-top: 22px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .print-btn {
+            align-items: center;
+            background: var(--brand);
+            border: 0;
+            border-radius: 999px;
+            bottom: 26px;
+            box-shadow: 0 12px 28px rgba(40, 62, 82, 0.25);
+            color: #ffffff;
+            cursor: pointer;
+            display: inline-flex;
+            font: inherit;
+            font-weight: 800;
+            gap: 10px;
+            padding: 13px 20px;
+            position: fixed;
+            right: 26px;
+            z-index: 20;
+        }
+
+        section {
+            margin-bottom: 38px;
+        }
+
+        section > h2 {
+            align-items: center;
+            border-bottom: 3px solid var(--accent);
+            color: var(--brand);
+            display: flex;
+            font-size: 24px;
+            gap: 12px;
+            letter-spacing: 0;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+        }
+
+        .num {
+            align-items: center;
+            background: var(--brand);
+            border-radius: 999px;
+            color: #ffffff;
+            display: inline-flex;
+            flex: 0 0 auto;
+            font-size: 15px;
+            height: 34px;
+            justify-content: center;
+            width: 34px;
+        }
+
+        h3 {
+            color: var(--brand);
+            font-size: 18px;
+            margin: 20px 0 10px;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        ul,
+        ol {
+            padding-left: 23px;
+        }
+
+        li {
+            margin-bottom: 7px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .grid.two {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid.three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .card,
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+            padding: 22px;
+        }
+
+        .card h3,
+        .panel h3 {
+            margin-top: 0;
+        }
+
+        .callout {
+            background: #fffbeb;
+            border: 1px solid rgba(217, 119, 6, 0.28);
+            border-left: 5px solid var(--accent);
+            border-radius: var(--radius);
+            margin: 16px 0;
+            padding: 18px 20px;
+        }
+
+        .callout strong {
+            color: #92400e;
+        }
+
+        .success {
+            background: #f0fdf4;
+            border-color: rgba(5, 150, 105, 0.24);
+            border-left: 5px solid var(--green);
+        }
+
+        .warning {
+            background: #fffbeb;
+            border-color: rgba(217, 119, 6, 0.24);
+            border-left: 5px solid var(--amber);
+        }
+
+        .danger {
+            background: #fef2f2;
+            border-color: rgba(220, 38, 38, 0.22);
+            border-left: 5px solid var(--red);
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .tag {
+            border-radius: 999px;
+            display: inline-flex;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 5px 11px;
+        }
+
+        .tag.blue {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .tag.violet {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .tag.green {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .tag.gray {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        table {
+            background: var(--surface);
+            border-collapse: collapse;
+            border-radius: var(--radius);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+            margin: 16px 0;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        thead {
+            background: var(--brand);
+            color: #ffffff;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--line);
+            padding: 12px 14px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .flow {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            margin: 16px 0;
+        }
+
+        .step {
+            background: #ffffff;
+            border: 2px solid rgba(15, 118, 110, 0.22);
+            border-radius: var(--radius);
+            min-height: 110px;
+            padding: 14px;
+        }
+
+        .step strong {
+            color: var(--teal);
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .variant {
+            border-left: 5px solid var(--blue);
+        }
+
+        .variant.express {
+            border-left-color: var(--violet);
+        }
+
+        .copy-block {
+            background: #f8fafc;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            color: #334155;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 14px;
+            white-space: pre-line;
+        }
+
+        .checklist li {
+            list-style: none;
+            margin-left: -22px;
+            padding-left: 26px;
+            position: relative;
+        }
+
+        .checklist li::before {
+            background: var(--teal);
+            border-radius: 999px;
+            content: "";
+            height: 8px;
+            left: 6px;
+            position: absolute;
+            top: 10px;
+            width: 8px;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                display: block;
+            }
+
+            .toc {
+                height: auto;
+                position: static;
+            }
+
+            main {
+                padding: 28px 20px 100px;
+            }
+
+            .grid.two,
+            .grid.three,
+            .flow {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                padding: 30px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" type="button" onclick="window.print()">Exportar PDF</button>
+    <div class="layout">
+        <aside class="toc">
+            <div class="eyebrow">ProAlto Bot</div>
+            <h2>Playbook Referidos A/B</h2>
+            <a href="#objetivo">1. Objetivo</a>
+            <a href="#campana">2. Qué se va a ejecutar</a>
+            <a href="#flujo">3. Flujo del cliente</a>
+            <a href="#preparacion">4. Preparación</a>
+            <a href="#prueba">5. Prueba previa</a>
+            <a href="#envio">6. Envío desde admin</a>
+            <a href="#monitoreo">7. Monitoreo</a>
+            <a href="#metricas">8. Métricas</a>
+            <a href="#decision">9. Decisión</a>
+            <a href="#checklist">10. Checklist</a>
+        </aside>
+
+        <main>
+            <header class="hero">
+                <div class="badge">Guía operativa</div>
+                <h1>Playbook para ejecutar el test A/B de referidos desde el portal admin</h1>
+                <p>
+                    Esta guía está pensada para la persona que va a lanzar y monitorear la campaña.
+                    No necesitas conocer cómo funciona el sistema por dentro; solo seguir el proceso
+                    de preparación, prueba, envío y lectura de resultados.
+                </p>
+                <div class="meta">
+                    <span>Campaña: <strong>Referidos A/B</strong></span>
+                    <span>Canal: <strong>WhatsApp</strong></span>
+                    <span>Distribución: <strong>50% y 50%</strong></span>
+                </div>
+            </header>
+
+            <section id="objetivo">
+                <h2><span class="num">1</span>Objetivo</h2>
+                <div class="grid three">
+                    <div class="card">
+                        <h3>Qué queremos aprender</h3>
+                        <p>
+                            Queremos saber cuál incentivo genera mejores resultados en una campaña
+                            de referidos: descuento en tasa o aprobación express.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3>Qué esperamos lograr</h3>
+                        <p>
+                            Que más clientes compartan un referido válido, dejando nombre completo
+                            y número de teléfono de la persona recomendada.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3>Cómo se decide</h3>
+                        <p>
+                            La versión ganadora debe generar más referidos por contacto enviado,
+                            no solo más clics.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="callout">
+                    <strong>Idea central:</strong> el test debe comparar dos incentivos bajo las mismas condiciones:
+                    misma audiencia, mismo momento de envío y mismo periodo de medición.
+                </div>
+            </section>
+
+            <section id="campana">
+                <h2><span class="num">2</span>Qué Se Va A Ejecutar</h2>
+                <div class="grid two">
+                    <div class="panel variant">
+                        <h3>Versión A: Descuento en tasa</h3>
+                        <p>
+                            El cliente recibe una invitación al programa de referidos con el incentivo
+                            de obtener un descuento directo en la tasa de su próximo crédito si su referido
+                            hace una solicitud.
+                        </p>
+                        <div class="badge-row">
+                            <span class="tag blue">Incentivo económico</span>
+                            <span class="tag gray">Versión A</span>
+                        </div>
+                    </div>
+
+                    <div class="panel variant express">
+                        <h3>Versión B: Aprobación express</h3>
+                        <p>
+                            El cliente recibe una invitación al programa de referidos con el incentivo
+                            de tener aprobación prioritaria en menos de 3 horas para su próximo crédito
+                            si su referido hace una solicitud.
+                        </p>
+                        <div class="badge-row">
+                            <span class="tag violet">Incentivo de velocidad</span>
+                            <span class="tag gray">Versión B</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Qué pasa cuando se envía</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Momento</th>
+                            <th>Qué verá el equipo</th>
+                            <th>Qué debe validar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Antes del envío</td>
+                            <td>Una lista cargada con nombres y teléfonos.</td>
+                            <td>Que no haya teléfonos vacíos, duplicados evidentes o contactos fuera del segmento.</td>
+                        </tr>
+                        <tr>
+                            <td>Durante el envío</td>
+                            <td>El portal pide confirmar el envío del test.</td>
+                            <td>Que el conteo de contactos coincida con la lista preparada.</td>
+                        </tr>
+                        <tr>
+                            <td>Después del envío</td>
+                            <td>El panel muestra resultados y métricas de la campaña.</td>
+                            <td>Que el reparto entre las dos versiones sea cercano a 50% y 50%.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="flujo">
+                <h2><span class="num">3</span>Flujo Del Cliente</h2>
+                <div class="flow">
+                    <div class="step">
+                        <strong>1. Recibe WhatsApp</strong>
+                        El cliente recibe una de las dos versiones de la campaña.
+                    </div>
+                    <div class="step">
+                        <strong>2. Pide información</strong>
+                        Puede tocar "¿Cómo funciona?" para ver la explicación.
+                    </div>
+                    <div class="step">
+                        <strong>3. Activa beneficio</strong>
+                        Puede tocar "Quiero el beneficio".
+                    </div>
+                    <div class="step">
+                        <strong>4. Da el nombre</strong>
+                        El BOT le pide el nombre completo del referido.
+                    </div>
+                    <div class="step">
+                        <strong>5. Da el teléfono</strong>
+                        El BOT le pide el número del referido y confirma el registro.
+                    </div>
+                </div>
+
+                <h3>Botones principales</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Botón</th>
+                            <th>Qué significa</th>
+                            <th>Qué pasa después</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>¿Cómo funciona?</td>
+                            <td>El cliente quiere entender la mecánica antes de decidir.</td>
+                            <td>Se muestra la explicación de 2 pasos y el botón para activar el beneficio.</td>
+                        </tr>
+                        <tr>
+                            <td>Quiero el beneficio</td>
+                            <td>El cliente está dispuesto a referir a alguien.</td>
+                            <td>El BOT inicia la captura del nombre y teléfono del referido.</td>
+                        </tr>
+                        <tr>
+                            <td>Quizás después</td>
+                            <td>El cliente no quiere continuar en ese momento.</td>
+                            <td>El BOT cierra con un mensaje amable y deja abierta la posibilidad futura.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="grid two">
+                    <div class="card">
+                        <h3>Cierre esperado en la versión A</h3>
+                        <div class="copy-block">Si la persona que nos dijiste hace su solicitud, automáticamente tendrás el descuento en la tasa para tu próximo crédito.</div>
+                    </div>
+                    <div class="card">
+                        <h3>Cierre esperado en la versión B</h3>
+                        <div class="copy-block">Si la persona que nos dijiste hace su solicitud, automáticamente tu próximo crédito tendrá aprobación prioritaria en menos de 3 horas.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="preparacion">
+                <h2><span class="num">4</span>Preparación Antes De Lanzar</h2>
+                <div class="grid two">
+                    <div class="card success">
+                        <h3>Validaciones de campaña</h3>
+                        <ul class="checklist">
+                            <li>Las dos versiones de mensaje están aprobadas y disponibles para envío.</li>
+                            <li>El acceso al portal admin funciona correctamente.</li>
+                            <li>La sección "Referidos A/B" aparece en el portal.</li>
+                            <li>El modo de prueba fue revisado antes del envío real.</li>
+                            <li>La persona responsable de monitorear el test está definida.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card warning">
+                        <h3>Validaciones de audiencia</h3>
+                        <ul class="checklist">
+                            <li>La lista corresponde al segmento correcto de clientes.</li>
+                            <li>Se excluyeron personas que no deben recibir campañas.</li>
+                            <li>No hay campañas similares enviándose al mismo grupo en paralelo.</li>
+                            <li>Los nombres están completos o suficientemente claros.</li>
+                            <li>Los teléfonos están revisados y sin duplicados evidentes.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Formato recomendado de la lista</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Columna</th>
+                            <th>Ejemplo</th>
+                            <th>Recomendación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Nombre</td>
+                            <td>Carlos Pérez</td>
+                            <td>Usar el primer nombre o nombre completo con buena ortografía.</td>
+                        </tr>
+                        <tr>
+                            <td>Teléfono</td>
+                            <td>3201234567</td>
+                            <td>Usar solo números. Si viene con indicativo de Colombia, también está bien.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout">
+                    <strong>Recomendación:</strong> antes de enviar al lote completo, hacer una prueba interna
+                    con pocos teléfonos controlados y confirmar que ambos caminos se ven bien.
+                </div>
+            </section>
+
+            <section id="prueba">
+                <h2><span class="num">5</span>Prueba Previa En El Portal</h2>
+                <p>
+                    Esta prueba sirve para revisar la conversación completa antes de enviar mensajes reales
+                    a clientes. Debe hacerse con ambas versiones.
+                </p>
+
+                <ol>
+                    <li>Entrar al portal admin.</li>
+                    <li>Abrir la opción de prueba del BOT.</li>
+                    <li>Seleccionar la versión de referidos con descuento en tasa.</li>
+                    <li>Simular la recepción del mensaje.</li>
+                    <li>Presionar "¿Cómo funciona?" y revisar que el cierre mencione descuento en tasa.</li>
+                    <li>Presionar "Quiero el beneficio".</li>
+                    <li>Enviar un nombre completo de referido.</li>
+                    <li>Enviar un teléfono válido.</li>
+                    <li>Repetir el mismo recorrido con la versión de aprobación express.</li>
+                    <li>Confirmar que no aparezca la frase "opción más alta".</li>
+                </ol>
+
+                <div class="card success">
+                    <h3>La prueba se considera aprobada si...</h3>
+                    <ul class="checklist">
+                        <li>Las dos versiones se pueden simular correctamente.</li>
+                        <li>Los botones responden como se espera.</li>
+                        <li>El BOT pide primero nombre y luego teléfono del referido.</li>
+                        <li>El cierre de cada versión coincide con su incentivo.</li>
+                        <li>El mensaje "Quizás después" cierra la conversación sin pedir datos.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="envio">
+                <h2><span class="num">6</span>Envío Desde El Portal Admin</h2>
+                <ol>
+                    <li>Entrar al portal admin.</li>
+                    <li>Abrir la sección "Referidos A/B".</li>
+                    <li>Cargar o pegar la lista de contactos.</li>
+                    <li>Revisar la vista previa de contactos antes de enviar.</li>
+                    <li>Confirmar que el total de contactos sea el esperado.</li>
+                    <li>Presionar "Enviar Referidos A/B".</li>
+                    <li>Leer la confirmación del portal y aceptar solo si todo está correcto.</li>
+                    <li>Guardar el resultado inicial del envío: total enviado, fallidos y omitidos.</li>
+                </ol>
+
+                <div class="grid two">
+                    <div class="card">
+                        <h3>Qué debe verse bien antes de confirmar</h3>
+                        <ul>
+                            <li>El nombre de la campaña es "Referidos A/B".</li>
+                            <li>El número de contactos coincide con la lista final.</li>
+                            <li>La lista no contiene filas vacías.</li>
+                            <li>Los teléfonos tienen formato consistente.</li>
+                            <li>No hay nombres claramente incorrectos.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card danger">
+                        <h3>Cuándo detenerse</h3>
+                        <ul>
+                            <li>Si la lista cargada no es la lista final aprobada.</li>
+                            <li>Si el total de contactos no coincide.</li>
+                            <li>Si aparecen muchos teléfonos inválidos.</li>
+                            <li>Si una de las dos versiones no fue aprobada en la prueba previa.</li>
+                            <li>Si hay otra campaña activa para el mismo grupo.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="monitoreo">
+                <h2><span class="num">7</span>Monitoreo Después Del Envío</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Momento</th>
+                            <th>Qué revisar</th>
+                            <th>Qué hacer si algo se ve raro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Primeros 15 minutos</td>
+                            <td>Confirmar que ya aparecen mensajes enviados y que no hay fallos masivos.</td>
+                            <td>Detener nuevos envíos y avisar al responsable del BOT.</td>
+                        </tr>
+                        <tr>
+                            <td>Primera hora</td>
+                            <td>Revisar clics en botones y primeras capturas de referidos.</td>
+                            <td>Revisar conversaciones de ejemplo para entender bloqueos.</td>
+                        </tr>
+                        <tr>
+                            <td>Durante el día</td>
+                            <td>Monitorear el avance de referidos y respuestas "Quizás después".</td>
+                            <td>Anotar cualquier comportamiento inesperado para el análisis final.</td>
+                        </tr>
+                        <tr>
+                            <td>Cierre del periodo</td>
+                            <td>Tomar los resultados finales dentro del rango acordado.</td>
+                            <td>No declarar ganador hasta tener la ventana completa.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout">
+                    <strong>Ventana sugerida:</strong> medir al menos 24 horas después del envío. Si la campaña
+                    se envía cerca del fin de semana o fuera del horario habitual, documentarlo.
+                </div>
+            </section>
+
+            <section id="metricas">
+                <h2><span class="num">8</span>Métricas Que Debes Mirar</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Métrica</th>
+                            <th>Qué significa</th>
+                            <th>Cómo interpretarla</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Total enviados</td>
+                            <td>Contactos que recibieron la campaña.</td>
+                            <td>Es la base para comparar porcentajes.</td>
+                        </tr>
+                        <tr>
+                            <td>Distribución A/B</td>
+                            <td>Cuántos contactos quedaron en cada versión.</td>
+                            <td>Debe estar cerca de 50% y 50%.</td>
+                        </tr>
+                        <tr>
+                            <td>¿Cómo funciona?</td>
+                            <td>Clientes que pidieron más explicación.</td>
+                            <td>Indica interés o necesidad de claridad.</td>
+                        </tr>
+                        <tr>
+                            <td>Quiero el beneficio</td>
+                            <td>Clientes que iniciaron la captura del referido.</td>
+                            <td>Es una señal fuerte de intención.</td>
+                        </tr>
+                        <tr>
+                            <td>Quizás después</td>
+                            <td>Clientes que no quisieron continuar en ese momento.</td>
+                            <td>Ayuda a medir rechazo o baja urgencia.</td>
+                        </tr>
+                        <tr>
+                            <td>Referidos capturados</td>
+                            <td>Registros completos con nombre y teléfono del referido.</td>
+                            <td>Es la métrica principal para decidir ganador.</td>
+                        </tr>
+                        <tr>
+                            <td>Tiempos de respuesta</td>
+                            <td>Cuánto tardan los clientes entre cada paso.</td>
+                            <td>Ayuda a detectar fricción o mayor motivación.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="decision">
+                <h2><span class="num">9</span>Cómo Decidir La Versión Ganadora</h2>
+                <div class="grid two">
+                    <div class="card">
+                        <h3>Métrica principal</h3>
+                        <p>
+                            Usar referidos capturados por contacto enviado. Esta métrica responde a la
+                            pregunta más importante: qué incentivo consigue más referidos reales.
+                        </p>
+                    </div>
+                    <div class="card">
+                        <h3>Métricas de apoyo</h3>
+                        <p>
+                            Usar clic en "Quiero el beneficio", clic en "¿Cómo funciona?", "Quizás después"
+                            y tiempos de respuesta para entender por qué ganó una versión.
+                        </p>
+                    </div>
+                </div>
+
+                <h3>Guía de lectura</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Resultado observado</th>
+                            <th>Lectura</th>
+                            <th>Decisión sugerida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Una versión gana en referidos y también en intención.</td>
+                            <td>Señal clara de ganador.</td>
+                            <td>Usar esa versión para el siguiente envío.</td>
+                        </tr>
+                        <tr>
+                            <td>Una versión gana en clics, pero no en referidos.</td>
+                            <td>El incentivo llama la atención, pero no necesariamente convierte.</td>
+                            <td>Revisar conversaciones antes de decidir.</td>
+                        </tr>
+                        <tr>
+                            <td>Las dos versiones quedan muy parecidas.</td>
+                            <td>No hay ganador claro.</td>
+                            <td>Ampliar muestra o probar un tercer incentivo.</td>
+                        </tr>
+                        <tr>
+                            <td>Una versión tiene mucho "Quizás después".</td>
+                            <td>Puede ser menos relevante para la audiencia.</td>
+                            <td>Revisar si el incentivo o el segmento necesitan ajuste.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="callout">
+                    <strong>No decidir solo por volumen absoluto:</strong> compara porcentajes sobre la cantidad
+                    enviada en cada versión. Si una versión recibió más contactos, el porcentaje es más justo
+                    que el número bruto.
+                </div>
+            </section>
+
+            <section id="checklist">
+                <h2><span class="num">10</span>Checklist Final</h2>
+                <div class="grid two">
+                    <div class="card">
+                        <h3>Antes de enviar</h3>
+                        <ul class="checklist">
+                            <li>Lista final aprobada.</li>
+                            <li>Segmento correcto confirmado.</li>
+                            <li>Prueba interna completada con las dos versiones.</li>
+                            <li>Texto de descuento en tasa validado.</li>
+                            <li>Texto de aprobación express validado.</li>
+                            <li>Fecha y hora de envío definidas.</li>
+                            <li>Responsable de monitoreo asignado.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card">
+                        <h3>Después de enviar</h3>
+                        <ul class="checklist">
+                            <li>Total enviado registrado.</li>
+                            <li>Fallidos y omitidos revisados.</li>
+                            <li>Distribución A/B revisada.</li>
+                            <li>Primeras respuestas monitoreadas.</li>
+                            <li>Referidos capturados revisados.</li>
+                            <li>Resultado final documentado.</li>
+                            <li>Versión ganadora y próximos pasos definidos.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout">
+                    <strong>Cierre recomendado:</strong> al terminar, guarda el rango de fechas, tamaño de la
+                    lista, resultados por versión, comentarios relevantes y decisión final. Eso permite repetir
+                    el aprendizaje en futuras campañas.
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
