@@ -2,13 +2,25 @@
 Shared HTTP Basic Auth utilities for ProAlto admin blueprints.
 """
 import functools
+import secrets
 from flask import request, Response
 from config import Config
+
+_missing_admin_credentials_warned = False
 
 
 def check_auth(username, password):
     """Verify admin credentials."""
-    return username == Config.ADMIN_USER and password == Config.ADMIN_PASS
+    global _missing_admin_credentials_warned
+    if not Config.ADMIN_USER or not Config.ADMIN_PASS:
+        if not _missing_admin_credentials_warned:
+            print("[CONFIG] ADMIN_USER/ADMIN_PASS incompletos: panel admin bloqueado, app sigue activa.")
+            _missing_admin_credentials_warned = True
+        return False
+    return (
+        secrets.compare_digest(username or "", Config.ADMIN_USER)
+        and secrets.compare_digest(password or "", Config.ADMIN_PASS)
+    )
 
 
 def authenticate():

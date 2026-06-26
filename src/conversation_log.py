@@ -19,6 +19,17 @@ if Config.SUPABASE_URL and Config.SUPABASE_KEY:
 else:
     print("⚠️ SUPABASE_URL or SUPABASE_KEY is missing. Supabase logging will fail.")
 
+class CampaignSafetyError(RuntimeError):
+    """Raised when a bulk campaign cannot verify exclusion data safely."""
+
+
+def _campaign_query_unavailable(name: str, exc: Exception = None):
+    detail = f"No se pudo verificar {name}; campana bloqueada para evitar reenvios."
+    if exc:
+        detail += f" Detalle: {exc}"
+    raise CampaignSafetyError(detail)
+
+
 def log_message(phone: str, direction: str, text: str, msg_type: str = "text", wamid: str = None):
     """Log a single message to the conversation history in background."""
     if test_mode.is_test_phone(phone):
@@ -1052,8 +1063,10 @@ def get_template_stats_batch(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_verde template sends.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return {}
+    if not supabase_client:
+        _campaign_query_unavailable("historial de envios estado_verde")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
@@ -1073,7 +1086,7 @@ def get_template_stats_batch(phones: list) -> dict:
         return stats
     except Exception as e:
         print(f"Supabase get_template_stats_batch error: {e}")
-        return {}
+        _campaign_query_unavailable("historial de envios estado_verde", e)
 
 
 def get_notified_phones_batch(phones: list) -> set:
@@ -1081,8 +1094,10 @@ def get_notified_phones_batch(phones: list) -> set:
     Given a list of phone numbers, returns a SET of those that 
     HAVE already been notified today. (Optimized single query).
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("notificaciones de aprobados enviadas hoy")
     
     try:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -1097,7 +1112,7 @@ def get_notified_phones_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_notified_phones_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("notificaciones de aprobados enviadas hoy", e)
 
 def mark_message_deleted(message_id: str):
     """Mark a message as deleted in the local database."""
@@ -1219,8 +1234,10 @@ def toggle_email_processed_by_id(record_id: int) -> dict:
 
 def get_phones_with_email(phones: list) -> set:
     """Returns a set of phones that have already submitted their email."""
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("correos capturados")
     try:
         res = supabase_client.table('captured_emails')\
             .select("phone")\
@@ -1229,7 +1246,7 @@ def get_phones_with_email(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_phones_with_email error: {e}")
-        return set()
+        _campaign_query_unavailable("correos capturados", e)
 
 
 def get_email_for_phone(phone: str):
@@ -1253,8 +1270,10 @@ def get_email_for_phone(phone: str):
 
 def get_phones_with_docs_completos(phones: list) -> set:
     """Returns a set of phones marked as docs_completos = true."""
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("documentos completos")
     try:
         res = supabase_client.table('bot_conversations')\
             .select("phone")\
@@ -1264,7 +1283,7 @@ def get_phones_with_docs_completos(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_phones_with_docs_completos error: {e}")
-        return set()
+        _campaign_query_unavailable("documentos completos", e)
 
 
 def mark_docs_completos(phone: str, value: bool = True):
@@ -1332,8 +1351,10 @@ def get_template_stats_batch_rojo(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_rojo template sends.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return {}
+    if not supabase_client:
+        _campaign_query_unavailable("historial de envios estado_rojo")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
@@ -1353,7 +1374,7 @@ def get_template_stats_batch_rojo(phones: list) -> dict:
         return stats
     except Exception as e:
         print(f"Supabase get_template_stats_batch_rojo error: {e}")
-        return {}
+        _campaign_query_unavailable("historial de envios estado_rojo", e)
 
 
 def get_undeliverable_phones_batch(phones: list) -> set:
@@ -1364,8 +1385,10 @@ def get_undeliverable_phones_batch(phones: list) -> set:
     de las campañas para no gastar envíos ni generar fatiga. El marcador lo escribe
     _process_failed_statuses en webhook.py como mensaje "failed".
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("numeros no entregables")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone")\
@@ -1377,7 +1400,7 @@ def get_undeliverable_phones_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_undeliverable_phones_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("numeros no entregables", e)
 
 
 def get_notified_phones_rojo_batch(phones: list) -> set:
@@ -1385,8 +1408,10 @@ def get_notified_phones_rojo_batch(phones: list) -> set:
     Given a list of phone numbers, returns a SET of those that
     HAVE already received estado_rojo today.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("notificaciones estado_rojo enviadas hoy")
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         res = supabase_client.table('bot_messages')\
@@ -1399,7 +1424,7 @@ def get_notified_phones_rojo_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_notified_phones_rojo_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("notificaciones estado_rojo enviadas hoy", e)
 
 
 def get_phones_menu_contacted_rojo_batch(phones: list) -> set:
@@ -1407,8 +1432,10 @@ def get_phones_menu_contacted_rojo_batch(phones: list) -> set:
     Returns a SET of phones that were contacted today via the bot menu
     (consulta de estado → Falta algún documento), not via bulk template.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("contactos estado_rojo por menu")
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         res = supabase_client.table('bot_messages')\
@@ -1421,7 +1448,7 @@ def get_phones_menu_contacted_rojo_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_phones_menu_contacted_rojo_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("contactos estado_rojo por menu", e)
 
 
 def count_received_documents(phone: str) -> int:
@@ -1519,8 +1546,10 @@ def get_template_stats_batch_amarillo(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_amarillo template sends.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return {}
+    if not supabase_client:
+        _campaign_query_unavailable("historial de envios estado_amarillo")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
@@ -1540,7 +1569,7 @@ def get_template_stats_batch_amarillo(phones: list) -> dict:
         return stats
     except Exception as e:
         print(f"Supabase get_template_stats_batch_amarillo error: {e}")
-        return {}
+        _campaign_query_unavailable("historial de envios estado_amarillo", e)
 
 
 def get_notified_phones_amarillo_batch(phones: list) -> set:
@@ -1548,8 +1577,10 @@ def get_notified_phones_amarillo_batch(phones: list) -> set:
     Given a list of phone numbers, returns a SET of those that
     HAVE already received estado_amarillo today.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("notificaciones estado_amarillo enviadas hoy")
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         res = supabase_client.table('bot_messages')\
@@ -1562,15 +1593,17 @@ def get_notified_phones_amarillo_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_notified_phones_amarillo_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("notificaciones estado_amarillo enviadas hoy", e)
 
 
 def get_template_stats_batch_denegado(phones: list) -> dict:
     """
     Returns a dict mapping phone -> {count, last_sent} for estado_negados template sends.
     """
-    if not supabase_client or not phones:
+    if not phones:
         return {}
+    if not supabase_client:
+        _campaign_query_unavailable("historial de envios estado_negados")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
@@ -1590,7 +1623,7 @@ def get_template_stats_batch_denegado(phones: list) -> dict:
         return stats
     except Exception as e:
         print(f"Supabase get_template_stats_batch_denegado error: {e}")
-        return {}
+        _campaign_query_unavailable("historial de envios estado_negados", e)
 
 
 def get_notified_phones_denegado_batch(phones: list) -> set:
@@ -1598,8 +1631,10 @@ def get_notified_phones_denegado_batch(phones: list) -> set:
     Given a list of phone numbers, returns a SET of those that have EVER
     received the estado_negados template (no date filter — this is a final decision).
     """
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("notificaciones estado_negados previas")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone")\
@@ -1610,7 +1645,7 @@ def get_notified_phones_denegado_batch(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_notified_phones_denegado_batch error: {e}")
-        return set()
+        _campaign_query_unavailable("notificaciones estado_negados previas", e)
 
 
 def save_captured_cuenta(phone: str, numero_cuenta: str, name: str):
@@ -1736,8 +1771,10 @@ def get_captured_cuentas():
 
 def get_phones_with_cuenta(phones: list) -> set:
     """Returns a set of phones that have already submitted their account number."""
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("cuentas bancarias capturadas")
     try:
         res = supabase_client.table('captured_cuentas')\
             .select("phone")\
@@ -1746,7 +1783,7 @@ def get_phones_with_cuenta(phones: list) -> set:
         return {item["phone"] for item in res.data}
     except Exception as e:
         print(f"Supabase get_phones_with_cuenta error: {e}")
-        return set()
+        _campaign_query_unavailable("cuentas bancarias capturadas", e)
 
 
 def mark_document_reviewed(doc_id: str):
@@ -2101,8 +2138,10 @@ def get_last_contact_update_date(phone: str):
 def get_phones_recently_updated(phones: list, months: int = 12) -> set:
     """Return the subset of phones whose ultima_actualizacion_datos is within
     the last `months` months. Used to exclude them from the campaign."""
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("actualizaciones de datos recientes")
     try:
         from datetime import timedelta
         cutoff = (datetime.now() - timedelta(days=30 * months)).isoformat()
@@ -2114,13 +2153,15 @@ def get_phones_recently_updated(phones: list, months: int = 12) -> set:
         return {item["phone"] for item in (res.data or []) if item.get("ultima_actualizacion_datos")}
     except Exception as e:
         print(f"Supabase get_phones_recently_updated error: {e}")
-        return set()
+        _campaign_query_unavailable("actualizaciones de datos recientes", e)
 
 
 def get_phones_with_in_progress_contact_update(phones: list) -> set:
     """Return phones that currently have an in_progress contact update."""
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _campaign_query_unavailable("actualizaciones de datos en curso")
     try:
         res = supabase_client.table('contact_data_updates')\
             .select("phone")\
@@ -2130,7 +2171,7 @@ def get_phones_with_in_progress_contact_update(phones: list) -> set:
         return {item["phone"] for item in (res.data or [])}
     except Exception as e:
         print(f"Supabase get_phones_with_in_progress_contact_update error: {e}")
-        return set()
+        _campaign_query_unavailable("actualizaciones de datos en curso", e)
 
 
 def get_recent_messages_for_llm(phone: str, limit: int = 6) -> list:

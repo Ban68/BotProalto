@@ -3,14 +3,29 @@ import psycopg2
 import functions_framework
 from flask import jsonify
 
+
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 @functions_framework.http
 def get_solicitud(request):
     auth_header = request.headers.get("Authorization")
-    expected_token = "Bearer " + os.environ.get("API_TOKEN_SECRET", "")
+    api_token_secret = os.environ.get("API_TOKEN_SECRET", "").strip()
+    if not api_token_secret:
+        return jsonify({"error": "API_TOKEN_SECRET no configurado"}), 503
+
+    expected_token = "Bearer " + api_token_secret
     if auth_header != expected_token:
         return jsonify({"error": "No Autorizado"}), 401
     request_json = request.get_json(silent=True)
     tipo = request_json.get("tipo", "solicitud") if request_json else "solicitud"
+
+    if tipo == "diagnostico_activos" and not _env_bool("ENABLE_DIAGNOSTICO_ACTIVOS", False):
+        return jsonify({"error": "Diagnostico deshabilitado"}), 403
 
     cedula = request_json.get("cedula") if request_json else None
     if tipo not in ("aprobados", "falta_documento", "por_telefono", "por_telefono_completo", "listo_en_docusign", "denegado", "activos", "diagnostico_activos") and not cedula:
@@ -169,29 +184,25 @@ def get_solicitud(request):
             """)
             diag["5_activos_con_join_y_telefono_no_vacio"] = cur.fetchone()[0]
 
-            # Ejemplos: 5 cédulas activas que NO matchean en v_solicitudes_whatsapp
+            # Conteo de activos que NO matchean en v_solicitudes_whatsapp.
             cur.execute("""
-                SELECT s.cedula, s.nombre_completo
+                SELECT COUNT(DISTINCT s.cedula)
                 FROM vista_consulta_saldo s
                 LEFT JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
                 WHERE s.saldo_actual > 0
                   AND w.cedula_nit IS NULL
-                LIMIT 5
             """)
-            sin_join = [{"cedula": str(r[0]), "nombre": r[1] or ""} for r in cur.fetchall()]
-            diag["6_ejemplos_sin_match_en_solicitudes"] = sin_join
+            diag["6_activos_sin_match_en_solicitudes"] = cur.fetchone()[0]
 
-            # Ejemplos: 5 cédulas activas que SI matchean pero tienen telefono vacío
+            # Conteo de activos que SI matchean pero tienen telefono vacio.
             cur.execute("""
-                SELECT s.cedula, s.nombre_completo, w.telefono
+                SELECT COUNT(DISTINCT s.cedula)
                 FROM vista_consulta_saldo s
                 INNER JOIN v_solicitudes_whatsapp w ON w.cedula_nit = s.cedula
                 WHERE s.saldo_actual > 0
                   AND (w.telefono IS NULL OR w.telefono = '')
-                LIMIT 5
             """)
-            sin_tel = [{"cedula": str(r[0]), "nombre": r[1] or "", "telefono": str(r[2]) if r[2] is not None else None} for r in cur.fetchall()]
-            diag["7_ejemplos_con_match_pero_sin_telefono"] = sin_tel
+            diag["7_activos_con_match_pero_sin_telefono"] = cur.fetchone()[0]
 
             # 8. Tipos de columna (para descartar mismatch text vs bigint)
             cur.execute("""
@@ -223,28 +234,6 @@ def get_solicitud(request):
                 WHERE s.saldo_actual > 0
             """)
             diag["10_activos_con_join_limpiando_no_digitos"] = cur.fetchone()[0]
-
-            # 11. Sample raw de 5 cédulas de cada vista (sin cast, así vemos el formato real)
-            cur.execute("SELECT DISTINCT cedula FROM vista_consulta_saldo LIMIT 5")
-            diag["11a_sample_cedulas_vista_consulta_saldo"] = [
-                {"raw": str(r[0]), "len": len(str(r[0]))} for r in cur.fetchall()
-            ]
-            cur.execute("SELECT DISTINCT cedula_nit FROM v_solicitudes_whatsapp LIMIT 5")
-            diag["11b_sample_cedula_nit_v_solicitudes_whatsapp"] = [
-                {"raw": str(r[0]), "len": len(str(r[0]))} for r in cur.fetchall()
-            ]
-
-            # 12. Buscar una cédula puntual de las "sin match" con búsqueda relajada
-            target = "1193048909"
-            cur.execute("""
-                SELECT cedula_nit, nombre_completo, telefono
-                FROM v_solicitudes_whatsapp
-                WHERE regexp_replace(CAST(cedula_nit AS TEXT), '[^0-9]', '', 'g') = %s
-                LIMIT 3
-            """, (target,))
-            diag[f"12_busqueda_relajada_cedula_{target}"] = [
-                {"cedula_nit_raw": str(r[0]), "nombre": r[1], "telefono": r[2]} for r in cur.fetchall()
-            ]
 
             cur.close()
             conn.close()

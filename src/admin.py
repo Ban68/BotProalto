@@ -1528,8 +1528,9 @@ def api_diagnostics():
     from concurrent.futures import ThreadPoolExecutor
     from src import error_tracker
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         futures = {
+            "config": pool.submit(error_tracker.check_config),
             "meta": pool.submit(error_tracker.check_meta),
             "supabase": pool.submit(error_tracker.check_supabase),
             "cloud_run": pool.submit(error_tracker.check_cloud_run),

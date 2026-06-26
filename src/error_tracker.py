@@ -242,6 +242,28 @@ def classify_delivery_failure(meta_code) -> str:
 
 # ── Health checks en vivo (los consume /admin/api/diagnostics) ──────
 
+def check_config() -> dict:
+    """Diagnostico local de variables sensibles sin impedir el arranque."""
+    warnings = Config.configuration_warnings()
+    if not warnings:
+        return {"estado": "ok", "detalle": "Configuracion critica completa."}
+
+    has_critical = any(item.get("severity") == "critical" for item in warnings)
+    details = "; ".join(
+        f"{item.get('name')}: {item.get('detail')}" for item in warnings
+    )
+    return {
+        "estado": "caido" if has_critical else "alerta",
+        "detalle": details,
+        "items": warnings,
+        "que_hacer": (
+            "Revisar variables de entorno en Render/Cloud Run. La app sigue "
+            "arrancando, pero las rutas afectadas quedan bloqueadas o en modo "
+            "de alerta hasta completar la configuracion."
+        ),
+    }
+
+
 def check_meta() -> dict:
     """Consulta de solo lectura a la Graph API para verificar token y disponibilidad."""
     url = f"https://graph.facebook.com/{Config.API_VERSION}/{Config.BUSINESS_PHONE}"

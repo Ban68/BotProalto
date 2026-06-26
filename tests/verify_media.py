@@ -49,7 +49,7 @@ class TestMediaProcessing(unittest.TestCase):
         mock_download.assert_called()
         # Check if log_message was called with the relative path
         expected_path = "/static/uploads/573001234567/media_456.jpeg"
-        mock_log.assert_any_call("573001234567", "inbound", expected_path, "image")
+        mock_log.assert_any_call("573001234567", "inbound", expected_path, "image", wamid="msg_123")
 
     @patch('src.services.WhatsAppService.get_media_url')
     @patch('src.services.WhatsAppService.download_media_file')
@@ -89,7 +89,7 @@ class TestMediaProcessing(unittest.TestCase):
         mock_get_url.assert_called_with("doc_789")
         mock_download.assert_called()
         expected_path = "https://mock-supabase.co/storage/v1/object/public/media/573001234567/contrato.pdf"
-        mock_log.assert_any_call("573001234567", "inbound", expected_path, "document")
+        mock_log.assert_any_call("573001234567", "inbound", expected_path, "document", wamid="msg_doc_1")
 
 if __name__ == '__main__':
     unittest.main()

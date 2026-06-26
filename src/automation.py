@@ -14,12 +14,21 @@ from src.conversation_log import (
     get_phones_with_cuenta, set_solicitud_context,
     get_notified_phones_denegado_batch, get_template_stats_batch_denegado,
     get_phones_recently_updated, get_phones_with_in_progress_contact_update,
+    CampaignSafetyError,
 )
 
 # --- TEST MODE CONFIG ---
 TEST_MODE = False  # SET TO FALSE BEFORE PRODUCTION
 TEST_NUMBER = "573106176713"
 # -------------------------
+
+
+def _raise_campaign_query_unavailable(name: str, exc: Exception = None):
+    detail = f"No se pudo verificar {name}; campana bloqueada para evitar reenvios."
+    if exc:
+        detail += f" Detalle: {exc}"
+    raise CampaignSafetyError(detail)
+
 
 def get_pending_approved_notifications():
     """
@@ -940,8 +949,10 @@ def get_pending_contact_update_notifications():
 def _get_notified_phones_actualizacion_today(phones: list) -> set:
     """Return phones that already received the actualizacion_datos template today."""
     from src.conversation_log import supabase_client
-    if not supabase_client or not phones:
+    if not phones:
         return set()
+    if not supabase_client:
+        _raise_campaign_query_unavailable("notificaciones actualizacion_datos enviadas hoy")
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         res = supabase_client.table('bot_messages')\
@@ -954,14 +965,16 @@ def _get_notified_phones_actualizacion_today(phones: list) -> set:
         return {item["phone"] for item in (res.data or [])}
     except Exception as e:
         print(f"_get_notified_phones_actualizacion_today error: {e}")
-        return set()
+        _raise_campaign_query_unavailable("notificaciones actualizacion_datos enviadas hoy", e)
 
 
 def _get_template_stats_actualizacion(phones: list) -> dict:
     """Return {phone: {count, last_sent}} for the actualizacion_datos template."""
     from src.conversation_log import supabase_client
-    if not supabase_client or not phones:
+    if not phones:
         return {}
+    if not supabase_client:
+        _raise_campaign_query_unavailable("historial de envios actualizacion_datos")
     try:
         res = supabase_client.table('bot_messages')\
             .select("phone, created_at")\
@@ -981,7 +994,7 @@ def _get_template_stats_actualizacion(phones: list) -> dict:
         return stats
     except Exception as e:
         print(f"_get_template_stats_actualizacion error: {e}")
-        return {}
+        _raise_campaign_query_unavailable("historial de envios actualizacion_datos", e)
 
 
 def execute_bulk_contact_update_notifications(users_list):
