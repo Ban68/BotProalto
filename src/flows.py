@@ -110,7 +110,7 @@ def _send_denegado_reason(user_phone):
 def _send_referrals_ab_info(user_phone: str):
     WhatsAppService.send_interactive_button(
         user_phone,
-        referrals_ab.INFO_TEXT,
+        referrals_ab.info_text_for_phone(user_phone),
         [
             {"id": "referidos_quiero_beneficio", "title": "Quiero el beneficio"},
             {"id": "referidos_quizas_despues", "title": "Quizás después"},
@@ -1052,7 +1052,7 @@ class FlowHandler:
             referrer_name = get_client_name(user_phone)
             referrals_ab.complete_referral(user_phone, referrer_name, referred_name, referred_phone)
             set_user_state(user_phone, "active")
-            WhatsAppService.send_message(user_phone, referrals_ab.THANKS_TEXT)
+            WhatsAppService.send_message(user_phone, referrals_ab.thanks_text_for_phone(user_phone))
             return
 
         if referrals_ab.is_referral_prompt_state(state):

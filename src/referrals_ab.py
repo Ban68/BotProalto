@@ -38,15 +38,26 @@ TEMPLATE_TO_VARIANT = {
     cfg["template_name"]: key for key, cfg in VARIANTS.items()
 }
 
-INFO_TEXT = (
+INFO_TEXT_PREFIX = (
     "¡Es muy sencillo! Solo debes seguir estos 2 pasos:\n\n"
     f"1️⃣ Comparte nuestro contacto: Pásale este número {CONTACT_NUMBER} a tus "
     "compañeros de trabajo.\n\n"
-    "2️⃣ Asegura tu descuento: Escríbenos por este medio y dinos el nombre "
+    "2️⃣ Asegura tu beneficio: Escríbenos por este medio y dinos el nombre "
     "completo del compañero al que referiste.\n\n"
-    "¡Y listo! Si la persona que nos dijiste hace su solicitud, automáticamente "
-    "tienes una opción más alta de descuento en la tasa para tu próximo crédito. 🚀"
 )
+
+INFO_BENEFIT_TEXT_BY_VARIANT = {
+    "discount_rate": (
+        "¡Y listo! Si la persona que nos dijiste hace su solicitud, "
+        "automáticamente tendrás el descuento en la tasa para tu próximo crédito. 🚀"
+    ),
+    "express_approval": (
+        "¡Y listo! Si la persona que nos dijiste hace su solicitud, "
+        "automáticamente tu próximo crédito tendrá aprobación prioritaria en menos de 3 horas. 🚀"
+    ),
+}
+
+INFO_TEXT = INFO_TEXT_PREFIX + INFO_BENEFIT_TEXT_BY_VARIANT["discount_rate"]
 
 LATER_TEXT = (
     "Recuerda que si más adelante necesitas un nuevo crédito y quieres aprovechar "
@@ -64,10 +75,18 @@ ASK_PHONE_TEXT = (
     "(solo números, con o sin 57)."
 )
 
-THANKS_TEXT = (
-    "¡Listo! Registramos tu referido. Si esa persona hace su solicitud, "
-    "tendrás una opción más alta de descuento en la tasa para tu próximo crédito. 🚀"
-)
+THANKS_TEXT_BY_VARIANT = {
+    "discount_rate": (
+        "¡Listo! Registramos tu referido. Si esa persona hace su solicitud, "
+        "automáticamente tendrás el descuento en la tasa para tu próximo crédito. 🚀"
+    ),
+    "express_approval": (
+        "¡Listo! Registramos tu referido. Si esa persona hace su solicitud, "
+        "automáticamente tu próximo crédito tendrá aprobación prioritaria en menos de 3 horas. 🚀"
+    ),
+}
+
+THANKS_TEXT = THANKS_TEXT_BY_VARIANT["discount_rate"]
 
 
 def _now_iso() -> str:
@@ -181,6 +200,31 @@ def text_intent(text: str) -> str | None:
 
 def variant_for_template(template_name: str) -> str | None:
     return TEMPLATE_TO_VARIANT.get(template_name)
+
+
+def variant_for_phone(phone: str) -> str:
+    if test_mode.is_test_phone(phone):
+        return variant_for_template(test_mode.get_last_template(phone) or "") or "discount_rate"
+
+    assignment = get_assignment(phone) or {}
+    return assignment.get("variant_key") or "discount_rate"
+
+
+def info_text_for_phone(phone: str) -> str:
+    variant_key = variant_for_phone(phone)
+    benefit_text = INFO_BENEFIT_TEXT_BY_VARIANT.get(
+        variant_key,
+        INFO_BENEFIT_TEXT_BY_VARIANT["discount_rate"],
+    )
+    return INFO_TEXT_PREFIX + benefit_text
+
+
+def thanks_text_for_phone(phone: str) -> str:
+    variant_key = variant_for_phone(phone)
+    return THANKS_TEXT_BY_VARIANT.get(
+        variant_key,
+        THANKS_TEXT_BY_VARIANT["discount_rate"],
+    )
 
 
 def balanced_variant_keys(count: int) -> list[str]:
