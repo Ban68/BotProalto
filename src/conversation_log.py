@@ -154,6 +154,8 @@ _CAMPAIGN_TEMPLATE_MARKERS = {
     "[Template: contacto_leads]": "contacto_leads",
     "[Template: estado_renovar]": "estado_renovar",
     "[Template: anticipo_salario]": "anticipo_salario",
+    "[Template: plantilla_referidos_v1]": "plantilla_referidos_v1",
+    "[Template: plantilla_referidos_v2]": "plantilla_referidos_v2",
 }
 
 

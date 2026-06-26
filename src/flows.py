@@ -3,6 +3,7 @@ from src.database import get_solicitud_status, get_saldo
 from src.google_sheets import get_solicitud_reciente_sheet, get_anticipo_by_cedula
 from src.conversation_log import log_message, set_agent_mode, get_user_state, set_user_state, get_client_name, set_client_name, log_received_document, count_received_documents, get_last_campaign_template
 from src.notifications import notify_admin_agent_request, notify_admin_error, notify_admin_contact_update, notify_admin_cedula_mismatch
+from src import referrals_ab
 import os
 import json
 import re
@@ -104,6 +105,49 @@ def _send_denegado_reason(user_phone):
     WhatsAppService.send_message(user_phone, msg)
     set_user_state(user_phone, "active")
     WhatsAppService.send_message(user_phone, "Necesitas algo más? Escribe 'Hola' para ver el menú.")
+
+
+def _send_referrals_ab_info(user_phone: str):
+    WhatsAppService.send_interactive_button(
+        user_phone,
+        referrals_ab.INFO_TEXT,
+        [
+            {"id": "referidos_quiero_beneficio", "title": "Quiero el beneficio"},
+            {"id": "referidos_quizas_despues", "title": "Quizás después"},
+        ],
+    )
+    referrals_ab.record_event(user_phone, "info_sent", "referidos_info")
+
+
+def _handle_referrals_ab_button(user_phone: str, btn_id: str, state: str) -> bool:
+    explicit_referral_id = str(btn_id or "").startswith("referidos_")
+    if not referrals_ab.is_referral_prompt_state(state) and not explicit_referral_id:
+        return False
+
+    kind = referrals_ab.button_kind(btn_id)
+    if not kind:
+        return False
+
+    referrals_ab.record_button_click(user_phone, btn_id, kind)
+
+    if kind == "info":
+        set_user_state(user_phone, referrals_ab.STATE_INFO_SENT)
+        _send_referrals_ab_info(user_phone)
+        return True
+
+    if kind == "benefit":
+        set_user_state(user_phone, referrals_ab.STATE_WAITING_NAME)
+        referrals_ab.record_event(user_phone, "capture_started", "referidos_capture")
+        WhatsAppService.send_message(user_phone, referrals_ab.ASK_NAME_TEXT)
+        return True
+
+    if kind == "later":
+        set_user_state(user_phone, "active")
+        referrals_ab.record_event(user_phone, "declined", "quizas_despues")
+        WhatsAppService.send_message(user_phone, referrals_ab.LATER_TEXT)
+        return True
+
+    return False
 
 
 def _is_greeting(text: str) -> bool:
@@ -975,6 +1019,62 @@ class FlowHandler:
             _launch_llm_agent(user_phone, text)
             return
 
+        # 0c. Referral A/B capture flow
+        if referrals_ab.is_waiting_name_state(state):
+            if _is_greeting(text):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+                return
+            if not referrals_ab.is_valid_referred_name(text):
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor escríbenos el nombre completo del compañero referido."
+                )
+                return
+
+            referred_name = referrals_ab.clean_referred_name(text)
+            referrer_name = get_client_name(user_phone)
+            referrals_ab.save_referral_name(user_phone, referrer_name, referred_name)
+            set_user_state(user_phone, f"{referrals_ab.STATE_WAITING_PHONE_PREFIX}{referred_name}")
+            WhatsAppService.send_message(user_phone, referrals_ab.ASK_PHONE_TEXT)
+            return
+
+        if referrals_ab.is_waiting_phone_state(state):
+            referred_name = state.split("|", 1)[1] if "|" in state else ""
+            if not referrals_ab.is_valid_referred_phone(text):
+                WhatsAppService.send_message(
+                    user_phone,
+                    "Por favor envíanos un número válido, solo dígitos. Ejemplo: 3201234567."
+                )
+                return
+
+            referred_phone = referrals_ab.normalize_referred_phone(text)
+            referrer_name = get_client_name(user_phone)
+            referrals_ab.complete_referral(user_phone, referrer_name, referred_name, referred_phone)
+            set_user_state(user_phone, "active")
+            WhatsAppService.send_message(user_phone, referrals_ab.THANKS_TEXT)
+            return
+
+        if referrals_ab.is_referral_prompt_state(state):
+            if _is_greeting(text):
+                set_user_state(user_phone, "active")
+                FlowHandler.send_main_menu(user_phone)
+                return
+            intent = referrals_ab.text_intent(text)
+            if intent:
+                button_text = {
+                    "info": "¿Cómo funciona?",
+                    "benefit": "Quiero el beneficio",
+                    "later": "Quizás después",
+                }[intent]
+                _handle_referrals_ab_button(user_phone, button_text, state)
+                return
+
+            referrals_ab.record_event(user_phone, "free_text", text[:300])
+            set_user_state(user_phone, referrals_ab.STATE_INFO_SENT)
+            _send_referrals_ab_info(user_phone)
+            return
+
         # 1. Check Consent Flow
         if state == "pending_consent":
             FlowHandler.send_habeas_data_prompt(user_phone)
@@ -1337,6 +1437,9 @@ class FlowHandler:
 
     @staticmethod
     def process_button_click(user_phone, btn_id, state):
+        if _handle_referrals_ab_button(user_phone, btn_id, state):
+            return
+
         if btn_id == "accept_terms":
             set_user_state(user_phone, "active")
             WhatsAppService.send_message(user_phone, "¡Gracias por aceptar! Bienvenido a ProAlto.")

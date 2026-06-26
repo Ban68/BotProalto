@@ -5,6 +5,79 @@
 
 const CampaignPanels = {};
 
+function fmtAbMinutes(value) {
+    return value === null || value === undefined ? '—' : `${value} min`;
+}
+
+function fmtAbRate(value) {
+    const n = Number(value || 0);
+    return n.toFixed(2);
+}
+
+function renderReferralAbSummary(mt, h) {
+    const rows = (mt.variants || []).map(v => `
+        <tr>
+            <td>${h.escapeHtml(v.variant_label)}</td>
+            <td class="cmp-c">${v.sent}</td>
+            <td class="cmp-c">${v.sent_pct}%</td>
+            <td class="cmp-c">${v.como_funciona_count}</td>
+            <td class="cmp-c">${v.quiero_beneficio_count}</td>
+            <td class="cmp-c">${v.quizas_despues_count}</td>
+            <td class="cmp-c">${v.referral_count}</td>
+            <td class="cmp-c">${fmtAbRate(v.referrals_per_contact)}</td>
+            <td class="cmp-c">${fmtAbMinutes(v.first_response_avg_minutes)}</td>
+            <td class="cmp-c">${fmtAbMinutes(v.info_to_benefit_avg_minutes)}</td>
+            <td class="cmp-c">${fmtAbMinutes(v.name_to_phone_avg_minutes)}</td>
+        </tr>`).join('');
+    return `
+        <div class="pcmp-ab-summary">
+            <table class="table-x pcmp-table">
+                <thead>
+                    <tr>
+                        <th>Variante</th>
+                        <th class="cmp-c">Enviados</th>
+                        <th class="cmp-c">Split</th>
+                        <th class="cmp-c">Cómo funciona</th>
+                        <th class="cmp-c">Beneficio</th>
+                        <th class="cmp-c">Después</th>
+                        <th class="cmp-c">Referidos</th>
+                        <th class="cmp-c">Ref/contacto</th>
+                        <th class="cmp-c">1ra resp.</th>
+                        <th class="cmp-c">Info→beneficio</th>
+                        <th class="cmp-c">Nombre→tel.</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+}
+
+function ensureReferralAbShell() {
+    if (!document.getElementById('referidosabState')) {
+        const leadsState = document.getElementById('leadsState');
+        const panel = document.createElement('div');
+        panel.className = 'main-chat';
+        panel.id = 'referidosabState';
+        panel.style.cssText = 'display:none; overflow-y:auto; background:white;';
+        panel.innerHTML = '<div data-campaign="referidosab"></div>';
+        if (leadsState && leadsState.parentNode) {
+            leadsState.insertAdjacentElement('afterend', panel);
+        }
+    }
+
+    if (!document.querySelector('.nav-item[data-view="referidosab"]')) {
+        const leadsNav = document.querySelector('.nav-item[data-view="leads"]');
+        if (leadsNav) {
+            leadsNav.insertAdjacentHTML('afterend', `
+                <button type="button" class="nav-item" data-view="referidosab" data-title="Referidos A/B" style="--accent:#0f766e" onclick="switchTab('referidosab')">
+                    <span class="nav-item-icon">A/B</span><span class="nav-item-label">Referidos A/B</span>
+                </button>`);
+        }
+    }
+}
+
+ensureReferralAbShell();
+
 [
     {
         id: 'envios',
@@ -136,6 +209,43 @@ const CampaignPanels = {};
 // ── Campañas Familia B (paste/upload + métricas) ────────────────────
 
 [
+    {
+        id: 'referidosab',
+        icon: 'A/B',
+        accent: '#0f766e',
+        title: 'Campaña Referidos A/B',
+        templateName: 'plantilla_referidos_v1 / plantilla_referidos_v2',
+        unit: 'contactos',
+        sendEndpoint: '/admin/api/trigger-bulk-referidos-ab',
+        confirm: n => `¿Enviar el test A/B de referidos a ${n} contactos?\n\nEl sistema asignará aleatoriamente 50/50 entre descuento en tasa y aprobación express.`,
+        executeLabel: 'Enviar Referidos A/B',
+        metrics: {
+            endpoint: '/admin/api/referidos-ab-metrics',
+            header: 'Métricas: Referidos A/B',
+            cards: [
+                { label: 'Total enviados', color: '#0f766e', count: m => m.total },
+                { label: 'V1 tasa', color: '#0284c7', count: m => m.variant_a_total, pct: true },
+                { label: 'V2 express', color: '#7c3aed', count: m => m.variant_b_total, pct: true },
+                { label: 'Cómo funciona', color: '#0891b2', count: m => m.como_funciona_count, pct: true },
+                { label: 'Quiero beneficio', color: '#059669', count: m => m.quiero_beneficio_count, pct: true },
+                { label: 'Quizás después', color: '#dc2626', count: m => m.quizas_despues_count, pct: true },
+                { label: 'Referidos', color: '#d97706', count: m => m.referral_count, pct: true },
+            ],
+            tableTitle: 'Referidos capturados',
+            emptyMsg: 'Sin referidos capturados aún.',
+            tableColumns: ['Contacto', 'Teléfono', 'Variante', 'Referido', 'Tel. referido', 'Capturado', 'Chat'],
+            rowCells: (r, h) => `
+                <td>${h.escapeHtml(r.client_name || '—')}</td>
+                <td class="pcmp-mono">${h.escapeHtml(r.phone || '')}</td>
+                <td>${h.escapeHtml(r.variant_label || '—')}</td>
+                <td>${h.escapeHtml(r.referred_name || '—')}</td>
+                <td class="pcmp-mono">${h.escapeHtml(r.referred_phone || '—')}</td>
+                <td class="cmp-muted">${h.formatDate(r.responded_at)}</td>
+                <td class="cmp-c"><button type="button" class="pcmp-chat-btn" onclick="goToChat('${h.escapeHtml(r.phone || '')}')">Chat</button></td>
+            `,
+            extraSummary: renderReferralAbSummary,
+        },
+    },
     {
         id: 'leads',
         icon: '🎯',

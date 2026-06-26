@@ -247,6 +247,102 @@ def execute_bulk_leads_notifications(users_list):
             
     return results
 
+
+def execute_bulk_referrals_ab_notifications(users_list):
+    """
+    Sends the referral A/B templates in a randomized 50/50 proportion.
+    Each phone keeps the same assigned variant if a failed send is retried.
+    """
+    from src.conversation_log import set_client_name
+    from src import referrals_ab
+
+    results = {
+        "total": len(users_list),
+        "success": 0,
+        "fail": 0,
+        "skipped": 0,
+        "variant_counts": {key: 0 for key in referrals_ab.VARIANTS},
+        "errors": [],
+    }
+
+    cleaned_users = []
+    seen = set()
+    for user in users_list:
+        phone_str = referrals_ab.normalize_recipient_phone(user.get("phone", ""))
+        if not phone_str:
+            continue
+        if phone_str in seen:
+            results["skipped"] += 1
+            results["errors"].append(f"{phone_str}: omitido (duplicado en la lista)")
+            continue
+        seen.add(phone_str)
+        cleaned_users.append({**user, "_phone": phone_str})
+
+    new_variant_queue = referrals_ab.balanced_variant_keys(len(cleaned_users))
+
+    for user in cleaned_users:
+        phone_str = user["_phone"]
+        nombre = (user.get("name") or "Cliente").strip() or "Cliente"
+
+        existing = referrals_ab.get_assignment(phone_str)
+        if existing and existing.get("send_status") == "accepted":
+            results["skipped"] += 1
+            results["errors"].append(
+                f"{phone_str}: omitido (ya estaba en el test con {existing.get('template_name')})"
+            )
+            continue
+
+        variant_key = (
+            existing.get("variant_key")
+            if existing and existing.get("variant_key") in referrals_ab.VARIANTS
+            else new_variant_queue.pop(0)
+        )
+        template_name = referrals_ab.VARIANTS[variant_key]["template_name"]
+
+        components = [
+            {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": nombre,
+                        "parameter_name": "nombre",
+                    }
+                ],
+            }
+        ]
+
+        response = WhatsAppService.send_template(phone_str, template_name, components=components)
+
+        if response and response.get("messages"):
+            wamid = response["messages"][0].get("id")
+            results["success"] += 1
+            results["variant_counts"][variant_key] += 1
+            set_user_state(phone_str, referrals_ab.STATE_NOTIFIED)
+            set_client_name(phone_str, nombre)
+            referrals_ab.register_template_attempt(
+                phone_str,
+                nombre,
+                variant_key,
+                "accepted",
+                wamid=wamid,
+            )
+        else:
+            results["fail"] += 1
+            error_msg = "No response from Meta"
+            if response and response.get("error"):
+                error_msg = response["error"].get("message", error_msg)
+            results["errors"].append(f"{phone_str}: {error_msg}")
+            referrals_ab.register_template_attempt(
+                phone_str,
+                nombre,
+                variant_key,
+                "failed",
+                error_message=error_msg,
+            )
+
+    return results
+
 def execute_bulk_anticipos_notifications(users_list, force=False):
     """
     Sends the 'anticipo_salario' template to a list of payroll advance leads.

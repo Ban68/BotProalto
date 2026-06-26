@@ -477,6 +477,32 @@ TEMPLATES = {
             {"id": "Consultar motivo", "title": "Consultar motivo"},
         ],
     },
+    "plantilla_referidos_v1": {
+        "label": "Referidos A/B - Descuento en tasa (plantilla_referidos_v1)",
+        "state": "referidos_ab_notified",
+        "body": ("Hola {nombre},\n\n"
+                 "Queremos premiar tu confianza con nosotros. Por eso lanzamos nuestro nuevo "
+                 "*programa de referidos*: si nos recomiendas con un compañero de tu empresa "
+                 "te llevas un descuento directo en la tasa de tus próximos créditos! 💌 💸"),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "referidos_como_funciona", "title": "¿Cómo funciona?"},
+            {"id": "referidos_quizas_despues", "title": "Quizás después"},
+        ],
+    },
+    "plantilla_referidos_v2": {
+        "label": "Referidos A/B - Aprobacion express (plantilla_referidos_v2)",
+        "state": "referidos_ab_notified",
+        "body": ("Hola {nombre},\n\n"
+                 "Queremos premiar tu confianza con nosotros. Por eso lanzamos nuestro nuevo "
+                 "*programa de referidos*: si nos recomiendas con un compañero de tu empresa "
+                 "tu próximo crédito tendrá aprobación prioritaria en menos de 3 horas. ⏰ 💸"),
+        "sample": {"nombre": "Carlos"},
+        "buttons": [
+            {"id": "referidos_como_funciona", "title": "¿Cómo funciona?"},
+            {"id": "referidos_quizas_despues", "title": "Quizás después"},
+        ],
+    },
     "actualizacion_datos": {
         "label": "Actualización de datos (actualizacion_datos)",
         "state": "esperando_respuesta_actualizacion",

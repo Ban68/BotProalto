@@ -483,6 +483,26 @@ def api_trigger_bulk_leads():
         return jsonify({"status": "ok", "results": results})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/trigger-bulk-referidos-ab', methods=['POST'])
+@requires_auth
+def api_trigger_bulk_referidos_ab():
+    """Execute the referral A/B test send for a pasted/uploaded list."""
+    body = request.get_json() or {}
+    users_list = body.get("users", [])
+
+    if not users_list:
+        return jsonify({"status": "error", "message": "No users provided for bulk send."}), 400
+
+    from src.automation import execute_bulk_referrals_ab_notifications
+    try:
+        results = execute_bulk_referrals_ab_notifications(users_list)
+        return jsonify({"status": "ok", "results": results})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/trigger-bulk-renovados', methods=['POST'])
 @requires_auth
 def api_trigger_bulk_renovados():
@@ -513,6 +533,18 @@ def api_lead_metrics():
     date_from, date_to = _metrics_dates()
     try:
         return jsonify({"status": "ok", "metrics": get_lead_metrics(date_from, date_to)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@admin_bp.route('/admin/api/referidos-ab-metrics')
+@requires_auth
+def api_referidos_ab_metrics():
+    """Get metrics for the referral A/B test campaign."""
+    from src.referrals_ab import get_metrics
+    date_from, date_to = _metrics_dates()
+    try:
+        return jsonify({"status": "ok", "metrics": get_metrics(date_from, date_to)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

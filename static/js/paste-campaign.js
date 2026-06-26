@@ -12,7 +12,8 @@ function createPasteCampaign(cfg) {
 
     const m = cfg.metrics;
     const tableCols = ['Nombre', 'Teléfono', 'Respondió', ...(m.formColumn ? ['Formulario'] : []), 'Chat'];
-    const colCount = tableCols.length;
+    const renderTableCols = m.tableColumns || tableCols;
+    const colCount = renderTableCols.length;
 
     mount.innerHTML = `
     <div class="cmp-panel" style="--accent:${cfg.accent};">
@@ -32,11 +33,12 @@ function createPasteCampaign(cfg) {
                     <div class="pcmp-card-pct" style="color:${c.color};" data-card-pct="${i}"></div>
                 </div>`).join('')}
             </div>
+            <div class="pcmp-extra" data-ref="metricsExtra" style="display:none;"></div>
             <div class="pcmp-table-block">
                 <div class="pcmp-table-title">${m.tableTitle}</div>
                 <div class="pcmp-table-wrap">
                     <table class="table-x pcmp-table">
-                        <thead><tr>${tableCols.map(c => `<th${c === 'Formulario' || c === 'Chat' ? ' class="cmp-c"' : ''}>${c}</th>`).join('')}</tr></thead>
+                        <thead><tr>${renderTableCols.map(c => `<th${c === 'Formulario' || c === 'Chat' ? ' class="cmp-c"' : ''}>${c}</th>`).join('')}</tr></thead>
                         <tbody data-ref="metricsBody">
                             <tr><td colspan="${colCount}" class="cmp-empty">Haz clic en Actualizar para cargar.</td></tr>
                         </tbody>
@@ -79,6 +81,15 @@ function createPasteCampaign(cfg) {
     </div>`;
 
     const $ = ref => mount.querySelector(`[data-ref="${ref}"]`);
+    const escapeHtml = value => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    const formatDate = value => value
+        ? new Date(value).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })
+        : '-';
 
     // ── Timeline (filtro de intervalo de tiempo) ───────────────────
     const timeline = createMetricsTimeline(() => fetchMetrics());
@@ -95,18 +106,31 @@ function createPasteCampaign(cfg) {
 
             m.cards.forEach((c, i) => {
                 const value = c.count(mt) || 0;
-                mount.querySelector(`[data-card="${i}"]`).innerText = (i === 0 && !value) ? '0' : value;
+                const displayValue = c.format ? c.format(value, mt) : value;
+                mount.querySelector(`[data-card="${i}"]`).innerText = (i === 0 && !value) ? '0' : displayValue;
                 if (c.pct && total > 0) {
                     mount.querySelector(`[data-card-pct="${i}"]`).innerText = Math.round((value / total) * 100) + '%';
                 }
             });
 
+            const extra = $('metricsExtra');
+            if (m.extraSummary) {
+                extra.innerHTML = m.extraSummary(mt, { escapeHtml });
+                extra.style.display = 'block';
+            } else {
+                extra.style.display = 'none';
+            }
+
             const tbody = $('metricsBody');
-            if (!mt.solicitar || mt.solicitar.length === 0) {
+            const rows = mt[m.rowsKey || 'solicitar'] || [];
+            if (rows.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${colCount}" class="cmp-empty">${m.emptyMsg}</td></tr>`;
                 return;
             }
-            tbody.innerHTML = mt.solicitar.map(r => {
+            tbody.innerHTML = rows.map(r => {
+                if (m.rowCells) {
+                    return `<tr>${m.rowCells(r, { escapeHtml, formatDate })}</tr>`;
+                }
                 const fecha = r.responded_at ? new Date(r.responded_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) : '—';
                 const formCell = m.formColumn ? `
                     <td class="cmp-c">

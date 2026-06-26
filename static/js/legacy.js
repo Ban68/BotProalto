@@ -176,6 +176,7 @@
             anticiposchat: { panel: 'emptyState',         chat: true,  title: 'Anticipos',  onEnter: () => fetchList() },
             archivadas:    { panel: 'emptyState',         chat: true,  title: 'Archivadas', onEnter: () => fetchArchivedList() },
             leads:         { panel: 'leadsState',         chat: false, onEnter: () => CampaignPanels.leads.refresh() },
+            referidosab:   { panel: 'referidosabState',   chat: false, onEnter: () => CampaignPanels.referidosab.refresh() },
             renovados:     { panel: 'renovadosState',     chat: false, onEnter: () => CampaignPanels.renovados.refresh() },
             anticipos:     { panel: 'anticiposState',     chat: false, onEnter: () => CampaignPanels.anticipos.refresh() },
             envios:        { panel: 'enviosState',        chat: false, onEnter: () => CampaignPanels.envios.refresh() },
