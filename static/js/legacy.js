@@ -1181,18 +1181,21 @@
             const isLeadsTab = currentTab === 'prospectos';
             const isRenovadosTab = currentTab === 'renovadoschat';
             const isAnticiposTab = currentTab === 'anticiposchat';
+            const scrollPos = listEl.scrollTop;
 
             if (conversations.length === 0) {
                 const emptyMsg = isLeadsTab ? 'No hay leads registrados'
                     : isRenovadosTab ? 'No hay renovados registrados'
                     : isAnticiposTab ? 'No hay anticipos registrados'
                     : 'No hay conversaciones registradas';
-                listEl.innerHTML = `<div style="padding: 20px; text-align: center; color: #777;">${emptyMsg}</div>`;
+                const emptyHtml = `<div style="padding: 20px; text-align: center; color: #777;">${emptyMsg}</div>`;
+                if (listEl.__lastConversationListHtml !== emptyHtml) {
+                    listEl.innerHTML = emptyHtml;
+                    listEl.__lastConversationListHtml = emptyHtml;
+                }
+                listEl.scrollTop = scrollPos;
                 return;
             }
-
-            // Save scroll pos
-            const scrollPos = listEl.scrollTop;
 
             let html = '';
             let newAgentDetected = false;
@@ -1276,14 +1279,23 @@
     </div>
     `;
             });
-            listEl.innerHTML = html;
-            listEl.scrollTop = scrollPos;
+            const shouldUpdateList = listEl.__lastConversationListHtml !== html;
+            if (shouldUpdateList) {
+                listEl.innerHTML = html;
+                listEl.__lastConversationListHtml = html;
+                requestAnimationFrame(() => {
+                    const maxScroll = Math.max(0, listEl.scrollHeight - listEl.clientHeight);
+                    listEl.scrollTop = Math.min(scrollPos, maxScroll);
+                });
+            }
 
             if (newAgentDetected) {
                 playBeep();
             }
 
-            filterList(); // Re-apply filter if any
+            if (shouldUpdateList) {
+                filterList(); // Re-apply filter if any
+            }
         }
 
         let searchDebounce = null;

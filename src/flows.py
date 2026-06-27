@@ -120,12 +120,22 @@ def _send_referrals_ab_info(user_phone: str):
 
 
 def _handle_referrals_ab_button(user_phone: str, btn_id: str, state: str) -> bool:
-    explicit_referral_id = str(btn_id or "").startswith("referidos_")
-    if not referrals_ab.is_referral_prompt_state(state) and not explicit_referral_id:
-        return False
-
     kind = referrals_ab.button_kind(btn_id)
     if not kind:
+        return False
+
+    explicit_referral_id = str(btn_id or "").startswith("referidos_")
+    last_template = get_last_campaign_template(user_phone)
+    last_template_variant = referrals_ab.variant_for_template(last_template or "")
+    if last_template and last_template_variant not in referrals_ab.VARIANTS and not explicit_referral_id:
+        return False
+
+    has_referral_context = (
+        explicit_referral_id
+        or last_template_variant in referrals_ab.VARIANTS
+        or (last_template is None and referrals_ab.is_referral_state(state))
+    )
+    if not has_referral_context:
         return False
 
     referrals_ab.record_button_click(user_phone, btn_id, kind)
@@ -148,6 +158,13 @@ def _handle_referrals_ab_button(user_phone: str, btn_id: str, state: str) -> boo
         return True
 
     return False
+
+
+def _should_handle_anticipo_info_button(user_phone: str, state: str) -> bool:
+    last_template = get_last_campaign_template(user_phone)
+    if last_template is not None:
+        return last_template == "anticipo_salario"
+    return state == "anticipos_notified"
 
 
 def _is_greeting(text: str) -> bool:
@@ -1700,7 +1717,7 @@ class FlowHandler:
 
             WhatsAppService.send_message(user_phone, msg)
 
-        elif btn_id == "¿Cómo funciona?":
+        elif btn_id == "¿Cómo funciona?" and _should_handle_anticipo_info_button(user_phone, state):
             # Tercer botón de la plantilla de anticipo. Explica el producto y
             # ofrece dos sub-opciones (requisitos / solicitar) en el mismo mensaje.
             set_user_state(user_phone, "active")

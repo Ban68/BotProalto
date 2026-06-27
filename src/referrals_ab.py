@@ -535,6 +535,181 @@ def _empty_metrics() -> dict:
     }
 
 
+def _template_marker(template_name: str) -> str:
+    return f"[Template: {template_name}]"
+
+
+def _template_from_marker(text: str) -> str | None:
+    marker = str(text or "")
+    if marker.startswith("[Template: ") and marker.endswith("]"):
+        return marker[len("[Template: "):-1]
+    return None
+
+
+def _safe_data(query, label: str) -> list:
+    try:
+        return query.execute().data or []
+    except Exception as e:
+        print(f"Supabase referral A/B metrics fallback for {label}: {e}")
+        return []
+
+
+def _load_metric_assignments(client, campaign_id: str, gte: str = None,
+                             lte: str = None) -> list[dict]:
+    by_phone: dict[str, dict] = {}
+
+    q = (client.table("referral_ab_assignments")
+         .select("*")
+         .eq("campaign_id", campaign_id)
+         .eq("send_status", "accepted")
+         .order("sent_at", desc=False))
+    if gte:
+        q = q.gte("sent_at", gte)
+    if lte:
+        q = q.lte("sent_at", lte)
+
+    for row in _safe_data(q, "referral_ab_assignments"):
+        phone = row.get("phone")
+        variant = row.get("variant_key")
+        if not phone or variant not in VARIANTS:
+            continue
+        sent_at = row.get("sent_at") or row.get("created_at")
+        by_phone[phone] = {
+            "phone": phone,
+            "client_name": row.get("client_name") or "Cliente",
+            "variant_key": variant,
+            "variant_label": row.get("variant_label") or VARIANTS[variant]["label"],
+            "template_name": row.get("template_name") or VARIANTS[variant]["template_name"],
+            "sent_at": sent_at,
+            "created_at": row.get("created_at") or sent_at,
+            "_source": "referral_ab_assignments",
+        }
+
+    markers = [_template_marker(cfg["template_name"]) for cfg in VARIANTS.values()]
+    q = (client.table("bot_messages")
+         .select("phone, text, created_at")
+         .eq("direction", "outbound")
+         .in_("text", markers)
+         .order("created_at", desc=False))
+    if gte:
+        q = q.gte("created_at", gte)
+    if lte:
+        q = q.lte("created_at", lte)
+
+    for row in _safe_data(q, "bot_messages referral templates"):
+        phone = row.get("phone")
+        template_name = _template_from_marker(row.get("text"))
+        variant = variant_for_template(template_name or "")
+        if not phone or variant not in VARIANTS:
+            continue
+        current = by_phone.get(phone)
+        if current and (current.get("sent_at") or "") > (row.get("created_at") or ""):
+            continue
+        by_phone[phone] = {
+            "phone": phone,
+            "client_name": current.get("client_name") if current else "Cliente",
+            "variant_key": variant,
+            "variant_label": VARIANTS[variant]["label"],
+            "template_name": template_name,
+            "sent_at": row.get("created_at"),
+            "created_at": row.get("created_at"),
+            "_source": "bot_messages",
+        }
+
+    phones_without_name = [p for p, row in by_phone.items()
+                           if not row.get("client_name") or row.get("client_name") == "Cliente"]
+    if phones_without_name:
+        names_q = (client.table("bot_conversations")
+                   .select("phone, client_name")
+                   .in_("phone", phones_without_name))
+        for row in _safe_data(names_q, "bot_conversations names"):
+            phone = row.get("phone")
+            if phone in by_phone and row.get("client_name"):
+                by_phone[phone]["client_name"] = row["client_name"]
+
+    rows = list(by_phone.values())
+    rows.sort(key=lambda r: r.get("sent_at") or r.get("created_at") or "")
+    return rows
+
+
+def _next_template_by_phone(template_rows: list[dict], assignments: list[dict]) -> dict[str, str | None]:
+    next_by_phone: dict[str, str | None] = {}
+    grouped: dict[str, list[dict]] = {}
+    for row in template_rows:
+        grouped.setdefault(row.get("phone"), []).append(row)
+
+    for assignment in assignments:
+        phone = assignment.get("phone")
+        sent_at = assignment.get("sent_at") or assignment.get("created_at") or ""
+        next_at = None
+        for row in grouped.get(phone, []):
+            created_at = row.get("created_at") or ""
+            if created_at > sent_at:
+                next_at = created_at
+                break
+        next_by_phone[phone] = next_at
+    return next_by_phone
+
+
+def _within_metric_window(phone: str, created_at: str, sent_at_by_phone: dict,
+                          next_template_by_phone: dict) -> bool:
+    if not created_at:
+        return False
+    sent_at = sent_at_by_phone.get(phone) or ""
+    if sent_at and created_at < sent_at:
+        return False
+    next_at = next_template_by_phone.get(phone)
+    if next_at and created_at >= next_at:
+        return False
+    return True
+
+
+def _metadata_dict(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _reconstruct_referral_from_messages(phone: str, rows: list[dict],
+                                        benefit_at: str | None) -> dict | None:
+    if not benefit_at:
+        return None
+
+    referred_name = ""
+    name_at = None
+    referred_phone = ""
+    phone_at = None
+
+    for row in rows:
+        if (row.get("created_at") or "") <= benefit_at:
+            continue
+        if row.get("direction") != "inbound":
+            continue
+        if row.get("msg_type") not in ("text", "button", "button_reply"):
+            continue
+        text = (row.get("text") or "").strip()
+        if not referred_name and row.get("msg_type") == "text" and is_valid_referred_name(text):
+            referred_name = clean_referred_name(text)
+            name_at = row.get("created_at")
+            continue
+        if referred_name and row.get("msg_type") == "text" and is_valid_referred_phone(text):
+            referred_phone = normalize_referred_phone(text)
+            phone_at = row.get("created_at")
+            break
+
+    if not referred_name or not referred_phone:
+        return None
+
+    return {
+        "referrer_phone": phone,
+        "referred_name": referred_name,
+        "referred_phone": referred_phone,
+        "created_at": name_at,
+        "updated_at": phone_at,
+        "_name_at": name_at,
+        "_phone_at": phone_at,
+        "_source": "bot_messages",
+    }
+
+
 def get_metrics(date_from: str = None, date_to: str = None,
                 campaign_id: str = CAMPAIGN_ID) -> dict:
     client = _supabase()
@@ -542,42 +717,58 @@ def get_metrics(date_from: str = None, date_to: str = None,
         return _empty_metrics()
     try:
         gte, lte = _date_bounds(date_from, date_to)
-        q = (client.table("referral_ab_assignments")
-             .select("*")
-             .eq("campaign_id", campaign_id)
-             .eq("send_status", "accepted")
-             .order("sent_at", desc=False))
-        if gte:
-            q = q.gte("sent_at", gte)
-        if lte:
-            q = q.lte("sent_at", lte)
-        assignments = q.execute().data or []
+        assignments = _load_metric_assignments(client, campaign_id, gte, lte)
 
         if not assignments:
             return _empty_metrics()
 
         phones = [row["phone"] for row in assignments if row.get("phone")]
-        events_res = (client.table("referral_ab_events")
-                      .select("*")
-                      .eq("campaign_id", campaign_id)
-                      .in_("phone", phones)
-                      .order("created_at", desc=False)
-                      .execute())
-        referrals_res = (client.table("referral_ab_referrals")
-                         .select("*")
-                         .eq("campaign_id", campaign_id)
-                         .in_("referrer_phone", phones)
-                         .eq("status", "completed")
-                         .order("created_at", desc=True)
-                         .execute())
+        sent_at_by_phone = {
+            row["phone"]: row.get("sent_at") or row.get("created_at") or ""
+            for row in assignments
+            if row.get("phone")
+        }
 
         events_by_phone: dict[str, list] = {}
-        for ev in events_res.data or []:
+        events_q = (client.table("referral_ab_events")
+                    .select("*")
+                    .eq("campaign_id", campaign_id)
+                    .in_("phone", phones)
+                    .order("created_at", desc=False))
+        for ev in _safe_data(events_q, "referral_ab_events"):
             events_by_phone.setdefault(ev.get("phone"), []).append(ev)
 
         referrals_by_phone: dict[str, list] = {}
-        for ref in referrals_res.data or []:
+        referrals_q = (client.table("referral_ab_referrals")
+                       .select("*")
+                       .eq("campaign_id", campaign_id)
+                       .in_("referrer_phone", phones)
+                       .eq("status", "completed")
+                       .order("created_at", desc=True))
+        for ref in _safe_data(referrals_q, "referral_ab_referrals"):
             referrals_by_phone.setdefault(ref.get("referrer_phone"), []).append(ref)
+
+        templates_q = (client.table("bot_messages")
+                       .select("phone, text, created_at")
+                       .in_("phone", phones)
+                       .eq("direction", "outbound")
+                       .eq("msg_type", "template")
+                       .order("created_at", desc=False))
+        template_rows = _safe_data(templates_q, "bot_messages outbound templates")
+        next_template = _next_template_by_phone(template_rows, assignments)
+
+        msg_q = (client.table("bot_messages")
+                 .select("phone, direction, text, msg_type, created_at")
+                 .in_("phone", phones)
+                 .order("created_at", desc=False))
+        if min(sent_at_by_phone.values()):
+            msg_q = msg_q.gte("created_at", min(sent_at_by_phone.values()))
+        message_rows_by_phone: dict[str, list] = {}
+        for row in _safe_data(msg_q, "bot_messages referral interactions"):
+            phone = row.get("phone")
+            if not _within_metric_window(phone, row.get("created_at"), sent_at_by_phone, next_template):
+                continue
+            message_rows_by_phone.setdefault(phone, []).append(row)
 
         stats = {}
         for key, cfg in VARIANTS.items():
@@ -612,15 +803,16 @@ def get_metrics(date_from: str = None, date_to: str = None,
 
             first_response_at = None
             info_sent_at = None
+            info_click_at = None
             benefit_at = None
             name_at = None
             phone_at = None
 
             for ev in events_by_phone.get(phone, []):
-                if _seconds_between(sent_at, ev.get("created_at")) is None:
+                if not _within_metric_window(phone, ev.get("created_at"), sent_at_by_phone, next_template):
                     continue
                 ev_type = ev.get("event_type")
-                meta = ev.get("metadata") or {}
+                meta = _metadata_dict(ev.get("metadata"))
                 kind = meta.get("button_kind") or button_kind(ev.get("event_text", ""))
 
                 if ev_type in ("button_click", "referral_name", "referral_phone", "free_text"):
@@ -629,6 +821,7 @@ def get_metrics(date_from: str = None, date_to: str = None,
                 if ev_type == "button_click":
                     if kind == "info":
                         st["info_phones"].add(phone)
+                        info_click_at = info_click_at or ev.get("created_at")
                     elif kind == "benefit":
                         st["benefit_phones"].add(phone)
                         benefit_at = benefit_at or ev.get("created_at")
@@ -641,21 +834,55 @@ def get_metrics(date_from: str = None, date_to: str = None,
                 elif ev_type == "referral_phone":
                     phone_at = phone_at or ev.get("created_at")
 
+            for msg in message_rows_by_phone.get(phone, []):
+                msg_type = msg.get("msg_type")
+                text = msg.get("text") or ""
+                created_at = msg.get("created_at")
+                if msg.get("direction") != "inbound":
+                    continue
+                if msg_type in ("button", "button_reply"):
+                    kind = button_kind(text)
+                    if not kind:
+                        continue
+                    first_response_at = first_response_at or created_at
+                    if kind == "info":
+                        st["info_phones"].add(phone)
+                        info_click_at = info_click_at or created_at
+                    elif kind == "benefit":
+                        st["benefit_phones"].add(phone)
+                        benefit_at = benefit_at or created_at
+                    elif kind == "later":
+                        st["later_phones"].add(phone)
+                elif msg_type == "text":
+                    first_response_at = first_response_at or created_at
+
             if first_response_at:
                 st["phones_with_response"].add(phone)
                 secs = _seconds_between(sent_at, first_response_at)
                 st["first_response_seconds"].append(secs)
                 all_first_response.append(secs)
-            if info_sent_at and benefit_at:
-                secs = _seconds_between(info_sent_at, benefit_at)
+            info_start_at = info_sent_at or info_click_at
+            if info_start_at and benefit_at:
+                secs = _seconds_between(info_start_at, benefit_at)
                 st["info_to_benefit_seconds"].append(secs)
                 all_info_to_benefit.append(secs)
+
+            completed_refs = referrals_by_phone.get(phone, [])
+            fallback_ref = _reconstruct_referral_from_messages(
+                phone,
+                message_rows_by_phone.get(phone, []),
+                benefit_at,
+            )
+            if not completed_refs and fallback_ref:
+                completed_refs = [fallback_ref]
+            if fallback_ref:
+                name_at = name_at or fallback_ref.get("_name_at")
+                phone_at = phone_at or fallback_ref.get("_phone_at")
             if name_at and phone_at:
                 secs = _seconds_between(name_at, phone_at)
                 st["name_to_phone_seconds"].append(secs)
                 all_name_to_phone.append(secs)
 
-            completed_refs = referrals_by_phone.get(phone, [])
             st["referral_count"] += len(completed_refs)
             for ref in completed_refs:
                 detail_rows.append({

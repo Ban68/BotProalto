@@ -100,7 +100,9 @@ function createPasteCampaign(cfg) {
         try {
             const res = await fetch(m.endpoint + timeline.params());
             const data = await res.json();
-            if (!res.ok || !data.metrics) return;
+            if (!res.ok || !data.metrics) {
+                throw new Error(data.message || `No se pudieron cargar métricas (${res.status})`);
+            }
             const mt = data.metrics;
             const total = mt.total || 0;
 
@@ -108,9 +110,8 @@ function createPasteCampaign(cfg) {
                 const value = c.count(mt) || 0;
                 const displayValue = c.format ? c.format(value, mt) : value;
                 mount.querySelector(`[data-card="${i}"]`).innerText = (i === 0 && !value) ? '0' : displayValue;
-                if (c.pct && total > 0) {
-                    mount.querySelector(`[data-card-pct="${i}"]`).innerText = Math.round((value / total) * 100) + '%';
-                }
+                const pctEl = mount.querySelector(`[data-card-pct="${i}"]`);
+                pctEl.innerText = (c.pct && total > 0) ? Math.round((value / total) * 100) + '%' : '';
             });
 
             const extra = $('metricsExtra');
@@ -146,7 +147,10 @@ function createPasteCampaign(cfg) {
                     <td class="cmp-c"><button type="button" class="pcmp-chat-btn" onclick="goToChat('${r.phone}')">Chat</button></td>
                 </tr>`;
             }).join('');
-        } catch (e) { console.error(`fetchMetrics ${cfg.id} error:`, e); }
+        } catch (e) {
+            console.error(`fetchMetrics ${cfg.id} error:`, e);
+            $('metricsBody').innerHTML = `<tr><td colspan="${colCount}" class="cmp-empty cmp-empty-err">No se pudieron cargar las métricas: ${escapeHtml(e.message || e)}</td></tr>`;
+        }
     }
 
     // ── Parse de destinatarios ─────────────────────────────────────
