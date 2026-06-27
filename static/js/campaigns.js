@@ -69,8 +69,8 @@ function ensureReferralAbShell() {
         const leadsNav = document.querySelector('.nav-item[data-view="leads"]');
         if (leadsNav) {
             leadsNav.insertAdjacentHTML('afterend', `
-                <button type="button" class="nav-item" data-view="referidosab" data-title="Referidos A/B" style="--accent:#0f766e" onclick="switchTab('referidosab')">
-                    <span class="nav-item-icon">A/B</span><span class="nav-item-label">Referidos A/B</span>
+                <button type="button" class="nav-item" data-view="referidosab" data-title="Campaña Referidos A/B" style="--accent:#0f766e" onclick="switchTab('referidosab')">
+                    <span class="nav-item-icon">🤝</span><span class="nav-item-label">Referidos A/B</span>
                 </button>`);
         }
     }
@@ -211,7 +211,7 @@ ensureReferralAbShell();
 [
     {
         id: 'referidosab',
-        icon: 'A/B',
+        icon: '🤝',
         accent: '#0f766e',
         title: 'Campaña Referidos A/B',
         templateName: 'plantilla_referidos_v1 / plantilla_referidos_v2',
