@@ -123,6 +123,31 @@
             font-size: 0.9rem;
         }
 
+        .context-filter-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 92px;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .context-filter-container select {
+            width: 100%;
+            min-width: 0;
+            padding: 7px 9px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.78rem;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .context-filter-container select:focus {
+            border-color: rgba(254, 192, 92, 0.9);
+            background: #ffffff;
+        }
+
         /* Content wrapper (sidebar sibling) */
         .content-wrapper {
             flex: 1;
@@ -264,6 +289,55 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        .context-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 7px;
+            min-height: 20px;
+        }
+
+        .context-chip {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            padding: 2px 7px;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .context-chip-last {
+            border-color: #f5c66b;
+            background: #fffbeb;
+            color: #7c4a03;
+        }
+
+        .context-chip-more {
+            color: #64748b;
+            background: #ffffff;
+        }
+
+        .context-chip[data-context="referidos"] { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+        .context-chip[data-context="credito"] { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .context-chip[data-context="lead"] { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
+        .context-chip[data-context="renovado"] { background: #e0f2fe; border-color: #bae6fd; color: #0369a1; }
+        .context-chip[data-context="anticipo"] { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+        .context-chip[data-context="aprobado"] { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+        .context-chip[data-context="faltan_docs"] { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .context-chip[data-context="pandadoc"] { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+        .context-chip[data-context="negado"] { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+        .context-chip[data-context="actualizacion"] { background: #faf5ff; border-color: #e9d5ff; color: #7e22ce; }
+        .context-chip[data-context="saldo"] { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+        .context-chip[data-context="solicitud"] { background: #fefce8; border-color: #fde68a; color: #a16207; }
+        .context-chip[data-context="cuenta"] { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+        .context-chip[data-context="email"] { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
 
         /* Main Area - Chat View */
         .main-chat {

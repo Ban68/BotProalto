@@ -83,6 +83,15 @@
                 <button class="btn btn-primary" onclick="showNewChatModal()" title="Nueva Conversación"
                     style="padding: 8px 12px; font-size: 1.2rem;">+</button>
             </div>
+            <div class="context-filter-container">
+                <select id="contextFilter" onchange="filterList()" title="Filtrar por contexto">
+                    <option value="">Todos los contextos</option>
+                </select>
+                <select id="contextScopeFilter" onchange="filterList()" title="Aplicar filtro al último contexto o al historial">
+                    <option value="last">Último</option>
+                    <option value="any">Historial</option>
+                </select>
+            </div>
         </div>
         <div class="conversation-list" id="convList">
             <!-- Loading -->

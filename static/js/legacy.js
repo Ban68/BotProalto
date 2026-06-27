@@ -78,6 +78,23 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizeSearchText(str) {
+            return String(str || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
         function openEditEmailModal(phone, currentEmail) {
             editEmailCurrentPhone = phone;
             document.getElementById('editEmailPhone').innerText = phone;
@@ -192,6 +209,34 @@
             diagnostico:   { panel: 'diagnosticoState',   chat: false, onEnter: () => fetchDiagnostics() },
         };
 
+        const CONTEXT_FILTER_OPTIONS = [
+            ['referidos', 'Referidos'],
+            ['credito', 'Crédito'],
+            ['lead', 'Lead'],
+            ['renovado', 'Renovado'],
+            ['anticipo', 'Anticipo'],
+            ['aprobado', 'Aprobado'],
+            ['faltan_docs', 'Faltan docs'],
+            ['pandadoc', 'PandaDoc'],
+            ['negado', 'Negado'],
+            ['actualizacion', 'Actualizar datos'],
+            ['saldo', 'Saldo'],
+            ['solicitud', 'Solicitud'],
+            ['cuenta', 'Cuenta bancaria'],
+            ['email', 'Correo'],
+            ['general', 'General'],
+        ];
+
+        function initContextFilterOptions() {
+            const select = document.getElementById('contextFilter');
+            if (!select || select.dataset.loaded === '1') return;
+            select.innerHTML = '<option value="">Todos los contextos</option>' +
+                CONTEXT_FILTER_OPTIONS
+                    .map(([value, label]) => `<option value="${value}">${label}</option>`)
+                    .join('');
+            select.dataset.loaded = '1';
+        }
+
         function switchTab(tab) {
             const view = VIEWS[tab];
             if (!view) return;
@@ -216,6 +261,7 @@
             document.body.classList.toggle('chats-mode', !!view.chat);
             const titleEl = document.getElementById('chatColTitle');
             if (titleEl && view.chat) titleEl.textContent = view.title || '';
+            if (view.chat) initContextFilterOptions();
 
             if (typeof updateNavActive === 'function') updateNavActive(tab);
 
@@ -990,15 +1036,21 @@
             let html = '';
             conversations.forEach(c => {
                 const activeClass = currentActivePhone === c.phone ? 'active' : '';
+                const contextAttrs = conversationContextAttrs(c);
+                const contextChips = renderContextChips(c);
                 html += `
-                    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" onclick="selectConversation('${c.phone}')">
+                    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" data-name="${escapeHtmlAttr((c.client_name || '').toLowerCase())}" data-contexts="${contextAttrs.ids}" data-last-context="${contextAttrs.last}" data-context-labels="${contextAttrs.search}" onclick="selectConversation('${c.phone}')">
+                        <div class="conv-avatar" style="background: ${getAvatarColor(c.phone)}">${c.phone.slice(-3)}</div>
+                        <div class="conv-body">
                         <div class="conv-header">
-                            <span class="conv-phone">${c.phone}</span>
+                            <span class="conv-phone">${escapeHtml(c.phone)}</span>
                             <span class="conv-time">${formatTime(c.updated_at)}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                            <span class="conv-preview">${c.last_message || '...'}</span>
+                            <span class="conv-preview">${escapeHtml(c.last_message || '...')}</span>
                             <span class="archived-badge">ARCHIVADA</span>
+                        </div>
+                        ${contextChips}
                         </div>
                     </div>
                 `;
@@ -1089,6 +1141,41 @@
             return colors[idx];
         }
 
+        function getConversationContexts(c) {
+            const contexts = Array.isArray(c.contexts) && c.contexts.length
+                ? c.contexts
+                : [{ id: 'general', label: 'General' }];
+            const lastContext = c.last_context || contexts[0] || { id: 'general', label: 'General' };
+            return { contexts, lastContext };
+        }
+
+        function renderContextChips(c) {
+            const { contexts, lastContext } = getConversationContexts(c);
+            const lastId = lastContext.id || 'general';
+            const rest = contexts.filter(ctx => (ctx.id || 'general') !== lastId);
+            const visibleRest = rest.slice(0, 2);
+            const hiddenCount = Math.max(0, rest.length - visibleRest.length);
+            const chips = [
+                `<span class="context-chip context-chip-last" data-context="${escapeHtmlAttr(lastId)}" title="Último contexto">Último: ${escapeHtml(lastContext.label || 'General')}</span>`,
+                ...visibleRest.map(ctx => `<span class="context-chip" data-context="${escapeHtmlAttr(ctx.id || 'general')}">${escapeHtml(ctx.label || 'General')}</span>`),
+            ];
+            if (hiddenCount > 0) {
+                chips.push(`<span class="context-chip context-chip-more">+${hiddenCount}</span>`);
+            }
+            return `<div class="context-chip-row">${chips.join('')}</div>`;
+        }
+
+        function conversationContextAttrs(c) {
+            const { contexts, lastContext } = getConversationContexts(c);
+            const contextIds = contexts.map(ctx => ctx.id || 'general').filter(Boolean);
+            const contextLabels = contexts.map(ctx => ctx.label || '').join(' ').toLowerCase();
+            return {
+                ids: escapeHtmlAttr(contextIds.join(',')),
+                last: escapeHtmlAttr(lastContext.id || 'general'),
+                search: escapeHtmlAttr(contextLabels),
+            };
+        }
+
         function renderList(conversations) {
             const listEl = document.getElementById('convList');
             const isLeadsTab = currentTab === 'prospectos';
@@ -1166,21 +1253,24 @@
                     knownAgentModes[c.phone] = false;
                 }
 
-                const nameRow = c.client_name ? `<div style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${c.client_name}</div>` : '';
+                const nameRow = c.client_name ? `<div style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${escapeHtml(c.client_name)}</div>` : '';
+                const contextAttrs = conversationContextAttrs(c);
+                const contextChips = renderContextChips(c);
 
                 html += `
-    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" data-name="${(c.client_name || '').toLowerCase()}" onclick="selectConversation('${c.phone}')">
+    <div class="conv-item ${activeClass}" id="conv-item-${c.phone}" data-name="${escapeHtmlAttr((c.client_name || '').toLowerCase())}" data-contexts="${contextAttrs.ids}" data-last-context="${contextAttrs.last}" data-context-labels="${contextAttrs.search}" onclick="selectConversation('${c.phone}')">
         <div class="conv-avatar" style="background: ${getAvatarColor(c.phone)}">${c.phone.slice(-3)}</div>
         <div class="conv-body">
             <div class="conv-header">
-                <span class="conv-phone">${c.phone}</span>
+                <span class="conv-phone">${escapeHtml(c.phone)}</span>
                 <span class="conv-time">${formatTime(c.updated_at)}</span>
             </div>
             ${nameRow}
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 2px;">
-                <span class="conv-preview">${c.last_message || '...'}</span>
+                <span class="conv-preview">${escapeHtml(c.last_message || '...')}</span>
                 <span class="conv-status ${statusClass}">${statusLabel.replace('🔴 ','').replace('🔇 ','').replace('🤖 ','')}</span>
             </div>
+            ${contextChips}
             ${advisorIcons}
         </div>
     </div>
@@ -1199,13 +1289,24 @@
         let searchDebounce = null;
 
         function filterList() {
-            const val = document.getElementById('searchInput').value.toLowerCase().trim();
+            const val = normalizeSearchText(document.getElementById('searchInput').value);
+            const contextId = (document.getElementById('contextFilter')?.value || '').trim();
+            const contextScope = (document.getElementById('contextScopeFilter')?.value || 'last').trim();
             const items = document.querySelectorAll('#convList .conv-item');
             let visibleCount = 0;
             items.forEach(item => {
-                const phone = item.querySelector('.conv-phone').innerText.toLowerCase();
-                const name = item.dataset.name || '';
-                if (phone.includes(val) || name.includes(val)) {
+                const phone = normalizeSearchText(item.querySelector('.conv-phone')?.innerText || '');
+                const name = normalizeSearchText(item.dataset.name || '');
+                const contextLabels = normalizeSearchText(item.dataset.contextLabels || '');
+                const contexts = (item.dataset.contexts || '').split(',').filter(Boolean);
+                const lastContext = item.dataset.lastContext || '';
+                const matchesText = !val || phone.includes(val) || name.includes(val) || contextLabels.includes(val);
+                const matchesContext = !contextId || (
+                    contextScope === 'any'
+                        ? contexts.includes(contextId)
+                        : lastContext === contextId
+                );
+                if (matchesText && matchesContext) {
                     item.style.display = 'flex';
                     visibleCount++;
                 } else {
@@ -1216,7 +1317,7 @@
             const serverResult = document.getElementById('serverSearchResult');
             serverResult.innerHTML = '';
             clearTimeout(searchDebounce);
-            if (visibleCount === 0 && val.length >= 5) {
+            if (!contextId && visibleCount === 0 && val.length >= 5) {
                 serverResult.innerHTML = '<div style="padding: 12px; text-align: center; color: #888; font-size: 0.85rem;">Buscando...</div>';
                 searchDebounce = setTimeout(() => searchServer(val), 500);
             }
@@ -1245,16 +1346,21 @@
                 else if (data.status === 'agent_silent') { statusClass = 'status-silent'; statusLabel = '🔇 BOT HUMANO'; }
                 else if (data.status === 'agent_llm') { statusClass = 'status-llm'; statusLabel = '🤖 AGENTE LLM'; }
                 const activeClass = currentActivePhone === phone ? 'active' : '';
+                const contextChips = renderContextChips(data);
                 serverResult.innerHTML = `
                     <div style="padding: 6px 10px; font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Resultado de búsqueda</div>
                     <div class="conv-item ${activeClass}" onclick="selectConversation('${phone}')">
-                        <div class="conv-header">
-                            <span class="conv-phone">${phone}</span>
-                            <span class="conv-time">${formatTime(data.updated_at)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
-                            <span class="conv-preview">${preview}</span>
-                            <span class="conv-status ${statusClass}">${statusLabel}</span>
+                        <div class="conv-avatar" style="background: ${getAvatarColor(phone)}">${phone.slice(-3)}</div>
+                        <div class="conv-body">
+                            <div class="conv-header">
+                                <span class="conv-phone">${escapeHtml(phone)}</span>
+                                <span class="conv-time">${formatTime(data.updated_at)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                <span class="conv-preview">${escapeHtml(preview)}</span>
+                                <span class="conv-status ${statusClass}">${statusLabel}</span>
+                            </div>
+                            ${contextChips}
                         </div>
                     </div>`;
             } catch (e) {

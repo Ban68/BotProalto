@@ -158,6 +158,167 @@ _CAMPAIGN_TEMPLATE_MARKERS = {
     "[Template: plantilla_referidos_v2]": "plantilla_referidos_v2",
 }
 
+_CONTEXT_DEFINITIONS = {
+    "referidos": {"label": "Referidos"},
+    "credito": {"label": "Crédito"},
+    "lead": {"label": "Lead"},
+    "renovado": {"label": "Renovado"},
+    "anticipo": {"label": "Anticipo"},
+    "aprobado": {"label": "Aprobado"},
+    "faltan_docs": {"label": "Faltan docs"},
+    "pandadoc": {"label": "PandaDoc"},
+    "negado": {"label": "Negado"},
+    "actualizacion": {"label": "Actualizar datos"},
+    "saldo": {"label": "Saldo"},
+    "solicitud": {"label": "Solicitud"},
+    "cuenta": {"label": "Cuenta bancaria"},
+    "email": {"label": "Correo"},
+    "general": {"label": "General"},
+}
+
+_CONTEXT_TEMPLATE_MARKERS = {
+    "[Template: contacto_leads]": "lead",
+    "[Template: estado_renovar]": "renovado",
+    "[Template: anticipo_salario]": "anticipo",
+    "[Template: plantilla_referidos_v1]": "referidos",
+    "[Template: plantilla_referidos_v2]": "referidos",
+    "[Template: estado_verde]": "aprobado",
+    "[Template: estado_rojo]": "faltan_docs",
+    "[Template: estado_amarillo]": "pandadoc",
+    "[Template: estado_negados]": "negado",
+    "[Template: actualizacion_datos]": "actualizacion",
+    "[Menu: estado_rojo]": "faltan_docs",
+}
+
+_CONTEXT_STATUS_MAP = {
+    "lead_notified": "lead",
+    "renovado_notified": "renovado",
+    "anticipos_notified": "anticipo",
+    "referidos_ab_notified": "referidos",
+    "referidos_ab_info_sent": "referidos",
+    "waiting_for_email": "email",
+    "waiting_for_docs_rojo": "faltan_docs",
+    "waiting_for_cuenta_amarillo": "pandadoc",
+    "denegado_notified": "negado",
+    "esperando_respuesta_actualizacion": "actualizacion",
+    "waiting_for_cedula_saldo": "saldo",
+    "waiting_for_cedula": "solicitud",
+    "waiting_for_numero_cuenta": "cuenta",
+    "waiting_for_nombre_tercero": "cuenta",
+    "waiting_for_numero_cuenta_tercero": "cuenta",
+    "waiting_for_banco": "cuenta",
+}
+
+_CREDIT_CONTEXT_IDS = {
+    "renovado",
+    "anticipo",
+    "aprobado",
+    "faltan_docs",
+    "pandadoc",
+    "negado",
+    "actualizacion",
+    "saldo",
+    "solicitud",
+    "cuenta",
+    "email",
+}
+
+
+def _context_for_status(status: str) -> str | None:
+    status = status or ""
+    if status in _CONTEXT_STATUS_MAP:
+        return _CONTEXT_STATUS_MAP[status]
+    if status.startswith("referido_"):
+        return "referidos"
+    if status.startswith("waiting_for_solicitud_choice"):
+        return "solicitud"
+    if status.startswith("actualizar_datos_"):
+        return "actualizacion"
+    if status.startswith("waiting_for_cedula_tercero"):
+        return "cuenta"
+    return None
+
+
+def _make_context(context_id: str, last_at: str = "", source: str = "history") -> dict:
+    meta = _CONTEXT_DEFINITIONS.get(context_id, _CONTEXT_DEFINITIONS["general"])
+    return {
+        "id": context_id if context_id in _CONTEXT_DEFINITIONS else "general",
+        "label": meta["label"],
+        "last_at": last_at or "",
+        "source": source,
+    }
+
+
+def _add_context(contexts_by_phone: dict, phone: str, context_id: str | None,
+                 last_at: str = "", source: str = "history"):
+    if not phone or not context_id:
+        return
+    contexts = contexts_by_phone.setdefault(phone, {})
+    existing = contexts.get(context_id)
+    if not existing or (last_at or "") > (existing.get("last_at") or ""):
+        contexts[context_id] = _make_context(context_id, last_at, source)
+    if context_id in _CREDIT_CONTEXT_IDS:
+        existing_credit = contexts.get("credito")
+        if not existing_credit or (last_at or "") > (existing_credit.get("last_at") or ""):
+            contexts["credito"] = _make_context("credito", last_at, source)
+
+
+def _build_context_metadata(convs_data: list) -> dict:
+    """Infer conversation contexts from immutable template logs plus current state."""
+    phones = [c["phone"] for c in convs_data if c.get("phone")]
+    contexts_by_phone = {phone: {} for phone in phones}
+
+    for c in convs_data:
+        context_id = _context_for_status(c.get("status"))
+        _add_context(
+            contexts_by_phone,
+            c.get("phone"),
+            context_id,
+            c.get("updated_at", ""),
+            "status",
+        )
+
+    if phones:
+        try:
+            msgs_res = (
+                supabase_client.table('bot_messages')
+                .select("phone, text, created_at")
+                .in_("phone", phones)
+                .in_("text", list(_CONTEXT_TEMPLATE_MARKERS.keys()))
+                .order("created_at", desc=True)
+                .limit(1000)
+                .execute()
+            )
+            for m in msgs_res.data or []:
+                _add_context(
+                    contexts_by_phone,
+                    m.get("phone"),
+                    _CONTEXT_TEMPLATE_MARKERS.get(m.get("text")),
+                    m.get("created_at", ""),
+                    "template",
+                )
+        except Exception as e:
+            print(f"Supabase _build_context_metadata error: {e}")
+
+    metadata = {}
+    for c in convs_data:
+        phone = c.get("phone")
+        items = list(contexts_by_phone.get(phone, {}).values())
+        if not items:
+            items = [_make_context("general", c.get("updated_at", ""), "fallback")]
+        items.sort(
+            key=lambda item: (
+                item.get("last_at") or "",
+                0 if item.get("id") == "credito" else 1,
+            ),
+            reverse=True,
+        )
+        metadata[phone] = {
+            "contexts": items,
+            "last_context": items[0],
+        }
+    return metadata
+
 
 def get_last_campaign_template(phone: str):
     """Devuelve el nombre de la última plantilla de campaña enviada a este número
@@ -233,6 +394,7 @@ def _build_conversation_list(convs_data: list) -> list:
     phones = [c["phone"] for c in convs_data]
     last_msgs = {}
     msg_counts = {}
+    context_metadata = _build_context_metadata(convs_data)
 
     if phones:
         msgs_res = supabase_client.table('bot_messages').select("phone, text, id").in_("phone", phones).order("created_at", desc=True).limit(1000).execute()
@@ -255,25 +417,17 @@ def _build_conversation_list(convs_data: list) -> list:
             "status": c.get("status", "active"),
             "updated_at": c.get("updated_at", ""),
             "message_count": msg_counts.get(p, 1),
+            "contexts": context_metadata.get(p, {}).get("contexts", []),
+            "last_context": context_metadata.get(p, {}).get("last_context"),
         })
     return result
 
 
 def get_conversations() -> list:
-    """Get non-lead/non-renovado/non-anticipos conversations, sorted by most recent."""
+    """Get active conversations as a unified customer list, sorted by most recent."""
     try:
-        lead_phones = _get_lead_phones()
-        renovado_phones = _get_renovado_phones()
-        anticipos_phones = _get_anticipos_phones()
-        excluded_phones = lead_phones | renovado_phones | anticipos_phones
-        excluded_statuses = {"lead_notified", "renovado_notified", "anticipos_notified"}
-        # Over-fetch to compensate for entries we'll exclude
         convs = supabase_client.table('bot_conversations').select("*").neq("status", "archived").order("updated_at", desc=True).limit(100).execute()
-        filtered = [
-            c for c in convs.data
-            if c["phone"] not in excluded_phones and c.get("status") not in excluded_statuses
-        ][:50]
-        return _build_conversation_list(filtered)
+        return _build_conversation_list(convs.data)
     except Exception as e:
         print(f"Supabase get_conversations error: {e}")
         return []
@@ -967,6 +1121,7 @@ def get_conversation(phone: str) -> dict | None:
         c_res = supabase_client.table('bot_conversations').select("*").eq("phone", phone).execute()
         if not c_res.data:
             return None
+        conversation = c_res.data[0]
             
         m_res = supabase_client.table('bot_messages').select("*").eq("phone", phone).order("created_at").execute()
         
@@ -981,9 +1136,13 @@ def get_conversation(phone: str) -> dict | None:
                 "wamid": m.get("wamid")
             })
             
+        context_metadata = _build_context_metadata([conversation]).get(phone, {})
+
         return {
-            "status": c_res.data[0].get("status", "active"),
-            "updated_at": c_res.data[0].get("updated_at", ""),
+            "status": conversation.get("status", "active"),
+            "updated_at": conversation.get("updated_at", ""),
+            "contexts": context_metadata.get("contexts", []),
+            "last_context": context_metadata.get("last_context"),
             "messages": messages
         }
     except Exception as e:
@@ -1011,21 +1170,7 @@ def get_archived_conversations() -> list:
     """Get a list of archived (hidden) conversations."""
     try:
         convs = supabase_client.table('bot_conversations').select("*").eq("status", "archived").order("updated_at", desc=True).execute()
-        result = []
-        for c in convs.data:
-            msgs_res = supabase_client.table('bot_messages').select("*").eq("phone", c["phone"]).order("created_at", desc=True).limit(1).execute()
-            last_msg = msgs_res.data[0]["text"] if msgs_res.data else ""
-            if len(last_msg) > 80:
-                last_msg = last_msg[:80] + "…"
-            count_res = supabase_client.table('bot_messages').select("id", count="exact").eq("phone", c["phone"]).execute()
-            result.append({
-                "phone": c["phone"],
-                "last_message": last_msg,
-                "status": "archived",
-                "updated_at": c.get("updated_at", ""),
-                "message_count": count_res.count if count_res.count else 0,
-            })
-        return result
+        return _build_conversation_list(convs.data)
     except Exception as e:
         print(f"Supabase get_archived error: {e}")
         return []
