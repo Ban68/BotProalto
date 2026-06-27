@@ -167,6 +167,25 @@ def _should_handle_anticipo_info_button(user_phone: str, state: str) -> bool:
     return state == "anticipos_notified"
 
 
+def _campaign_context_for_button(user_phone: str, state: str) -> str | None:
+    last_template = get_last_campaign_template(user_phone)
+    if last_template is not None:
+        return last_template
+
+    state_to_template = {
+        "lead_notified": "contacto_leads",
+        "renovado_notified": "estado_renovar",
+        "anticipos_notified": "anticipo_salario",
+    }
+    if referrals_ab.is_referral_state(state):
+        return "referidos_ab"
+    return state_to_template.get(state)
+
+
+def _is_sales_campaign_context(context: str | None) -> bool:
+    return context in ("contacto_leads", "estado_renovar", "anticipo_salario")
+
+
 def _is_greeting(text: str) -> bool:
     """Check if text looks like a greeting (used in multiple states to allow menu escape)."""
     norm = text.lower().strip()
@@ -1590,15 +1609,20 @@ class FlowHandler:
 
         elif btn_id in ["menu_credito", "Solicitar crédito"]:
             set_user_state(user_phone, "active")
+            campaign_context = (
+                _campaign_context_for_button(user_phone, state)
+                if btn_id == "Solicitar crédito"
+                else None
+            )
 
-            if state == "renovado_notified":
+            if campaign_context == "estado_renovar":
                 WhatsAppService.send_message(
                     user_phone,
                     "Que buena noticia! Para renovar tu crédito, diligencia el siguiente formulario:\n\n"
                     "👉 https://forms.gle/zXzrcrzVefuoVsEX6\n\n"
                     "Si tienes alguna duda durante el proceso, estamos aquí para ayudarte."
                 )
-            elif btn_id == "Solicitar crédito":
+            elif campaign_context == "contacto_leads":
                 # Opción "Solicitar crédito" de la plantilla de leads (contacto_leads).
                 WhatsAppService.send_message(
                     user_phone,
@@ -1697,7 +1721,10 @@ class FlowHandler:
             # Handler único de "Hablar con un asesor". Tanto el menú viejo
             # (menu_support) como el nuevo (info_asesor en Información General y
             # cred_asesor en Mi Crédito ProAlto) reutilizan esta misma lógica.
-            is_lead = (state in ("lead_notified", "renovado_notified", "anticipos_notified"))
+            if btn_id == "Hablar con un asesor":
+                is_lead = _is_sales_campaign_context(_campaign_context_for_button(user_phone, state))
+            else:
+                is_lead = (state in ("lead_notified", "renovado_notified", "anticipos_notified"))
             set_agent_mode(user_phone, "agent")
 
             try:
@@ -1769,7 +1796,12 @@ class FlowHandler:
 
         elif btn_id in ("Ahora no, gracias", "renovar_ahora_no"):
             set_user_state(user_phone, "active")
-            if state == "anticipos_notified":
+            campaign_context = (
+                _campaign_context_for_button(user_phone, state)
+                if btn_id == "Ahora no, gracias"
+                else "estado_renovar"
+            )
+            if campaign_context == "anticipo_salario":
                 from src.conversation_log import log_anticipo_response
                 log_anticipo_response(user_phone, "no_gracias")
             WhatsAppService.send_message(
@@ -1793,11 +1825,8 @@ class FlowHandler:
             # renovación. Enrutamos por la ÚLTIMA plantilla de campaña realmente
             # enviada (rastro inmutable en bot_messages); el status solo se usa como
             # último recurso si no hay rastro de plantilla.
-            last_tpl = get_last_campaign_template(user_phone)
-            if last_tpl is not None:
-                is_renovado = (last_tpl == "estado_renovar")
-            else:
-                is_renovado = (state == "renovado_notified")
+            campaign_context = _campaign_context_for_button(user_phone, state)
+            is_renovado = (campaign_context == "estado_renovar")
 
             if not is_renovado:
                 # Plantilla de leads (contacto_leads): "Necesito más información"
