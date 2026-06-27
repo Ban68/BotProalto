@@ -215,6 +215,7 @@
     <a href="#conversation-log">conversation_log.py &mdash; Supabase</a>
     <a href="#database">database.py &mdash; Cloud Run Bridge</a>
     <a href="#automation">automation.py &mdash; Envios Masivos</a>
+    <a href="#referrals-ab">referrals_ab.py &mdash; Referidos A/B</a>
     <a href="#llm">llm.py &mdash; Agente IA</a>
     <a href="#notifications">notifications.py &mdash; Alertas</a>
     <a href="#google-sheets">google_sheets.py &mdash; Fallback</a>
@@ -332,6 +333,7 @@
 │   ├── <span class="file">conversation_log.py</span>   <span class="comment"># Supabase CRUD: mensajes, estados, capturas</span>
 │   ├── <span class="file">database.py</span>           <span class="comment"># Cloud Run bridge: solicitudes, saldos</span>
 │   ├── <span class="file">automation.py</span>         <span class="comment"># Campanas masivas, debounce docs, status mapping</span>
+│   ├── <span class="file">referrals_ab.py</span>       <span class="comment"># Experimento Referidos A/B: variantes, eventos, referidos, metricas</span>
 │   ├── <span class="file">admin.py</span>              <span class="comment"># Blueprint /admin/* — panel, APIs, campanas, test, diagnostico</span>
 │   ├── <span class="file">analytics_api.py</span>      <span class="comment"># Blueprint /admin/api/analytics/* — embudo, volumen, auditorias</span>
 │   ├── <span class="file">analytics_queries.py</span>   <span class="comment"># Consultas y auditorias LLM que alimentan analytics_api</span>
@@ -369,9 +371,13 @@
 ├── <span class="dir">docs/</span>
 │   └── <span class="file">STAGING.md</span>            <span class="comment"># Flujo oficial de staging → produccion</span>
 │
+├── <span class="dir">migrations/</span>
+│   └── <span class="file">004_referrals_ab_test.sql</span> <span class="comment"># Tablas del experimento Referidos A/B</span>
+│
 ├── <span class="file">playbook_tecnico.html</span>     <span class="comment"># Este documento</span>
 ├── <span class="file">playbook_general.html</span>     <span class="comment"># Vision de producto / no tecnica</span>
 ├── <span class="file">playbook_operativo.html</span>   <span class="comment"># Guia operativa del equipo (panel)</span>
+├── <span class="file">playbook_referidos_ab.html</span> <span class="comment"># Guia operativa para ejecutar Referidos A/B</span>
 └── <span class="dir">scripts/</span>                   <span class="comment"># Scripts de debugging y utilidad</span>
         </div>
 
@@ -806,6 +812,13 @@ get_phones_with_docs_completos(phones) -> set       # Tienen docs_completos=true
 get_phones_with_cuenta(phones) -> set               # Ya enviaron cuenta bancaria
 get_notified_phones_amarillo_batch(phones) -> set   # Notificados amarillo HOY</code></pre>
 
+        <h3>Ultimo template de campana</h3>
+        <pre><code>get_last_campaign_template(phone) -> str | None
+  # Busca en bot_messages marcadores "[Template: ...]"
+  # Incluye contacto_leads, estado_renovar, anticipo_salario,
+  # plantilla_referidos_v1 y plantilla_referidos_v2.
+  # Referidos A/B lo usa como fuente principal para resolver variante.</code></pre>
+
         <h3>Capturas</h3>
         <pre><code># Emails
 save_captured_email(phone, email, name)
@@ -985,12 +998,96 @@ execute_bulk_approved_notifications(users):
                 <tr><td>Rojo</td><td><code>get_pending_falta_documento_notifications</code></td><td><code>execute_bulk_falta_documento_notifications</code></td><td><code>estado_rojo</code></td><td><code>waiting_for_docs_rojo</code></td></tr>
                 <tr><td>Amarillo</td><td><code>get_pending_listo_docusign_notifications</code></td><td><code>execute_bulk_listo_docusign_notifications</code></td><td><code>estado_amarillo</code></td><td><code>waiting_for_cuenta_amarillo</code></td></tr>
                 <tr><td>Leads</td><td>(manual list)</td><td><code>execute_bulk_leads_notifications</code></td><td><code>contacto_leads</code></td><td><code>lead_notified</code></td></tr>
+                <tr><td>Referidos A/B</td><td>(manual list)</td><td><code>execute_bulk_referrals_ab_notifications</code></td><td><code>plantilla_referidos_v1</code> / <code>plantilla_referidos_v2</code></td><td><code>referidos_ab_notified</code></td></tr>
             </tbody>
         </table>
 
         <div class="card info">
             <div class="card-title">TEST_MODE</div>
             <p><code>TEST_MODE = False</code> al inicio del archivo. Si se pone <code>True</code>, usa el telefono <code>573106176713</code> en lugar de los reales. Util para probar envios sin afectar clientes.</p>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- 11b. REFERRALS_AB.PY -->
+    <!-- ════════════════════════════════════════ -->
+    <section id="referrals-ab">
+        <h2><span class="num">11b</span> referrals_ab.py — Experimento Referidos A/B</h2>
+
+        <p>Modulo especifico para el test A/B de referidos. Mantiene separada la logica experimental de <code>flows.py</code>: variantes, textos por incentivo, asignacion, eventos, referidos capturados y metricas.</p>
+
+        <h3>Variantes</h3>
+        <table>
+            <thead><tr><th>variant_key</th><th>Template Meta</th><th>Incentivo</th><th>Copy de cierre</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><code>discount_rate</code></td>
+                    <td><code>plantilla_referidos_v1</code></td>
+                    <td>Descuento en tasa</td>
+                    <td>Si el referido hace su solicitud, el cliente tendra automaticamente el descuento en la tasa para su proximo credito.</td>
+                </tr>
+                <tr>
+                    <td><code>express_approval</code></td>
+                    <td><code>plantilla_referidos_v2</code></td>
+                    <td>Aprobacion express</td>
+                    <td>Si el referido hace su solicitud, el proximo credito del cliente tendra aprobacion prioritaria en menos de 3 horas.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Estados de conversacion</h3>
+        <pre><code>referidos_ab_notified        # Recibio template inicial; espera boton/texto
+referidos_ab_info_sent       # Recibio explicacion "Como funciona"; espera CTA
+referido_waiting_name        # Presiono "Quiero el beneficio"; espera nombre referido
+referido_waiting_phone|NAME  # Nombre capturado; espera telefono referido</code></pre>
+
+        <h3>Resolucion de variante</h3>
+        <p><code>variant_for_phone(phone)</code> prioriza el ultimo template de campana realmente visto por el cliente (<code>conversation_log.get_last_campaign_template</code>) y luego cae a la asignacion guardada en <code>referral_ab_assignments</code>. Este orden evita que un cierre use el incentivo equivocado si existe una asignacion vieja o inconsistente.</p>
+
+        <pre><code>variant_for_phone(phone):
+  1. Si es test_mode: usa test_mode.get_last_template(phone)
+  2. Si existe ultimo template real:
+       plantilla_referidos_v1 -> discount_rate
+       plantilla_referidos_v2 -> express_approval
+  3. Si no hay template trazable: usa referral_ab_assignments.variant_key
+  4. Fallback defensivo: discount_rate</code></pre>
+
+        <h3>Eventos registrados</h3>
+        <table>
+            <thead><tr><th>event_type</th><th>Cuándo se genera</th><th>Uso en metricas</th></tr></thead>
+            <tbody>
+                <tr><td><code>sent</code> / <code>send_failed</code></td><td>Al intentar enviar cada template</td><td>Total enviados, fallidos, distribucion A/B</td></tr>
+                <tr><td><code>button_click</code></td><td>Clicks en "Como funciona", "Quiero el beneficio", "Quizas despues"</td><td>% por boton y tiempos de primera respuesta</td></tr>
+                <tr><td><code>info_sent</code></td><td>Se envio la explicacion de 2 pasos</td><td>Tiempo info -> beneficio</td></tr>
+                <tr><td><code>declined</code></td><td>Cliente eligio "Quizas despues"</td><td>Tasa de salida explicita</td></tr>
+                <tr><td><code>capture_started</code></td><td>Cliente eligio "Quiero el beneficio"</td><td>Inicio de embudo de referido</td></tr>
+                <tr><td><code>referral_name</code></td><td>Se valido y guardo nombre completo del referido</td><td>Drop-off nombre -> telefono</td></tr>
+                <tr><td><code>referral_phone</code></td><td>Se valido y guardo telefono del referido</td><td>Referidos completados</td></tr>
+                <tr><td><code>free_text</code></td><td>Cliente responde texto libre estando en flujo de referidos</td><td>Analisis posterior de dudas/no previstas</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Puntos de integracion</h3>
+        <table>
+            <thead><tr><th>Archivo</th><th>Responsabilidad</th></tr></thead>
+            <tbody>
+                <tr><td><code>automation.py</code></td><td><code>execute_bulk_referrals_ab_notifications()</code>: normaliza telefonos, deduplica, asigna 50/50 con <code>balanced_variant_keys()</code>, envia template y registra intento.</td></tr>
+                <tr><td><code>flows.py</code></td><td><code>_handle_referrals_ab_button()</code> enruta botones; <code>process_text_input()</code> captura nombre/telefono y confirma con <code>thanks_text_for_phone()</code>.</td></tr>
+                <tr><td><code>conversation_log.py</code></td><td><code>get_last_campaign_template()</code> reconoce <code>[Template: plantilla_referidos_v1]</code> y <code>[Template: plantilla_referidos_v2]</code>.</td></tr>
+                <tr><td><code>admin.py</code></td><td>Expone envio masivo y metricas por rango de fechas.</td></tr>
+                <tr><td><code>test_mode.py</code></td><td>Permite simular ambas plantillas desde <code>/admin/test</code> sin tocar Meta ni Supabase.</td></tr>
+                <tr><td><code>static/js/campaigns.js</code></td><td>Configura el panel <code>referidosab</code>, cards de metricas y tabla de referidos capturados.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="card info">
+            <div class="card-title">Migracion requerida</div>
+            <p><code>migrations/004_referrals_ab_test.sql</code> crea <code>referral_ab_assignments</code>, <code>referral_ab_events</code> y <code>referral_ab_referrals</code>. Si Supabase tiene RLS activo para estas tablas, el backend debe usar una key con permisos suficientes o policies explicitas para insert/select/update.</p>
+        </div>
+
+        <div class="card warning">
+            <div class="card-title">Regla critica</div>
+            <p>El texto posterior a los botones siempre debe salir de <code>info_text_for_phone()</code> y <code>thanks_text_for_phone()</code>, no de constantes planas, para que el incentivo coincida con el template recibido.</p>
         </div>
     </section>
 
@@ -1118,6 +1215,8 @@ notify_admin_error(user_phone, error_msg)
                 <tr><td>GET</td><td><code>/admin/api/pending-listo-docusign</code></td><td>Elegibles estado amarillo</td></tr>
                 <tr><td>POST</td><td><code>/admin/api/trigger-bulk-amarillo</code></td><td>Ejecutar envio amarillo</td></tr>
                 <tr><td>POST</td><td><code>/admin/api/trigger-bulk-leads</code></td><td>Ejecutar envio leads</td></tr>
+                <tr><td>POST</td><td><code>/admin/api/trigger-bulk-referidos-ab</code></td><td>Ejecutar test A/B de referidos desde lista pegada/CSV</td></tr>
+                <tr><td>GET</td><td><code>/admin/api/referidos-ab-metrics</code></td><td>Metricas del test A/B de referidos por rango de fechas</td></tr>
                 <tr><td>GET</td><td><code>/admin/api/captured-emails</code></td><td>Listar emails</td></tr>
                 <tr><td>PUT</td><td><code>/admin/api/captured-emails/&lt;phone&gt;</code></td><td>Editar email</td></tr>
                 <tr><td>GET</td><td><code>/admin/api/captured-cuentas</code></td><td>Listar cuentas bancarias</td></tr>
@@ -1136,8 +1235,8 @@ notify_admin_error(user_phone, error_msg)
             <table>
                 <thead><tr><th>Familia</th><th>Ejemplos</th><th>Proposito</th></tr></thead>
                 <tbody>
-                    <tr><td><strong>Campanas (8 estados)</strong></td><td><code>/api/pending-*</code>, <code>/api/trigger-bulk-{send,rojo,amarillo,leads,renovados,anticipos,denegado,actualizacion-datos}</code></td><td>Listar elegibles y disparar envios masivos por template</td></tr>
-                    <tr><td><strong>Metricas por campana</strong></td><td><code>/api/{lead,renovado,anticipo,aprobado,rojo,amarillo,negados}-metrics</code></td><td>Conteos por boton/intervalo de cada campana</td></tr>
+                    <tr><td><strong>Campanas</strong></td><td><code>/api/pending-*</code>, <code>/api/trigger-bulk-{send,rojo,amarillo,leads,referidos-ab,renovados,anticipos,denegado,actualizacion-datos}</code></td><td>Listar elegibles y disparar envios masivos por template/lista</td></tr>
+                    <tr><td><strong>Metricas por campana</strong></td><td><code>/api/{lead,referidos-ab,renovado,anticipo,aprobado,rojo,amarillo,negados}-metrics</code></td><td>Conteos por boton/intervalo de cada campana</td></tr>
                     <tr><td><strong>Conversaciones por tipo</strong></td><td><code>/api/{lead,renovado,anticipos}-conversations</code></td><td>Bandejas separadas por origen de campana</td></tr>
                     <tr><td><strong>Solicitudes de documentos</strong></td><td><code>/api/document-requests</code>, <code>.../&lt;id&gt;/{complete,reopen}</code></td><td>Gestion de documentos pedidos al cliente</td></tr>
                     <tr><td><strong>Panel de pruebas</strong></td><td><code>/admin/test</code>, <code>/admin/test/review</code>, <code>/api/test/*</code></td><td>Simulador en memoria (ver <a href="#test-mode">test_mode.py</a>)</td></tr>
@@ -1208,7 +1307,7 @@ is_test_phone(phone) -> bool   # phone.startswith("__test_")
         <ul>
             <li><strong>Sustituto en memoria</strong> de estado, historial, capturas (email/cuenta/docs/llm), contact-update y contadores.</li>
             <li><strong>Buffer outbound</strong>: cada intento de envio del bot se acumula y el panel lo drena con <code>/api/test/poll</code>.</li>
-            <li><strong>Simulacion de templates de Meta</strong>: <code>TEMPLATES</code> trae los 8 cuerpos (transcritos del WhatsApp Manager) con sus botones y el <code>state</code> que dejaria el envio real; <code>inject_template()</code> reproduce la recepcion para probar el flujo desde el boton.</li>
+            <li><strong>Simulacion de templates de Meta</strong>: <code>TEMPLATES</code> trae los cuerpos transcritos del WhatsApp Manager con sus botones y el <code>state</code> que dejaria el envio real; <code>inject_template()</code> reproduce la recepcion para probar el flujo desde el boton. Incluye <code>plantilla_referidos_v1</code> y <code>plantilla_referidos_v2</code>.</li>
             <li><strong>Pruebas automaticas</strong>: <code>test_personas.py</code> + <code>test_runner.py</code> ejecutan conversaciones sinteticas (rutas <code>/api/test/auto/*</code>) y se revisan en <code>/admin/test/review</code>.</li>
         </ul>
     </section>
@@ -1274,9 +1373,9 @@ authenticate()          # 401 + WWW-Authenticate: Basic realm="ProAlto Admin"</c
             <thead><tr><th>Archivo</th><th>Rol</th></tr></thead>
             <tbody>
                 <tr><td><code>nav.js</code></td><td>Nav rail + badges de conteo</td></tr>
-                <tr><td><code>campaigns.js</code></td><td>Configs declarativas de las 8 campanas</td></tr>
+                <tr><td><code>campaigns.js</code></td><td>Configs declarativas de campanas; agrega <code>referidosab</code>, su nav dinamico, metricas A/B y tabla de referidos</td></tr>
                 <tr><td><code>campaign-panel.js</code></td><td>Factory de campanas tipo pending-list</td></tr>
-                <tr><td><code>paste-campaign.js</code></td><td>Factory de campanas por pegado/Excel</td></tr>
+                <tr><td><code>paste-campaign.js</code></td><td>Factory de campanas por pegado/Excel; soporta columnas custom, resumen extra y filas custom para Referidos A/B</td></tr>
                 <tr><td><code>diagnostics.js</code></td><td>Render del panel de Diagnostico</td></tr>
                 <tr><td><code>metrics-timeline.js</code></td><td>Graficas de analytics</td></tr>
                 <tr><td><code>legacy.js</code></td><td>Chat en vivo, presencia, gestion, analytics (pendiente de modularizar)</td></tr>
@@ -1451,6 +1550,10 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
                 <tr><td><code>agent_silent</code></td><td>Asesor humano (sin notificacion)</td><td>Humano</td></tr>
                 <tr><td><code>agent_llm</code></td><td>Claude LLM responde</td><td>IA</td></tr>
                 <tr><td><code>lead_notified</code></td><td>Lead contactado via template</td><td>Bot/IA</td></tr>
+                <tr><td><code>referidos_ab_notified</code></td><td>Contacto recibio template inicial de Referidos A/B; espera boton o texto</td><td>Bot</td></tr>
+                <tr><td><code>referidos_ab_info_sent</code></td><td>Contacto recibio explicacion "Como funciona"; espera CTA</td><td>Bot</td></tr>
+                <tr><td><code>referido_waiting_name</code></td><td>Contacto quiere beneficio; espera nombre completo del referido</td><td>Bot</td></tr>
+                <tr><td><code>referido_waiting_phone|{nombre}</code></td><td>Nombre del referido capturado; espera telefono</td><td>Bot</td></tr>
                 <tr><td><code>archived</code></td><td>Conversacion archivada</td><td>Nadie</td></tr>
             </tbody>
         </table>
@@ -1492,6 +1595,55 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
                 <tr><td><code>msg_type</code></td><td>text</td><td>text, image, document, interactive, template, button_reply, deleted</td></tr>
                 <tr><td><code>created_at</code></td><td>timestamptz</td><td></td></tr>
                 <tr><td><code>wamid</code></td><td>text</td><td>WhatsApp Message ID</td></tr>
+            </tbody>
+        </table>
+
+        <h3>referral_ab_assignments</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th><th>Notas</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td><td></td></tr>
+                <tr><td><code>campaign_id</code></td><td>text</td><td>Default: <code>referidos_ab_2026_06</code></td></tr>
+                <tr><td><code>phone</code></td><td>text</td><td>Telefono del contacto impactado</td></tr>
+                <tr><td><code>client_name</code></td><td>text</td><td>Nombre cargado en lista</td></tr>
+                <tr><td><code>variant_key</code></td><td>text</td><td><code>discount_rate</code> o <code>express_approval</code></td></tr>
+                <tr><td><code>variant_label</code></td><td>text</td><td>Etiqueta legible para admin</td></tr>
+                <tr><td><code>template_name</code></td><td>text</td><td>Template Meta enviado</td></tr>
+                <tr><td><code>send_status</code></td><td>text</td><td><code>accepted</code> / <code>failed</code></td></tr>
+                <tr><td><code>wamid</code></td><td>text</td><td>ID de WhatsApp si Meta acepta el envio</td></tr>
+                <tr><td><code>sent_at</code>, <code>created_at</code>, <code>updated_at</code></td><td>timestamptz</td><td>Base de filtros y metricas</td></tr>
+            </tbody>
+        </table>
+
+        <h3>referral_ab_events</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th><th>Notas</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td><td></td></tr>
+                <tr><td><code>campaign_id</code></td><td>text</td><td>Permite separar futuros A/B tests</td></tr>
+                <tr><td><code>phone</code></td><td>text</td><td>Contacto impactado</td></tr>
+                <tr><td><code>variant_key</code></td><td>text</td><td>Variante resuelta desde template/asignacion</td></tr>
+                <tr><td><code>event_type</code></td><td>text</td><td><code>sent</code>, <code>button_click</code>, <code>info_sent</code>, <code>declined</code>, <code>capture_started</code>, <code>referral_name</code>, <code>referral_phone</code>, <code>free_text</code></td></tr>
+                <tr><td><code>event_text</code></td><td>text</td><td>Boton, template o texto libre resumido</td></tr>
+                <tr><td><code>metadata</code></td><td>jsonb</td><td>Payload flexible para futuras metricas</td></tr>
+                <tr><td><code>created_at</code></td><td>timestamptz</td><td>Base de tiempos de respuesta</td></tr>
+            </tbody>
+        </table>
+
+        <h3>referral_ab_referrals</h3>
+        <table>
+            <thead><tr><th>Columna</th><th>Tipo</th><th>Notas</th></tr></thead>
+            <tbody>
+                <tr><td><code>id</code></td><td>bigint (PK)</td><td></td></tr>
+                <tr><td><code>campaign_id</code></td><td>text</td><td>Default: <code>referidos_ab_2026_06</code></td></tr>
+                <tr><td><code>referrer_phone</code></td><td>text</td><td>Cliente que refiere</td></tr>
+                <tr><td><code>referrer_name</code></td><td>text</td><td>Nombre del cliente</td></tr>
+                <tr><td><code>variant_key</code></td><td>text</td><td>Variante que vio el cliente</td></tr>
+                <tr><td><code>referred_name</code></td><td>text</td><td>Nombre capturado del referido</td></tr>
+                <tr><td><code>referred_phone</code></td><td>text</td><td>Telefono capturado del referido</td></tr>
+                <tr><td><code>status</code></td><td>text</td><td><code>awaiting_phone</code> / <code>completed</code></td></tr>
+                <tr><td><code>source</code></td><td>text</td><td>Default: <code>bot</code></td></tr>
+                <tr><td><code>created_at</code>, <code>updated_at</code></td><td>timestamptz</td><td>Trazabilidad del referido</td></tr>
             </tbody>
         </table>
 
@@ -1576,6 +1728,8 @@ DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT
                 <tr><td><code>estado_rojo</code></td><td>Falta documento: pide documentos faltantes</td><td><code>waiting_for_docs_rojo</code></td></tr>
                 <tr><td><code>estado_amarillo</code></td><td>Listo en firma (PandaDoc/DocuSign): pide cuenta y banco</td><td><code>waiting_for_cuenta_amarillo</code></td></tr>
                 <tr><td><code>contacto_leads</code></td><td>Primer contacto a prospectos</td><td><code>lead_notified</code></td></tr>
+                <tr><td><code>plantilla_referidos_v1</code></td><td>Referidos A/B: incentivo descuento en tasa</td><td><code>referidos_ab_notified</code></td></tr>
+                <tr><td><code>plantilla_referidos_v2</code></td><td>Referidos A/B: incentivo aprobacion express (&lt; 3 horas)</td><td><code>referidos_ab_notified</code></td></tr>
                 <tr><td><code>estado_renovar</code></td><td>Renovados: clientes cerca de terminar su credito</td><td><code>renovado_notified</code></td></tr>
                 <tr><td><code>anticipo_salario</code></td><td>Anticipos: adelanto de nomina</td><td><code>anticipos_notified</code></td></tr>
                 <tr><td><code>estado_negados</code></td><td>Creditos negados: comunica rechazo (sin botones)</td><td><code>denegado_notified</code></td></tr>
